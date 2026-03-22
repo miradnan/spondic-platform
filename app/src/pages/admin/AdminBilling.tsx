@@ -1,7 +1,4 @@
-import { useAuth, PricingTable } from "@clerk/react";
-import {
-  CreditCardIcon,
-} from "@heroicons/react/24/outline";
+import { useAuth, PricingTable, OrganizationProfile } from "@clerk/react";
 import { Badge } from "@/components/ui/badge";
 import { useAnalytics } from "@/hooks/useApi";
 
@@ -125,19 +122,22 @@ export function AdminBilling() {
         <PricingTable for="organization" />
       </div>
 
-      {/* ── Payment Info ──────────────────────────────────────────────────── */}
+      {/* ── Payment & Subscription Management ─────────────────────────────── */}
       <div className="rounded-xl border border-border bg-white p-6">
-        <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-gray-100 p-2.5">
-            <CreditCardIcon className="h-5 w-5 text-muted" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-heading">Payment & invoices</p>
-            <p className="text-xs text-muted mt-0.5">
-              Payment methods, invoices, and billing history are managed through Clerk's billing portal.
-            </p>
-          </div>
-        </div>
+        <h2 className="text-lg font-semibold text-heading mb-2">Payment & Subscription</h2>
+        <p className="text-sm text-muted mb-6">
+          Manage your payment methods, view invoices, and update your subscription.
+        </p>
+        <OrganizationProfile
+          appearance={{
+            elements: {
+              rootBox: "w-full",
+              card: "shadow-none border-0 w-full p-0",
+              navbar: "hidden",
+              pageScrollBox: "p-0",
+            },
+          }}
+        />
       </div>
     </div>
   );
