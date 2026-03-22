@@ -87,31 +87,51 @@ export function RfpNew() {
 
     setIsSubmitting(true);
     try {
-      const formData = new FormData();
-      formData.set("name", name.trim());
-      formData.set("description", description.trim());
-      formData.set("paste", paste.trim());
-      formData.set("organization_id", organizationId);
-      if (deadline) {
-        formData.set("deadline", deadline.toISOString());
-      }
-      files.forEach((file) => formData.append("files", file));
-
       const token = await getToken();
-      const res = await fetch(`${API_URL}/api/rfp`, {
+      const authHeaders: Record<string, string> = token
+        ? { Authorization: `Bearer ${token}` }
+        : {};
+
+      // Step 1: Create the project
+      const projectRes = await fetch(`${API_URL}/api/projects`, {
         method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData,
+        headers: { ...authHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          description: description.trim(),
+          deadline: deadline ? deadline.toISOString() : null,
+        }),
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error((data as { error?: string }).error || `Upload failed (${res.status})`);
+      if (!projectRes.ok) {
+        const data = await projectRes.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error || `Failed to create project (${projectRes.status})`);
       }
-      const data: { id?: string } = await res.json();
-      toast("success", "RFP project created successfully!");
-      const projectId = data.id;
-      navigate(projectId ? `/rfp/${projectId}` : "/", { replace: true });
+      const project: { id: string } = await projectRes.json();
+
+      // Step 2: Upload RFP files to the project (if any files or paste text)
+      if (files.length > 0 || paste.trim()) {
+        const formData = new FormData();
+        formData.set("project_id", project.id);
+        if (paste.trim()) {
+          formData.set("paste", paste.trim());
+        }
+        files.forEach((file) => formData.append("files", file));
+
+        const uploadRes = await fetch(`${API_URL}/api/rfp`, {
+          method: "POST",
+          headers: authHeaders,
+          body: formData,
+        });
+
+        if (!uploadRes.ok) {
+          const data = await uploadRes.json().catch(() => ({}));
+          throw new Error((data as { error?: string }).error || `Upload failed (${uploadRes.status})`);
+        }
+      }
+
+      toast("success", t("rfp.new.success") || "RFP project created successfully!");
+      navigate(`/rfp/${project.id}`, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create RFP");
       toast("error", "Failed to create RFP project.");
