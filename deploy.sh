@@ -5,7 +5,7 @@
 set -e
 
 SERVER="ubuntu@54.226.205.254"
-KEY="$HOME/Downloads/spondic.pem"
+KEY="./spondic.pem"
 REMOTE_DIR="~/spondic"
 COMPOSE_FILE="docker-compose.prod.yml"
 
@@ -34,4 +34,4 @@ echo "📊 Service status:"
 ssh -i "$KEY" "$SERVER" "sudo docker compose -f $REMOTE_DIR/$COMPOSE_FILE ps"
 
 echo ""
-echo "✅ Deploy complete! API: http://54.226.205.254:8080"
+echo "✅ Deploy complete! API: https://app.spondic.com"

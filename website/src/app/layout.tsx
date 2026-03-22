@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Playfair_Display, Space_Grotesk } from "next/font/google";
+import { Inter, DM_Serif_Display, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -11,9 +11,9 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-const playfair = Playfair_Display({
+const dmSerif = DM_Serif_Display({
   variable: "--font-playfair",
-  weight: ["400", "700", "900"],
+  weight: ["400"],
   style: ["normal", "italic"],
   subsets: ["latin"],
 });
@@ -84,7 +84,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${playfair.variable} ${spaceGrotesk.variable}`}>
+    <html lang="en" className={`${inter.variable} ${dmSerif.variable} ${spaceGrotesk.variable}`}>
       <body className="font-sans antialiased">
         <I18nProvider>
           <div className="min-h-screen bg-cream text-[#141413]">
