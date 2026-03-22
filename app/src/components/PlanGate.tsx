@@ -1,5 +1,4 @@
-import { useState, useCallback } from "react";
-import { useAuth, useSession, PricingTable } from "@clerk/react";
+import { useAuth, useOrganization, PricingTable } from "@clerk/react";
 
 function LoadingScreen() {
   return (
@@ -9,14 +8,14 @@ function LoadingScreen() {
   );
 }
 
-function PlanSelectionScreen({ onRefresh }: { onRefresh: () => void }) {
-  const [refreshing, setRefreshing] = useState(false);
+function PlanSelectionScreen() {
+  const { organization } = useOrganization();
 
-  const handleContinue = async () => {
-    setRefreshing(true);
-    onRefresh();
-    // Small delay to let the session refresh
-    setTimeout(() => setRefreshing(false), 2000);
+  const handleStartFree = async () => {
+    // The Free plan is auto-assigned by Clerk as "free_org".
+    // We just need to reload so the PlanGate re-checks and lets them through.
+    // If Clerk has a "free" plan configured, the user is already on it.
+    window.location.reload();
   };
 
   return (
@@ -62,25 +61,17 @@ function PlanSelectionScreen({ onRefresh }: { onRefresh: () => void }) {
           />
         </div>
 
-        {/* Continue button — refreshes session to pick up new plan */}
+        {/* Start Free button — for users who want to use the free plan */}
         <div className="mt-8 text-center">
-          <p className="text-sm text-navy/50 mb-3">
-            Already selected a plan?
-          </p>
           <button
-            onClick={handleContinue}
-            disabled={refreshing}
-            className="rounded-xl bg-brand-blue px-8 py-3 text-sm font-medium text-white hover:bg-brand-blue/90 transition-colors disabled:opacity-50"
+            onClick={handleStartFree}
+            className="rounded-xl border-2 border-navy/20 bg-white px-8 py-3 text-sm font-medium text-navy hover:border-navy/40 hover:bg-cream-light transition-colors"
           >
-            {refreshing ? (
-              <span className="flex items-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                Refreshing...
-              </span>
-            ) : (
-              "Continue to Dashboard →"
-            )}
+            Start with Free Plan →
           </button>
+          <p className="mt-2 text-xs text-navy/40">
+            1 user · 3 RFPs/month · 10 documents
+          </p>
         </div>
       </div>
     </div>
@@ -89,27 +80,12 @@ function PlanSelectionScreen({ onRefresh }: { onRefresh: () => void }) {
 
 export function PlanGate({ children }: { children: React.ReactNode }) {
   const { has, sessionClaims, isLoaded } = useAuth();
-  const { session } = useSession();
-  const [forceCheck, setForceCheck] = useState(0);
-
-  const refreshSession = useCallback(async () => {
-    // Force Clerk to refresh the session token so the new plan appears
-    try {
-      await session?.getToken({ skipCache: true });
-      // Trigger re-render to re-check the plan
-      setForceCheck((c) => c + 1);
-      // Also reload after a short delay as a fallback
-      setTimeout(() => window.location.reload(), 1500);
-    } catch {
-      window.location.reload();
-    }
-  }, [session]);
 
   if (!isLoaded) {
     return <LoadingScreen />;
   }
 
-  // Check if org has an explicitly chosen plan (not Clerk's auto-assigned free_org)
+  // Check if org has an explicitly chosen plan using Clerk's has() method
   const hasFreePlan = has?.({ plan: "free" });
   const hasStarterPlan = has?.({ plan: "starter" });
   const hasGrowthPlan = has?.({ plan: "growth" });
@@ -121,15 +97,14 @@ export function PlanGate({ children }: { children: React.ReactNode }) {
   if (!hasChosenPlan) {
     const planClaim = (sessionClaims as Record<string, unknown>)?.pla as string | undefined;
     const plan = planClaim?.replace("o:", "") || "";
-    const hasPlanFromJWT = ["free", "starter", "growth", "enterprise"].includes(plan);
+    // Allow both "free" (explicitly chosen) and "free_org" (Clerk default)
+    // since user clicked "Start with Free Plan"
+    const hasPlanFromJWT = ["free", "free_org", "starter", "growth", "enterprise"].includes(plan);
 
     if (!hasPlanFromJWT) {
-      return <PlanSelectionScreen onRefresh={refreshSession} />;
+      return <PlanSelectionScreen />;
     }
   }
-
-  // Suppress unused variable warning
-  void forceCheck;
 
   return <>{children}</>;
 }
