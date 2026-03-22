@@ -22,28 +22,36 @@ function PlanSelectionScreen() {
         </div>
 
         {/* Clerk PricingTable handles plan display + Stripe checkout */}
-        <PricingTable />
+        <PricingTable for="organization" />
       </div>
     </div>
   );
 }
 
 export function PlanGate({ children }: { children: React.ReactNode }) {
-  const { sessionClaims, isLoaded } = useAuth();
+  const { has, sessionClaims, isLoaded } = useAuth();
 
   if (!isLoaded) {
     return <LoadingScreen />;
   }
 
-  // Extract plan from JWT claims
-  // Clerk puts it in "pla" field, e.g., "o:starter", "o:growth", "o:enterprise", "o:free_org"
-  const planClaim = (sessionClaims as Record<string, unknown>)?.pla as string | undefined;
-  const plan = planClaim?.replace("o:", "") || "";
+  // Check if org has any active plan using Clerk's has() method
+  const hasFreePlan = has?.({ plan: "free" }) || has?.({ plan: "free_org" });
+  const hasStarterPlan = has?.({ plan: "starter" });
+  const hasGrowthPlan = has?.({ plan: "growth" });
+  const hasEnterprisePlan = has?.({ plan: "enterprise" });
 
-  const hasPaidPlan = ["starter", "growth", "enterprise"].includes(plan);
+  const hasActivePlan = hasFreePlan || hasStarterPlan || hasGrowthPlan || hasEnterprisePlan;
 
-  if (!hasPaidPlan) {
-    return <PlanSelectionScreen />;
+  // Fallback: also check JWT pla claim directly
+  if (!hasActivePlan) {
+    const planClaim = (sessionClaims as Record<string, unknown>)?.pla as string | undefined;
+    const plan = planClaim?.replace("o:", "") || "";
+    const hasPlanFromJWT = ["free", "free_org", "starter", "growth", "enterprise"].includes(plan);
+
+    if (!hasPlanFromJWT) {
+      return <PlanSelectionScreen />;
+    }
   }
 
   return <>{children}</>;

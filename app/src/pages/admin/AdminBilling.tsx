@@ -45,6 +45,8 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
 
 // Plan display names and limits
 const PLAN_INFO: Record<string, { name: string; price: string; users: number | null; rfps: number | null; docs: number | null }> = {
+  free: { name: "Free", price: "Free", users: 1, rfps: 3, docs: 10 },
+  free_org: { name: "Free", price: "Free", users: 1, rfps: 3, docs: 10 },
   starter: { name: "Starter", price: "$299/mo", users: 5, rfps: 10, docs: 100 },
   growth: { name: "Growth", price: "$799/mo", users: 20, rfps: null, docs: 500 },
   enterprise: { name: "Enterprise", price: "Custom", users: null, rfps: null, docs: null },
@@ -60,7 +62,7 @@ export function AdminBilling() {
   const planClaim = (sessionClaims as Record<string, unknown>)?.pla as string | undefined;
   const currentPlan = planClaim?.replace("o:", "") || "free_org";
   const planInfo = PLAN_INFO[currentPlan] || { name: currentPlan, price: "—", users: null, rfps: null, docs: null };
-  const hasPaidPlan = ["starter", "growth", "enterprise"].includes(currentPlan);
+  const hasActivePlan = ["free", "free_org", "starter", "growth", "enterprise"].includes(currentPlan);
 
   return (
     <div className="space-y-8">
@@ -75,7 +77,7 @@ export function AdminBilling() {
           <div>
             <div className="flex items-center gap-3 mb-1">
               <h2 className="text-lg font-semibold text-heading">{planInfo.name} Plan</h2>
-              {hasPaidPlan ? (
+              {hasActivePlan ? (
                 <Badge variant="success">Active</Badge>
               ) : (
                 <Badge variant="warning">No Plan</Badge>
@@ -92,7 +94,7 @@ export function AdminBilling() {
       </div>
 
       {/* ── Usage This Month ──────────────────────────────────────────────── */}
-      {hasPaidPlan && (
+      {hasActivePlan && (
         <div className="rounded-xl border border-border bg-white p-6">
           <h2 className="text-lg font-semibold text-heading mb-5">Usage This Month</h2>
           <div className="space-y-5">
@@ -118,14 +120,14 @@ export function AdminBilling() {
       {/* ── Change Plan (Clerk PricingTable) ───────────────────────────────── */}
       <div className="rounded-xl border border-border bg-white p-6">
         <h2 className="text-lg font-semibold text-heading mb-2">
-          {hasPaidPlan ? "Change Plan" : "Choose a Plan"}
+          {hasActivePlan ? "Change Plan" : "Choose a Plan"}
         </h2>
         <p className="text-sm text-muted mb-6">
-          {hasPaidPlan
+          {hasActivePlan
             ? "Upgrade or downgrade your plan. Changes take effect at the next billing cycle."
             : "Select a plan to get started. All plans include a 30-day free trial."}
         </p>
-        <PricingTable />
+        <PricingTable for="organization" />
       </div>
 
       {/* ── Payment Info ──────────────────────────────────────────────────── */}
