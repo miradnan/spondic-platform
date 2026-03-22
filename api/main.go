@@ -92,14 +92,15 @@ func main() {
 	// Stripe webhook (no auth — uses Stripe signature verification)
 	e.POST("/billing/webhook", h.HandleWebhook)
 
-	// API group — require auth + ensure org + RLS context + audit logging
-	corsMiddleware := middleware.CORS(cfg.CORSOrigins)
+	// API group — require auth + ensure org + plan enforcement + RLS context + audit logging
+	// Note: CORS is handled globally above — not duplicated here
 	authMiddleware := middleware.ClerkAuth(cfg.ClerkJWKSURL)
 	ensureOrgMiddleware := middleware.EnsureOrg(db)
+	planMiddleware := middleware.CheckPlanLimits(db)
 	rlsMiddleware := middleware.SetRLSContext(db)
 	auditMiddleware := middleware.AuditLogger(db)
 
-	api := e.Group("/api", corsMiddleware, authMiddleware, ensureOrgMiddleware, rlsMiddleware, auditMiddleware)
+	api := e.Group("/api", authMiddleware, ensureOrgMiddleware, planMiddleware, rlsMiddleware, auditMiddleware)
 
 	// Projects
 	api.POST("/projects", h.CreateProject)
@@ -159,7 +160,9 @@ func main() {
 	// Chat
 	api.POST("/chats", h.CreateChat)
 	api.GET("/chats", h.ListChats)
+	api.DELETE("/chats/:id", h.DeleteChat)
 	api.POST("/chats/:id/messages", h.SendMessage)
+	api.POST("/chats/:id/messages/stream", h.SendMessageStream)
 	api.GET("/chats/:id/messages", h.GetMessages)
 
 	// Export
@@ -173,7 +176,13 @@ func main() {
 	// Audit logs (admin only — for now, all authenticated users can access)
 	api.GET("/audit-logs", h.ListAuditLogs)
 
+	// Plan info (from JWT claim — no DB needed)
+	api.GET("/plan", h.GetPlan)
+
 	// Billing (authenticated)
+	// NOTE: Checkout and portal endpoints below are deprecated in favor of Clerk-managed
+	// Stripe billing. They remain for backward compatibility but Clerk now handles
+	// subscription checkout and portal flows via the "pla" JWT claim.
 	api.POST("/billing/checkout", h.CreateCheckout)
 	api.POST("/billing/portal", h.CreatePortalSession)
 	api.GET("/billing/subscription", h.GetSubscription)

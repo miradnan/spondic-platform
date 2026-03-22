@@ -20,6 +20,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { useProjects, useDocuments } from "../hooks/useApi.ts";
+import { useWalkthrough, DASHBOARD_STEPS } from "../hooks/useWalkthrough.ts";
 import { DataTable } from "../components/DataTable.tsx";
 import { PaginationBar } from "../components/ui/pagination-bar.tsx";
 import { Tooltip } from "../components/ui/tooltip.tsx";
@@ -246,6 +247,8 @@ export function Dashboard() {
   const hasDocuments = (docsData?.pagination?.total ?? 0) > 0;
   const hasProjects = total > 0;
 
+  useWalkthrough({ key: "dashboard", steps: DASHBOARD_STEPS });
+
   const handlePageChange = useCallback((page: number) => {
     setPagination((prev) => ({ ...prev, pageIndex: page - 1 }));
   }, []);
@@ -339,6 +342,7 @@ export function Dashboard() {
         </div>
         <Link
           to="/rfp/new"
+          data-tour="create-project"
           className="inline-flex items-center gap-2 rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue-hover transition-colors"
         >
           <PlusIcon className="h-4 w-4" />
@@ -348,7 +352,7 @@ export function Dashboard() {
 
       {/* Onboarding Checklist */}
       {!isLoading && (
-        <div className="mt-6">
+        <div className="mt-6" data-tour="onboarding-checklist">
           <OnboardingChecklist
             hasDocuments={hasDocuments}
             hasProjects={hasProjects}
@@ -357,7 +361,7 @@ export function Dashboard() {
       )}
 
       {/* Search & Filter Bar */}
-      <div className="mt-4 flex flex-wrap items-center gap-3">
+      <div className="mt-4 flex flex-wrap items-center gap-3" data-tour="search-filter">
         <div className="relative flex-1 min-w-[200px] max-w-md">
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <input

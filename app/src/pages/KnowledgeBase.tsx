@@ -27,6 +27,7 @@ import {
   useAddTagToDocument,
   useRemoveTagFromDocument,
 } from "../hooks/useApi.ts";
+import { useWalkthrough, KNOWLEDGE_BASE_STEPS } from "../hooks/useWalkthrough.ts";
 import { useToast } from "../components/Toast.tsx";
 import { DataTable } from "../components/DataTable.tsx";
 import { ConfirmDialog } from "../components/ConfirmDialog.tsx";
@@ -57,6 +58,7 @@ export function KnowledgeBase() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  useWalkthrough({ key: "knowledge-base", steps: KNOWLEDGE_BASE_STEPS });
 
   const [search, setSearch] = useState("");
   const [selectedTagId, setSelectedTagId] = useState("");
@@ -369,6 +371,7 @@ export function KnowledgeBase() {
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={uploadDoc.isPending}
+          data-tour="upload-docs"
           className="inline-flex items-center gap-2 rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue-hover transition-colors disabled:opacity-50"
         >
           <CloudArrowUpIcon className="h-4 w-4" />
@@ -410,7 +413,7 @@ export function KnowledgeBase() {
       </div>
 
       {/* Search & Filter */}
-      <div className="mt-6 flex flex-wrap items-center gap-3">
+      <div className="mt-6 flex flex-wrap items-center gap-3" data-tour="doc-search">
         <div className="relative flex-1 min-w-[200px] max-w-md">
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <input
@@ -436,7 +439,7 @@ export function KnowledgeBase() {
             setPagination((prev) => ({ ...prev, pageIndex: 0 }));
           }}
         >
-          <SelectTrigger icon={<TagIcon className="h-4 w-4" />} className="min-w-[120px]">
+          <SelectTrigger data-tour="doc-tags" icon={<TagIcon className="h-4 w-4" />} className="min-w-[120px]">
             <SelectValue placeholder={t("knowledgeBase.allTags")} />
           </SelectTrigger>
           <SelectContent>
@@ -524,7 +527,7 @@ export function KnowledgeBase() {
 
       {/* Document Table */}
       {(isLoading || (!isError && documents.length > 0)) && (
-        <div className="mt-6">
+        <div className="mt-6" data-tour="doc-table">
           <DataTable
             columns={columns}
             data={documents}

@@ -185,6 +185,40 @@ func (a *AIClient) Chat(ctx context.Context, orgID, message string, history []Ch
 	return &resp, nil
 }
 
+// ChatStream sends a message to the AI streaming endpoint and returns the raw
+// HTTP response so the caller can proxy SSE events. The caller is responsible
+// for closing the response body.
+func (a *AIClient) ChatStream(ctx context.Context, orgID, message string, history []ChatTurn) (*http.Response, error) {
+	payload := ChatRequest{
+		OrganizationID: orgID,
+		Message:        message,
+		ChatHistory:    history,
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal chat stream request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, a.baseURL+"/chat/stream", bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create chat stream request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := a.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to call AI chat stream: %w", err)
+	}
+
+	if resp.StatusCode >= 400 {
+		respBody, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		return nil, fmt.Errorf("AI chat stream returned status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	return resp, nil
+}
+
 // SearchRequest is the payload for the AI /search endpoint.
 type SearchRequest struct {
 	OrganizationID string `json:"organization_id"`

@@ -21,7 +21,7 @@ function CheckMark({ white }: { white?: boolean }) {
 
 export default function PricingPageContent() {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.spondic.com";
-  const trialPeriod = process.env.NEXT_PUBLIC_TRIAL_PERIOD ?? "14";
+  const trialPeriod = process.env.NEXT_PUBLIC_TRIAL_PERIOD ?? "30";
   const { t } = useTranslation();
 
   return (

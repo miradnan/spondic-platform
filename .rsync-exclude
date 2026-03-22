@@ -17,8 +17,10 @@ out/
 .git/
 .gitignore
 
-# Local dev
+# Local dev — keep .env.production, exclude the rest
+.env
 .env.local
+!.env.production
 *.pem
 .DS_Store
 Thumbs.db

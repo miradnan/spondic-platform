@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useUser } from "@clerk/react";
+import { useAuth, useUser } from "@clerk/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
   PaperAirplaneIcon,
@@ -8,15 +9,18 @@ import {
   ChatBubbleLeftEllipsisIcon,
   ClipboardIcon,
   CheckIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
 import { Streamdown } from "streamdown";
 import "streamdown/styles.css";
 import { Tooltip } from "../components/ui/tooltip.tsx";
+import { useWalkthrough, CHAT_STEPS } from "../hooks/useWalkthrough.ts";
 import {
   useCreateChat,
   useChatMessages,
-  useSendMessage,
+  useDeleteChat,
 } from "../hooks/useApi.ts";
+import { sendMessageStream, type StreamChatCitation } from "../lib/api.ts";
 import { useToast } from "../components/Toast.tsx";
 import type { ChatMessage } from "../lib/types.ts";
 
@@ -122,18 +126,25 @@ export function Chat() {
   const { id: chatId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useUser();
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const firstName = user?.firstName ?? null;
+  useWalkthrough({ key: "chat", steps: CHAT_STEPS });
 
   const [input, setInput] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingText, setStreamingText] = useState("");
+  const [streamingCitations, setStreamingCitations] = useState<StreamChatCitation[]>([]);
+  const [pendingUserMessage, setPendingUserMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const createChat = useCreateChat();
   const { data: chatMessagesData, isLoading: messagesLoading } = useChatMessages(chatId);
-  const sendMessage = useSendMessage();
+  const deleteChat = useDeleteChat();
 
   const messages: ChatMessage[] = useMemo(() => chatMessagesData?.data ?? [], [chatMessagesData?.data]);
-  const isLoading = sendMessage.isPending;
+  const isLoading = isStreaming;
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -141,7 +152,45 @@ export function Chat() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isLoading, scrollToBottom]);
+  }, [messages, isLoading, streamingText, scrollToBottom]);
+
+  const doStreamSend = async (activeChatId: string, messageText: string) => {
+    setIsStreaming(true);
+    setStreamingText("");
+    setStreamingCitations([]);
+    setPendingUserMessage(messageText);
+
+    const token = await getToken();
+
+    await sendMessageStream(
+      token,
+      activeChatId,
+      { message: messageText },
+      (text) => {
+        setStreamingText((prev) => prev + text);
+      },
+      (citations) => {
+        setStreamingCitations(citations);
+      },
+      () => {
+        setIsStreaming(false);
+        setStreamingText("");
+        setStreamingCitations([]);
+        setPendingUserMessage(null);
+        void queryClient.invalidateQueries({ queryKey: ["chatMessages", activeChatId] });
+        void queryClient.invalidateQueries({ queryKey: ["chats"] });
+      },
+      (error) => {
+        setIsStreaming(false);
+        setStreamingText("");
+        setStreamingCitations([]);
+        setPendingUserMessage(null);
+        toast("error", error);
+        // Refetch to get the user message that was saved
+        void queryClient.invalidateQueries({ queryKey: ["chatMessages", activeChatId] });
+      },
+    );
+  };
 
   const handleSubmit = async () => {
     if (!input.trim() || isLoading) return;
@@ -163,12 +212,7 @@ export function Chat() {
       }
     }
 
-    sendMessage.mutate(
-      { chatId: activeChatId, body: { message: messageText } },
-      {
-        onError: (err) => toast("error", err.message),
-      },
-    );
+    await doStreamSend(activeChatId, messageText);
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
@@ -178,7 +222,6 @@ export function Chat() {
 
   const handleSelectPrompt = (prompt: string) => {
     setInput(prompt);
-    // Auto-submit the prompt
     setTimeout(() => {
       setInput("");
       const fakeInput = prompt;
@@ -196,16 +239,31 @@ export function Chat() {
             return;
           }
         }
-        sendMessage.mutate(
-          { chatId: activeChatId, body: { message: fakeInput } },
-          { onError: (err) => toast("error", err.message) },
-        );
+        await doStreamSend(activeChatId, fakeInput);
       })();
     }, 100);
   };
 
   return (
     <div className="flex flex-1 min-h-0 w-full max-w-4xl mx-auto flex-col">
+      {/* Delete chat button for existing chats */}
+      {chatId && (
+        <div className="flex justify-end px-4 pt-2">
+          <button
+            onClick={() => {
+              if (window.confirm("Delete this chat and all messages?")) {
+                deleteChat.mutate(chatId);
+                navigate("/chat");
+              }
+            }}
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-muted hover:text-red-500 hover:bg-red-50 transition-colors"
+            title="Delete chat"
+          >
+            <TrashIcon className="h-4 w-4" />
+            <span className="hidden sm:inline">Delete</span>
+          </button>
+        </div>
+      )}
       <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto min-h-0 flex flex-col">
@@ -219,7 +277,7 @@ export function Chat() {
                 <p className="mt-1.5 text-base text-muted">
                   {t("chat.subtitle")}
                 </p>
-                <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-xl">
+                <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-xl" data-tour="chat-prompts">
                   {suggestedPrompts.map((prompt) => (
                     <button
                       key={prompt.fullPrompt}
@@ -304,24 +362,61 @@ export function Chat() {
               </div>
             ))}
 
-            {/* Loading indicator */}
-            {isLoading && (
+            {/* Pending user message (shown immediately before DB round-trip) */}
+            {pendingUserMessage && (
+              <div className="group flex mb-4 justify-end">
+                <div className="relative max-w-[85%] rounded-xl px-4 py-3 text-sm leading-relaxed bg-brand-blue text-white">
+                  <div className="whitespace-pre-wrap">{pendingUserMessage}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Streaming assistant response */}
+            {isStreaming && (
               <div className="flex justify-start mb-4">
-                <div className="rounded-xl bg-cream-light border border-border px-4 py-3">
-                  <span className="inline-flex gap-1">
-                    <span
-                      className="w-2 h-2 rounded-full bg-muted animate-bounce"
-                      style={{ animationDelay: "0ms" }}
-                    />
-                    <span
-                      className="w-2 h-2 rounded-full bg-muted animate-bounce"
-                      style={{ animationDelay: "150ms" }}
-                    />
-                    <span
-                      className="w-2 h-2 rounded-full bg-muted animate-bounce"
-                      style={{ animationDelay: "300ms" }}
-                    />
-                  </span>
+                <div className="relative max-w-[85%] rounded-xl px-4 py-3 text-sm leading-relaxed bg-cream-light text-heading border border-border">
+                  {streamingText ? (
+                    <div className="prose prose-sm max-w-none prose-headings:text-heading prose-p:text-body prose-a:text-brand-blue prose-strong:text-heading prose-code:text-brand-blue prose-code:bg-cream prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs">
+                      <Streamdown>{streamingText}</Streamdown>
+                    </div>
+                  ) : (
+                    <span className="inline-flex gap-1">
+                      <span className="w-2 h-2 rounded-full bg-muted animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <span className="w-2 h-2 rounded-full bg-muted animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <span className="w-2 h-2 rounded-full bg-muted animate-bounce" style={{ animationDelay: "300ms" }} />
+                    </span>
+                  )}
+                  {streamingText && (
+                    <span className="inline-block w-1.5 h-4 bg-brand-blue animate-pulse ml-0.5 align-middle" />
+                  )}
+
+                  {/* Streaming citations */}
+                  {streamingCitations.length > 0 && (
+                    <div className="mt-3 border-t border-border/50 pt-2">
+                      <p className="text-xs font-medium text-muted mb-1.5 flex items-center gap-1">
+                        <DocumentTextIcon className="h-3.5 w-3.5" />
+                        {t("chat.sources")}
+                      </p>
+                      <ul className="space-y-1">
+                        {streamingCitations.map((c, idx) => (
+                          <li
+                            key={idx}
+                            className="rounded bg-white/80 px-2 py-1 text-xs text-body"
+                          >
+                            <span className="font-medium text-brand-blue">
+                              {c.document_title}
+                            </span>
+                            {c.citation_text && (
+                              <span className="text-muted ml-1">
+                                — {c.citation_text.slice(0, 120)}
+                                {c.citation_text.length > 120 ? "..." : ""}
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -330,7 +425,7 @@ export function Chat() {
         </div>
 
         {/* Input */}
-        <form onSubmit={handleFormSubmit} className="shrink-0 px-4 py-5">
+        <form onSubmit={handleFormSubmit} className="shrink-0 px-4 py-5" data-tour="chat-input">
           <div className="flex items-end gap-2 rounded-xl bg-cream-light border border-border shadow-sm focus-within:border-brand-blue/40 focus-within:bg-cream-lighter transition-colors px-4 py-3 min-h-[56px]">
             <ChatBubbleLeftEllipsisIcon className="h-5 w-5 text-muted shrink-0 mb-2" />
             <AutoResizeTextarea

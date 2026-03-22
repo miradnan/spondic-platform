@@ -1,8 +1,9 @@
 package handlers
 
 // Routes to register in main.go:
-// api.POST("/billing/checkout", h.CreateCheckout)
-// api.POST("/billing/portal", h.CreatePortalSession)
+// api.GET("/plan", h.GetPlan)
+// api.POST("/billing/checkout", h.CreateCheckout)         // DEPRECATED: use Clerk billing
+// api.POST("/billing/portal", h.CreatePortalSession)      // DEPRECATED: use Clerk billing
 // api.GET("/billing/subscription", h.GetSubscription)
 // api.GET("/billing/usage", h.GetUsage)
 // e.POST("/billing/webhook", h.HandleWebhook)  // NO auth middleware
@@ -19,6 +20,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/stripe/stripe-go/v81"
 
+	"github.com/spondic/api/internal/middleware"
 	"github.com/spondic/api/internal/models"
 	"github.com/spondic/api/internal/services"
 )
@@ -40,7 +42,20 @@ func SetStripeClient(sc *services.StripeClient) {
 	stripeClient = sc
 }
 
+// GetPlan handles GET /api/plan — returns the current org's plan and limits from the JWT claim.
+func (h *Handler) GetPlan(c echo.Context) error {
+	plan := middleware.GetPlan(c)
+	limits := middleware.GetPlanLimits(c)
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"plan":   plan,
+		"limits": limits,
+	})
+}
+
 // CreateCheckout handles POST /api/billing/checkout
+// DEPRECATED: Stripe checkout is now managed by Clerk billing. This endpoint
+// remains for backward compatibility.
 func (h *Handler) CreateCheckout(c echo.Context) error {
 	orgID := getOrgID(c)
 	if orgID == "" {

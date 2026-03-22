@@ -6,13 +6,15 @@ import {
   ChevronLeftIcon,
   Bars3Icon,
   XMarkIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
-import { useChats } from "../hooks/useApi.ts";
+import { useChats, useDeleteChat } from "../hooks/useApi.ts";
 
 export function ChatLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { data: chatsData } = useChats();
+  const deleteChat = useDeleteChat();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const chatHistory = chatsData?.data ?? [];
@@ -41,18 +43,38 @@ export function ChatLayout() {
               const isActive = activeChatId === chat.id;
               return (
                 <li key={chat.id}>
-                  <Link
-                    to={`/chat/${chat.id}`}
-                    onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
+                  <div
+                    className={`group flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
                       isActive
                         ? "bg-brand-blue/10 text-brand-blue font-medium"
                         : "text-body hover:bg-cream-light"
                     }`}
                   >
-                    <ChatBubbleLeftEllipsisIcon className="h-4 w-4 shrink-0 text-muted" />
-                    <span className="truncate">{chat.title}</span>
-                  </Link>
+                    <Link
+                      to={`/chat/${chat.id}`}
+                      onClick={() => setSidebarOpen(false)}
+                      className="flex items-center gap-2 flex-1 min-w-0"
+                    >
+                      <ChatBubbleLeftEllipsisIcon className="h-4 w-4 shrink-0 text-muted" />
+                      <span className="truncate">{chat.title || "Untitled chat"}</span>
+                    </Link>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (window.confirm("Delete this chat?")) {
+                          deleteChat.mutate(chat.id);
+                          if (activeChatId === chat.id) {
+                            navigate("/chat");
+                          }
+                        }
+                      }}
+                      className="hidden group-hover:block shrink-0 p-1 text-muted/40 hover:text-red-500 transition-colors rounded"
+                      title="Delete chat"
+                    >
+                      <TrashIcon className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </li>
               );
             })}

@@ -450,6 +450,20 @@ export function useCreateChat() {
   });
 }
 
+export function useDeleteChat() {
+  const getToken = useToken();
+  const qc = useQueryClient();
+  return useMutation<void, Error, string>({
+    mutationFn: async (chatId) => {
+      const token = await getToken();
+      return api.deleteChat(token, chatId);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["chats"] });
+    },
+  });
+}
+
 export function useSendMessage() {
   const getToken = useToken();
   const qc = useQueryClient();

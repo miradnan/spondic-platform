@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   UserButton,
   useOrganization,
+  useAuth,
 } from "@clerk/react";
 import { Outlet, Link, useLocation, useParams } from "react-router-dom";
 import {
@@ -222,6 +223,32 @@ function OrgNav({ pathname, onLinkClick }: { pathname: string; onLinkClick?: () 
   );
 }
 
+function PlanBadge() {
+  const { sessionClaims } = useAuth();
+  const planClaim = (sessionClaims as Record<string, unknown>)?.pla as string | undefined;
+  const plan = planClaim?.replace("o:", "") || "free";
+
+  const badgeColors: Record<string, string> = {
+    enterprise: "bg-brand-gold/20 text-brand-gold",
+    growth: "bg-brand-blue/20 text-brand-blue",
+    starter: "bg-white/20 text-white/80",
+  };
+
+  const colorClass = badgeColors[plan] || "bg-white/10 text-white/50";
+  const label = plan.charAt(0).toUpperCase() + plan.slice(1);
+
+  return (
+    <div className="px-4 pb-4">
+      <div className="flex items-center gap-2 rounded-lg bg-navy-light px-3 py-2">
+        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${colorClass}`}>
+          {label}
+        </span>
+        <span className="text-xs text-white/50">Plan</span>
+      </div>
+    </div>
+  );
+}
+
 function SidebarContent({
   onLinkClick,
 }: {
@@ -267,7 +294,7 @@ function SidebarContent({
       </div>
 
       {/* Main Nav */}
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 p-4 space-y-1" data-tour="sidebar-nav">
         {navItems.map((item) => (
           <Link
             key={item.to}
@@ -285,6 +312,9 @@ function SidebarContent({
           <OrgNav pathname={location.pathname} onLinkClick={onLinkClick} />
         )}
       </nav>
+
+      {/* Plan badge at bottom of sidebar */}
+      <PlanBadge />
     </>
   );
 }
@@ -295,7 +325,7 @@ export function Layout() {
   return (
     <div className="flex min-h-screen bg-cream text-heading font-sans">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex w-56 flex-col border-r border-navy-light bg-navy">
+      <aside className="hidden lg:flex w-56 flex-col border-r border-navy-light bg-navy sticky top-0 h-screen overflow-y-auto">
         <SidebarContent />
       </aside>
 

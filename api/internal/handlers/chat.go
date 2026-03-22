@@ -1,8 +1,12 @@
 package handlers
 
 import (
+	"bufio"
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 
@@ -213,6 +217,178 @@ func (h *Handler) SendMessage(c echo.Context) error {
 		"assistant_message": assistantMsg,
 		"citations":         citations,
 	})
+}
+
+// SendMessageStream handles POST /api/chats/:id/messages/stream
+// It saves the user message, proxies the SSE stream from the AI service,
+// and saves the complete assistant message after the stream finishes.
+func (h *Handler) SendMessageStream(c echo.Context) error {
+	orgID := getOrgID(c)
+	userID := getUserID(c)
+	chatID := c.Param("id")
+
+	// Verify chat belongs to user and org
+	var chatOwned bool
+	err := h.DB.QueryRow(
+		`SELECT EXISTS(SELECT 1 FROM chats WHERE id = $1 AND organization_id = $2 AND user_id = $3 AND deleted_at IS NULL)`,
+		chatID, orgID, userID,
+	).Scan(&chatOwned)
+	if err != nil || !chatOwned {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "chat not found"})
+	}
+
+	var body struct {
+		Message string `json:"message"`
+	}
+	if err := c.Bind(&body); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+	}
+	if body.Message == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "message is required"})
+	}
+
+	// Save user message to DB
+	_, err = h.DB.Exec(
+		`INSERT INTO chat_messages (chat_id, role, message) VALUES ($1, 'user', $2)`,
+		chatID, body.Message,
+	)
+	if err != nil {
+		log.Printf("error saving user message (stream): %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+	}
+
+	// Get chat history for context
+	histRows, err := h.DB.Query(
+		`SELECT role, message FROM chat_messages WHERE chat_id = $1 ORDER BY created_at LIMIT 20`,
+		chatID,
+	)
+	if err != nil {
+		log.Printf("error fetching chat history (stream): %v", err)
+	}
+
+	var history []services.ChatTurn
+	if histRows != nil {
+		defer histRows.Close()
+		for histRows.Next() {
+			var role, msg string
+			if err := histRows.Scan(&role, &msg); err == nil {
+				history = append(history, services.ChatTurn{Role: role, Content: msg})
+			}
+		}
+	}
+
+	// Call AI service streaming endpoint
+	aiResp, err := h.AI.ChatStream(c.Request().Context(), orgID, body.Message, history)
+	if err != nil {
+		log.Printf("AI chat stream error: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "AI service error"})
+	}
+	defer aiResp.Body.Close()
+
+	// Set SSE headers
+	c.Response().Header().Set("Content-Type", "text/event-stream")
+	c.Response().Header().Set("Cache-Control", "no-cache")
+	c.Response().Header().Set("Connection", "keep-alive")
+	c.Response().Header().Set("X-Accel-Buffering", "no")
+	c.Response().WriteHeader(http.StatusOK)
+
+	flusher, ok := c.Response().Writer.(http.Flusher)
+	if !ok {
+		return fmt.Errorf("streaming not supported")
+	}
+
+	// Proxy the SSE stream from the AI service to the client
+	var fullText strings.Builder
+	scanner := bufio.NewScanner(aiResp.Body)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		if strings.HasPrefix(line, "data: ") {
+			jsonData := line[6:]
+			var event struct {
+				Type    string `json:"type"`
+				Content string `json:"content,omitempty"`
+			}
+			if err := json.Unmarshal([]byte(jsonData), &event); err == nil {
+				if event.Type == "text" {
+					fullText.WriteString(event.Content)
+				}
+			}
+
+			// Forward the line to the client
+			fmt.Fprintf(c.Response().Writer, "%s\n\n", line)
+			flusher.Flush()
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Printf("error reading AI stream: %v", err)
+	}
+
+	// Save the complete assistant message to DB after streaming finishes
+	assistantMessage := fullText.String()
+	if assistantMessage == "" {
+		assistantMessage = "I'm sorry, I wasn't able to generate a response. Please try again."
+	}
+
+	h.DB.Exec(
+		`INSERT INTO chat_messages (chat_id, role, message) VALUES ($1, 'assistant', $2)`,
+		chatID, assistantMessage,
+	)
+
+	// Update chat's updated_at
+	h.DB.Exec(`UPDATE chats SET updated_at = NOW() WHERE id = $1`, chatID)
+
+	// Auto-title if first message and no title
+	var chatTitle *string
+	h.DB.QueryRow(`SELECT title FROM chats WHERE id = $1`, chatID).Scan(&chatTitle)
+	if chatTitle == nil || *chatTitle == "" {
+		truncated := body.Message
+		if len(truncated) > 100 {
+			truncated = truncated[:100] + "..."
+		}
+		h.DB.Exec(`UPDATE chats SET title = $1 WHERE id = $2`, truncated, chatID)
+	}
+
+	return nil
+}
+
+// DeleteChat handles DELETE /api/chats/:id
+func (h *Handler) DeleteChat(c echo.Context) error {
+	orgID := getOrgID(c)
+	userID := getUserID(c)
+	chatID := c.Param("id")
+
+	// Verify chat belongs to user and org
+	var exists bool
+	err := h.DB.QueryRow(
+		`SELECT EXISTS(SELECT 1 FROM chats WHERE id = $1 AND organization_id = $2 AND user_id = $3 AND deleted_at IS NULL)`,
+		chatID, orgID, userID,
+	).Scan(&exists)
+	if err != nil || !exists {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "chat not found"})
+	}
+
+	// Hard delete chat messages (not useful without the chat)
+	_, err = h.DB.Exec(`DELETE FROM chat_messages WHERE chat_id = $1`, chatID)
+	if err != nil {
+		log.Printf("error deleting chat messages: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+	}
+
+	// Soft delete the chat
+	_, err = h.DB.Exec(
+		`UPDATE chats SET deleted_at = NOW() WHERE id = $1 AND organization_id = $2 AND user_id = $3`,
+		chatID, orgID, userID,
+	)
+	if err != nil {
+		log.Printf("error deleting chat: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+	}
+
+	return c.NoContent(http.StatusNoContent)
 }
 
 // GetMessages handles GET /api/chats/:id/messages

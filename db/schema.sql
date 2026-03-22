@@ -379,10 +379,10 @@ CREATE TABLE plan_limits (
   analytics_enabled     BOOLEAN DEFAULT false
 );
 
+-- Aligned with website pricing: Starter ($299/mo), Growth ($799/mo), Enterprise (Custom)
 INSERT INTO plan_limits VALUES
-  ('free',       5,    20,   3,    50,   false, false, false, false),
-  ('starter',    20,   100,  10,   200,  false, false, true,  true),
-  ('growth',     100,  500,  50,   500,  true,  true,  true,  true),
+  ('starter',    10,   100,  5,    200,  false, false, true,  true),
+  ('growth',     NULL, 500,  20,   500,  true,  true,  true,  true),
   ('enterprise', NULL, NULL, NULL, NULL, true,  true,  true,  true);
 
 -- ---------------------------------------------------------------------------

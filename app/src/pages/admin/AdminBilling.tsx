@@ -15,7 +15,6 @@ interface PlanFeature {
   label: string;
   starter: string;
   growth: string;
-  business: string;
   enterprise: string;
 }
 
@@ -27,48 +26,51 @@ interface BillingHistoryRow {
 }
 
 type BillingCycle = "monthly" | "annual";
-type PlanKey = "starter" | "growth" | "business" | "enterprise";
+type PlanKey = "starter" | "growth" | "enterprise";
 
-// ── Data ─────────────────────────────────────────────────────────────────────
+// ── Data (aligned with website pricing) ──────────────────────────────────────
 
 const PLANS: Record<
   PlanKey,
-  { name: string; monthlyINR: number; monthlyUSD: number; highlight?: boolean }
+  { name: string; monthlyUSD: number; highlight?: boolean }
 > = {
-  starter: { name: "Starter", monthlyINR: 4999, monthlyUSD: 60 },
-  growth: { name: "Growth", monthlyINR: 14999, monthlyUSD: 180, highlight: true },
-  business: { name: "Business", monthlyINR: 34999, monthlyUSD: 420 },
-  enterprise: { name: "Enterprise", monthlyINR: 0, monthlyUSD: 0 },
+  starter: { name: "Starter", monthlyUSD: 299 },
+  growth: { name: "Growth", monthlyUSD: 799, highlight: true },
+  enterprise: { name: "Enterprise", monthlyUSD: 0 },
 };
 
 const FEATURES: PlanFeature[] = [
-  { label: "Users", starter: "3", growth: "10", business: "Unlimited", enterprise: "Unlimited" },
-  { label: "RFPs / month", starter: "20", growth: "100", business: "Unlimited", enterprise: "Unlimited" },
-  { label: "KB documents", starter: "100", growth: "1,000", business: "10,000", enterprise: "Custom" },
-  { label: "Auth", starter: "Email + Google SSO", growth: "+ Microsoft SSO", business: "+ SAML", enterprise: "+ Custom" },
-  { label: "Support", starter: "Email", growth: "Priority email", business: "Dedicated CSM", enterprise: "Dedicated + SLA" },
-  { label: "API access", starter: "no", growth: "no", business: "yes", enterprise: "yes" },
+  { label: "Users", starter: "5", growth: "20", enterprise: "Unlimited" },
+  { label: "RFPs / month", starter: "10", growth: "Unlimited", enterprise: "Unlimited" },
+  { label: "KB documents", starter: "100", growth: "500", enterprise: "Unlimited" },
+  { label: "AI Review", starter: "—", growth: "✓", enterprise: "✓" },
+  { label: "Compliance checks", starter: "—", growth: "✓", enterprise: "✓" },
+  { label: "Team collaboration", starter: "✓", growth: "✓", enterprise: "✓" },
+  { label: "Slack notifications", starter: "—", growth: "✓", enterprise: "✓" },
+  { label: "Salesforce integration", starter: "—", growth: "—", enterprise: "✓" },
+  { label: "SSO & audit trail", starter: "—", growth: "—", enterprise: "✓" },
+  { label: "Dedicated support", starter: "—", growth: "—", enterprise: "✓" },
 ];
 
 const CURRENT_PLAN: PlanKey = "growth";
 
 const USAGE = [
-  { label: "Users", used: 4, limit: 10 },
-  { label: "RFPs processed", used: 23, limit: 100 },
-  { label: "KB documents", used: 156, limit: 1000 },
+  { label: "Users", used: 4, limit: 20 },
+  { label: "RFPs processed", used: 23, limit: null },
+  { label: "KB documents", used: 156, limit: 500 },
 ];
 
 const BILLING_HISTORY: BillingHistoryRow[] = [
-  { date: "Mar 1, 2026", description: "Growth Plan — Monthly", amount: "₹14,999", status: "Paid" },
-  { date: "Feb 1, 2026", description: "Growth Plan — Monthly", amount: "₹14,999", status: "Paid" },
-  { date: "Jan 1, 2026", description: "Growth Plan — Monthly", amount: "₹14,999", status: "Paid" },
-  { date: "Dec 1, 2025", description: "Growth Plan — Monthly", amount: "₹14,999", status: "Paid" },
+  { date: "Mar 1, 2026", description: "Growth Plan — Monthly", amount: "$799", status: "Paid" },
+  { date: "Feb 1, 2026", description: "Growth Plan — Monthly", amount: "$799", status: "Paid" },
+  { date: "Jan 1, 2026", description: "Growth Plan — Monthly", amount: "$799", status: "Paid" },
+  { date: "Dec 1, 2025", description: "Growth Plan — Monthly", amount: "$799", status: "Paid" },
 ];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatINR(amount: number): string {
-  return `₹${amount.toLocaleString("en-IN")}`;
+function formatUSD(amount: number): string {
+  return `$${amount.toLocaleString("en-US")}`;
 }
 
 function barColor(pct: number): string {
@@ -79,14 +81,15 @@ function barColor(pct: number): string {
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 
-function UsageBar({ label, used, limit }: { label: string; used: number; limit: number }) {
-  const pct = Math.round((used / limit) * 100);
+function UsageBar({ label, used, limit }: { label: string; used: number; limit: number | null }) {
+  const isUnlimited = limit === null;
+  const pct = isUnlimited ? 0 : Math.round((used / limit) * 100);
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-sm font-medium text-heading">{label}</span>
         <span className="text-sm text-muted">
-          {used.toLocaleString()} of {limit.toLocaleString()} used
+          {used.toLocaleString()} {isUnlimited ? "(Unlimited)" : `of ${limit.toLocaleString()} used`}
         </span>
       </div>
       <div className="h-2.5 w-full rounded-full bg-gray-200">
@@ -112,13 +115,11 @@ function PlanCard({
   const plan = PLANS[planKey];
   const isEnterprise = planKey === "enterprise";
 
-  const monthlyPrice = plan.monthlyINR;
+  const monthlyPrice = plan.monthlyUSD;
   const displayPrice =
     cycle === "annual" ? Math.round(monthlyPrice * 0.8) : monthlyPrice;
-  const displayUSD =
-    cycle === "annual" ? Math.round(plan.monthlyUSD * 0.8) : plan.monthlyUSD;
 
-  const planOrder: PlanKey[] = ["starter", "growth", "business", "enterprise"];
+  const planOrder: PlanKey[] = ["starter", "growth", "enterprise"];
   const currentIdx = planOrder.indexOf(CURRENT_PLAN);
   const thisIdx = planOrder.indexOf(planKey);
 
@@ -155,19 +156,16 @@ function PlanCard({
           <>
             <div className="flex items-baseline gap-1.5">
               <span className="text-2xl font-bold text-heading">
-                {formatINR(displayPrice)}
+                {formatUSD(displayPrice)}
               </span>
               <span className="text-sm text-muted">/mo</span>
             </div>
             {cycle === "annual" && (
               <p className="text-xs text-muted mt-1">
-                <span className="line-through">{formatINR(monthlyPrice)}/mo</span>{" "}
+                <span className="line-through">{formatUSD(monthlyPrice)}/mo</span>{" "}
                 <span className="text-green-600 font-medium">Save 20%</span>
               </p>
             )}
-            <p className="text-xs text-muted mt-0.5">
-              (~${displayUSD}/mo USD)
-            </p>
           </>
         )}
       </div>
@@ -225,7 +223,7 @@ function PlanCard({
 export function AdminBilling() {
   const [cycle, setCycle] = useState<BillingCycle>("monthly");
 
-  const planKeys: PlanKey[] = ["starter", "growth", "business", "enterprise"];
+  const planKeys: PlanKey[] = ["starter", "growth", "enterprise"];
 
   return (
     <div className="space-y-8">
@@ -256,7 +254,7 @@ export function AdminBilling() {
               <h2 className="text-lg font-semibold text-heading">Growth Plan</h2>
               <Badge>Current Plan</Badge>
             </div>
-            <p className="text-2xl font-bold text-heading mt-1">₹14,999<span className="text-sm font-normal text-muted">/mo</span></p>
+            <p className="text-2xl font-bold text-heading mt-1">$799<span className="text-sm font-normal text-muted">/mo</span></p>
             <p className="text-sm text-muted mt-1">Renews on April 20, 2026</p>
           </div>
           <div className="flex flex-col gap-2 items-end">

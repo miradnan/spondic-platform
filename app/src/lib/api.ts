@@ -309,6 +309,99 @@ export function sendMessage(
   });
 }
 
+export function deleteChat(token: string | null, chatId: string): Promise<void> {
+  return request(`/api/chats/${chatId}`, token, { method: "DELETE" });
+}
+
+export interface StreamChatCitation {
+  document_title: string;
+  citation_text: string;
+  relevance_score: number;
+}
+
+export async function sendMessageStream(
+  token: string | null,
+  chatId: string,
+  body: SendMessageRequest,
+  onText: (text: string) => void,
+  onCitations: (citations: StreamChatCitation[]) => void,
+  onDone: () => void,
+  onError: (error: string) => void,
+): Promise<void> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}/api/chats/${chatId}/messages/stream`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+  } catch {
+    onError("Network error — could not reach server");
+    return;
+  }
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    onError((data as { error?: string }).error || `Request failed (${res.status})`);
+    return;
+  }
+
+  const reader = res.body?.getReader();
+  if (!reader) {
+    onError("Streaming not supported");
+    return;
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          try {
+            const data = JSON.parse(line.slice(6)) as {
+              type: string;
+              content?: string;
+              citations?: StreamChatCitation[];
+              error?: string;
+            };
+            if (data.type === "text" && data.content) {
+              onText(data.content);
+            } else if (data.type === "citations" && data.citations) {
+              onCitations(data.citations);
+            } else if (data.type === "done") {
+              onDone();
+              return;
+            } else if (data.type === "error") {
+              onError(data.error || "Stream error");
+              return;
+            }
+          } catch {
+            // Ignore malformed SSE lines
+          }
+        }
+      }
+    }
+    // If we reach here without a done event, still notify done
+    onDone();
+  } catch {
+    onError("Stream interrupted");
+  }
+}
+
 export function getMessages(token: string | null, chatId: string): Promise<PaginatedResponse<ChatMessage>> {
   return request(`/api/chats/${chatId}/messages`, token);
 }

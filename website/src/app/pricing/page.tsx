@@ -4,7 +4,7 @@ import PricingPageContent from "@/components/PricingPageContent";
 const businessName = process.env.NEXT_PUBLIC_BUSINESS_NAME || "Spondic";
 const domain = process.env.NEXT_PUBLIC_DOMAIN || "spondic.com";
 const siteUrl = `https://${domain}`;
-const trialPeriod = process.env.NEXT_PUBLIC_TRIAL_PERIOD ?? "14";
+const trialPeriod = process.env.NEXT_PUBLIC_TRIAL_PERIOD ?? "30";
 
 export const metadata: Metadata = {
   title: `Pricing — ${businessName} | Plans for Every Team Size`,

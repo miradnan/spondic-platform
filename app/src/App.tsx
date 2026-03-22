@@ -4,6 +4,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Layout } from "./components/Layout.tsx";
 import { OrgGate } from "./components/OrgGate.tsx";
+import { PlanGate } from "./components/PlanGate.tsx";
 import { AdminGuard } from "./components/AdminGuard.tsx";
 import { AdminLayout } from "./components/AdminLayout.tsx";
 import { ToastProvider } from "./components/Toast.tsx";
@@ -28,7 +29,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Show when="signed-in">
-        <OrgGate>{children}</OrgGate>
+        <OrgGate>
+          <PlanGate>{children}</PlanGate>
+        </OrgGate>
       </Show>
       <Show when="signed-out">
         <RedirectToSignIn />

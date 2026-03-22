@@ -19,6 +19,7 @@ import (
 const (
 	ContextKeyUserID = "user_id"
 	ContextKeyOrgID  = "organization_id"
+	ContextKeyPlan   = "plan"
 )
 
 // jwksCache caches the JWKS keys for Clerk JWT verification.
@@ -241,6 +242,12 @@ func setClaimsOnContext(c echo.Context, claims jwt.MapClaims) {
 	if orgRole != "" {
 		c.Set(ContextKeyOrgRole, orgRole)
 	}
+
+	// Extract plan from "pla" claim, e.g., "o:starter" -> "starter"
+	if pla, ok := claims["pla"].(string); ok && pla != "" {
+		plan := strings.TrimPrefix(pla, "o:")
+		c.Set(ContextKeyPlan, plan)
+	}
 }
 
 // GetOrgRole extracts the user's organization role from the Echo context.
@@ -262,6 +269,14 @@ func GetUserID(c echo.Context) string {
 // GetOrgID extracts the authenticated organization ID from the Echo context.
 func GetOrgID(c echo.Context) string {
 	if v, ok := c.Get(ContextKeyOrgID).(string); ok {
+		return v
+	}
+	return ""
+}
+
+// GetPlan extracts the organization's billing plan from the Echo context.
+func GetPlan(c echo.Context) string {
+	if v, ok := c.Get(ContextKeyPlan).(string); ok {
 		return v
 	}
 	return ""

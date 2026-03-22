@@ -46,6 +46,7 @@ import { DataTable } from "../components/DataTable.tsx";
 import { ConfirmDialog } from "../components/ConfirmDialog.tsx";
 import { Tooltip } from "../components/ui/tooltip.tsx";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs.tsx";
+import { useWalkthrough, RFP_VIEW_STEPS } from "../hooks/useWalkthrough.ts";
 import type { RFPQuestion, RFPAnswer, AnswerApproval, StageApproveRequest } from "../lib/types.ts";
 import { StatusBadge } from "../components/ui/status-badge.tsx";
 import { RichTextEditor } from "../components/ui/rich-text-editor.tsx";
@@ -77,6 +78,7 @@ export function RfpView() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<Tab>("questions");
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
+  useWalkthrough({ key: "rfp-view", steps: RFP_VIEW_STEPS, delay: 1200 });
 
   const { data: project, isLoading: projectLoading } = useProject(id);
   const { data: questionsData, isLoading: questionsLoading } = useQuestions(id);
@@ -224,7 +226,7 @@ export function RfpView() {
         onValueChange={(v) => setActiveTab(v as "questions" | "review" | "export")}
         className="mt-6 flex flex-col flex-1 min-h-0"
       >
-        <TabsList>
+        <TabsList data-tour="rfp-tabs">
           <TabsTrigger value="questions">
             <DocumentTextIcon className="h-4 w-4" />
             {t("rfp.view.questions")}
@@ -385,6 +387,7 @@ function QuestionsTab({
           {t("rfp.view.noQuestionsDesc")}
         </p>
         <button
+          data-tour="rfp-parse"
           onClick={onParse}
           disabled={isParsing}
           className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue-hover transition-colors disabled:opacity-50"
@@ -414,6 +417,7 @@ function QuestionsTab({
           {isParsing ? t("rfp.view.parsing") : t("rfp.view.reParse")}
         </button>
         <button
+          data-tour="rfp-draft"
           onClick={onDraftAll}
           disabled={isDrafting}
           className="inline-flex items-center gap-2 rounded-lg bg-brand-blue px-3 py-2 text-sm font-medium text-white hover:bg-brand-blue-hover transition-colors disabled:opacity-50"

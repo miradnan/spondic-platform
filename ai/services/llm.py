@@ -167,6 +167,63 @@ RULES:
 5. Do NOT fabricate information."""
 
 
+def chat_response_stream(
+    message: str,
+    context_passages: list[dict],
+    chat_history: list[dict] | None = None,
+):
+    """
+    Generator that yields text chunks from Groq streaming response.
+    """
+    client = _get_client()
+    context_block = _build_context_block(context_passages)
+
+    messages: list[dict] = [
+        {"role": "system", "content": _CHAT_SYSTEM_PROMPT},
+    ]
+
+    if chat_history:
+        for msg in chat_history[-10:]:
+            role = msg.get("role", "user")
+            if role in ("user", "assistant"):
+                messages.append({"role": role, "content": msg["content"]})
+
+    messages.append({
+        "role": "user",
+        "content": (
+            f"CONTEXT PASSAGES:\n{context_block}\n\n"
+            f"USER MESSAGE:\n{message}"
+        ),
+    })
+
+    for attempt in range(_MAX_RETRIES):
+        model = _MODEL if attempt < 2 else _FALLBACK_MODEL
+        try:
+            stream = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=0.3,
+                max_tokens=4096,
+                stream=True,
+            )
+            for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+            return  # Successfully streamed
+        except RateLimitError as exc:
+            wait = 2 ** attempt
+            logger.warning("Groq rate limited (stream, attempt %d/%d, model=%s), waiting %ds: %s",
+                           attempt + 1, _MAX_RETRIES, model, wait, exc)
+            time.sleep(wait)
+        except Exception as exc:
+            logger.error("Groq streaming API error (model=%s): %s", model, exc)
+            if attempt == _MAX_RETRIES - 1:
+                raise
+            time.sleep(1)
+
+    raise RuntimeError("Exceeded maximum retries for Groq streaming LLM call")
+
+
 def chat_response(
     message: str,
     context_passages: list[dict],

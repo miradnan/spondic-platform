@@ -9,6 +9,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useToast } from "../components/Toast.tsx";
 import { DatePicker } from "../components/ui/date-picker.tsx";
+import { useWalkthrough, RFP_NEW_STEPS } from "../hooks/useWalkthrough.ts";
 
 const ACCEPTED_TYPES = [
   "application/pdf",
@@ -57,6 +58,7 @@ export function RfpNew() {
   const { getToken, orgId } = useAuth();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  useWalkthrough({ key: "rfp-new", steps: RFP_NEW_STEPS });
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [paste, setPaste] = useState("");
@@ -162,7 +164,7 @@ export function RfpNew() {
 
       <form onSubmit={handleSubmit} className="mt-8 max-w-2xl space-y-6">
         {/* Project Name */}
-        <div>
+        <div data-tour="rfp-name">
           <label htmlFor="name" className="block text-sm font-medium text-body">
             {t("rfp.new.projectName")} <span className="text-red-500">*</span>
           </label>
@@ -192,7 +194,7 @@ export function RfpNew() {
         </div>
 
         {/* Deadline */}
-        <div>
+        <div data-tour="rfp-deadline">
           <label className="block text-sm font-medium text-body mb-1">
             {t("rfp.new.deadline")}
           </label>
@@ -204,7 +206,7 @@ export function RfpNew() {
         </div>
 
         {/* File Upload */}
-        <div>
+        <div data-tour="rfp-upload">
           <label className="block text-sm font-medium text-body mb-2">
             {t("rfp.new.uploadDoc")}
           </label>
@@ -278,7 +280,7 @@ export function RfpNew() {
         </div>
 
         {/* Paste Text */}
-        <div>
+        <div data-tour="rfp-paste">
           <label htmlFor="paste" className="block text-sm font-medium text-body">
             {t("rfp.new.pasteText")}
           </label>
