@@ -65,7 +65,13 @@ function DatePicker({
         <Calendar
           mode="single"
           selected={value}
-          onSelect={(day) => {
+          onSelect={(day: Date | undefined) => {
+            if (day) {
+              onChange(day);
+              setOpen(false);
+            }
+          }}
+          onDayClick={(day: Date) => {
             onChange(day);
             setOpen(false);
           }}
