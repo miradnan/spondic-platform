@@ -201,7 +201,7 @@ export function KnowledgeBase() {
         cell: (info) => {
           const val = info.getValue();
           return (
-            <StatusBadge status={val} label={val.replace(/_/g, " ")} />
+            <StatusBadge status={val || "unknown"} label={(val || "unknown").replace(/_/g, " ")} />
           );
         },
       }),
