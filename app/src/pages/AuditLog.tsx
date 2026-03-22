@@ -74,8 +74,9 @@ export function AuditLog() {
   const entityTypeFilter = searchParams.get("entity") ?? "";
   const dateFromStr = searchParams.get("from") ?? "";
   const dateToStr = searchParams.get("to") ?? "";
-  const dateFrom = dateFromStr ? new Date(dateFromStr) : undefined;
-  const dateTo = dateToStr ? new Date(dateToStr) : undefined;
+  // Parse dates with local timezone (not UTC) so react-day-picker highlights correctly
+  const dateFrom = dateFromStr ? new Date(dateFromStr + "T00:00:00") : undefined;
+  const dateTo = dateToStr ? new Date(dateToStr + "T00:00:00") : undefined;
 
   const hasFilters = actionFilter || userFilter || entityTypeFilter || dateFrom || dateTo;
 
