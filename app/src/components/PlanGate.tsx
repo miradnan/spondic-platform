@@ -35,19 +35,21 @@ export function PlanGate({ children }: { children: React.ReactNode }) {
     return <LoadingScreen />;
   }
 
-  // Check if org has any active plan using Clerk's has() method
-  const hasFreePlan = has?.({ plan: "free" }) || has?.({ plan: "free_org" });
+  // Check if org has an explicitly chosen plan (not Clerk's auto-assigned free_org)
+  // "free" = our testing plan (explicitly selected), "free_org" = Clerk's default (not chosen)
+  const hasFreePlan = has?.({ plan: "free" });
   const hasStarterPlan = has?.({ plan: "starter" });
   const hasGrowthPlan = has?.({ plan: "growth" });
   const hasEnterprisePlan = has?.({ plan: "enterprise" });
 
-  const hasActivePlan = hasFreePlan || hasStarterPlan || hasGrowthPlan || hasEnterprisePlan;
+  const hasChosenPlan = hasFreePlan || hasStarterPlan || hasGrowthPlan || hasEnterprisePlan;
 
-  // Fallback: also check JWT pla claim directly
-  if (!hasActivePlan) {
+  // Fallback: check JWT pla claim directly
+  if (!hasChosenPlan) {
     const planClaim = (sessionClaims as Record<string, unknown>)?.pla as string | undefined;
     const plan = planClaim?.replace("o:", "") || "";
-    const hasPlanFromJWT = ["free", "free_org", "starter", "growth", "enterprise"].includes(plan);
+    // "free_org" is Clerk's auto-assigned default — don't count it as a chosen plan
+    const hasPlanFromJWT = ["free", "starter", "growth", "enterprise"].includes(plan);
 
     if (!hasPlanFromJWT) {
       return <PlanSelectionScreen />;
