@@ -232,6 +232,8 @@ function PlanBadge() {
     enterprise: "bg-brand-gold/20 text-brand-gold",
     growth: "bg-brand-blue/20 text-brand-blue",
     starter: "bg-white/20 text-white/80",
+    free: "bg-white/10 text-white/60",
+    free_org: "bg-white/10 text-white/60",
   };
 
   const colorClass = badgeColors[plan] || "bg-white/10 text-white/50";

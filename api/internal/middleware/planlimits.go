@@ -43,7 +43,7 @@ func CheckPlanLimits(db *sql.DB) echo.MiddlewareFunc {
 			if method == http.MethodOptions || method == http.MethodGet {
 				// Still load limits into context for GET requests so handlers can read them
 				plan := GetPlan(c)
-				if plan != "" && plan != "free_org" {
+				if plan != "" {
 					if limits := getPlanLimits(db, plan); limits != nil {
 						c.Set(ContextKeyPlanLimits, limits)
 					}
@@ -52,8 +52,13 @@ func CheckPlanLimits(db *sql.DB) echo.MiddlewareFunc {
 			}
 
 			plan := GetPlan(c)
-			if plan == "" || plan == "free_org" {
-				// No paid plan — block mutating operations
+			// Allow all recognized plans (including free) — limits enforced by plan_limits table
+			validPlans := map[string]bool{
+				"free": true, "free_org": true,
+				"starter": true, "growth": true, "enterprise": true,
+			}
+			if !validPlans[plan] {
+				// No recognized plan — block mutating operations
 				return c.JSON(http.StatusPaymentRequired, map[string]string{
 					"error":   "subscription_required",
 					"message": "Please subscribe to a plan to perform this action.",
