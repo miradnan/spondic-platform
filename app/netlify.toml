@@ -1,0 +1,11 @@
+[build]
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "25"
+
+# SPA routing — all paths serve index.html (React Router handles routing)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
