@@ -84,7 +84,7 @@ export function AuditLog() {
     updateParams({ action: null, user: null, entity: null, from: null, to: null, page: null });
   }, [updateParams]);
 
-  const { data, isLoading, isError, refetch } = useAuditLogs({
+  const auditFilters: AuditLogFilters = useMemo(() => ({
     action: actionFilter || undefined,
     user_id: userFilter || undefined,
     entity_type: entityTypeFilter || undefined,
@@ -92,7 +92,9 @@ export function AuditLog() {
     date_to: dateToStr || undefined,
     page: pagination.pageIndex + 1,
     limit: pagination.pageSize,
-  } as AuditLogFilters);
+  }), [actionFilter, userFilter, entityTypeFilter, dateFromStr, dateToStr, pagination.pageIndex, pagination.pageSize]);
+
+  const { data, isLoading, isError, refetch } = useAuditLogs(auditFilters);
 
   const logs = data?.data ?? [];
   const total = data?.pagination?.total ?? 0;
