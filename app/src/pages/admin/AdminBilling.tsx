@@ -1,4 +1,5 @@
-import { useAuth, PricingTable } from "@clerk/react";
+import { useAuth } from "@clerk/react";
+import { PricingTable } from "@clerk/react/experimental";
 import {
   CreditCardIcon,
   ArrowPathIcon,
