@@ -1,10 +1,13 @@
 # Spondic Production — Single EC2 (ARM64/Graviton)
+# AI service runs natively via systemd (spondic-ai.service)
 # Usage: docker compose -f docker-compose.prod.yml up -d
 
 services:
   postgres:
     image: postgres:16-alpine
     restart: always
+    ports:
+      - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_USER: spondic
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-spondic_prod_2026}
@@ -21,6 +24,9 @@ services:
   weaviate:
     image: cr.weaviate.io/semitechnologies/weaviate:1.27.2
     restart: always
+    ports:
+      - "127.0.0.1:8081:8080"
+      - "127.0.0.1:50051:50051"
     environment:
       QUERY_DEFAULTS_LIMIT: "25"
       AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
@@ -48,31 +54,14 @@ services:
     environment:
       - PORT=8080
       - DATABASE_URL=postgres://spondic:${POSTGRES_PASSWORD:-spondic_prod_2026}@postgres:5432/spondic?sslmode=disable
-      - AI_SERVICE_URL=http://ai:8000
+      - AI_SERVICE_URL=http://host.docker.internal:8000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - ./api/.env.production
     depends_on:
       postgres:
         condition: service_healthy
-
-  ai:
-    build:
-      context: ./ai
-      dockerfile: Dockerfile
-    restart: always
-    environment:
-      - PORT=8000
-      - WEAVIATE_URL=http://weaviate:8080
-      - CORS_ORIGINS=http://api:8080
-    env_file:
-      - ./ai/.env.production
-    depends_on:
-      weaviate:
-        condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          memory: 1G
 
 volumes:
   postgres_data:

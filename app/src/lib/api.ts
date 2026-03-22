@@ -479,12 +479,46 @@ export function removeTeamMember(token: string | null, teamId: string, userId: s
 
 // ── Export ────────────────────────────────────────────────────────────────────
 
+async function downloadBlob(
+  path: string,
+  token: string | null,
+  filename: string,
+): Promise<{ download_url: string }> {
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: "POST",
+    headers,
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error((data as { error?: string }).error || `Export failed (${res.status})`);
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+
+  // Trigger download
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  // Clean up after a delay
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+  return { download_url: url };
+}
+
 export function exportDocx(token: string | null, projectId: string): Promise<ExportResponse> {
-  return request(`/api/rfp/${projectId}/export/docx`, token, { method: "POST" });
+  return downloadBlob(`/api/rfp/${projectId}/export/docx`, token, `rfp-export-${projectId}.docx`);
 }
 
 export function exportPdf(token: string | null, projectId: string): Promise<ExportResponse> {
-  return request(`/api/rfp/${projectId}/export/pdf`, token, { method: "POST" });
+  return downloadBlob(`/api/rfp/${projectId}/export/pdf`, token, `rfp-export-${projectId}.pdf`);
 }
 
 // ── Analytics ────────────────────────────────────────────────────────────────

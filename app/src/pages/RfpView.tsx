@@ -1191,11 +1191,8 @@ function ExportTab({
   const handleExport = (format: "docx" | "pdf") => {
     const mutation = format === "docx" ? exportDocx : exportPdf;
     mutation.mutate(projectId, {
-      onSuccess: (data) => {
-        if (data.download_url) {
-          window.open(data.download_url, "_blank");
-          toast("success", `${format.toUpperCase()} export started.`);
-        }
+      onSuccess: () => {
+        toast("success", `${format.toUpperCase()} exported successfully.`);
       },
       onError: (err) => toast("error", err.message),
     });
