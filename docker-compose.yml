@@ -1,0 +1,115 @@
+# Spondic — run all services locally
+# Usage: docker compose up --build
+# Optional: create .env in repo root with GROQ_API_KEY, OPENAI_API_KEY, VITE_CLERK_PUBLISHABLE_KEY
+# Optional: api/.env and ai/.env are loaded when present (e.g. copy from .env.example)
+
+services:
+  # Marketing site (Next.js) — http://localhost:3000
+  # website:
+  #   image: node:20-alpine
+  #   working_dir: /app
+  #   volumes:
+  #     - ./website:/app
+  #   command: sh -c "npm install && npm run dev"
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - NODE_ENV=development
+  #     - WATCHPACK_POLLING=true
+
+  # Product app (React + Vite) — http://localhost:5173
+  # app:
+  #   image: node:20-alpine
+  #   working_dir: /app
+  #   volumes:
+  #     - ./app:/app
+  #   command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+  #   ports:
+  #     - "5173:5173"
+  #   environment:
+  #     - VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY:-}
+  #     - VITE_API_URL=http://localhost:8080
+
+  # Postgres — API metadata (users, projects, RFPs). Host port 5432.
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: spondic
+      POSTGRES_PASSWORD: spondic
+      POSTGRES_DB: spondic
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spondic -d spondic"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  # Go API — http://localhost:8080
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+      - AI_SERVICE_URL=http://ai:8000
+      - DATABASE_URL=postgres://spondic:spondic@postgres:5432/spondic?sslmode=disable
+    env_file:
+      - path: ./api/.env
+        required: false
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Weaviate (vector DB for RAG) — host 8081 to avoid conflict with api:8080
+  weaviate:
+    image: cr.weaviate.io/semitechnologies/weaviate:1.27.2
+    ports:
+      - "8081:8080"
+      - "50051:50051"
+    environment:
+      QUERY_DEFAULTS_LIMIT: "25"
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+      DEFAULT_VECTORIZER_MODULE: "none"
+      CLUSTER_HOSTNAME: "node1"
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/v1/.well-known/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Python AI (FastAPI, RAG, Groq) — http://localhost:8000
+  ai:
+    build:
+      context: ./ai
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - WEAVIATE_URL=http://weaviate:8080
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:8080
+    env_file:
+      - path: ./ai/.env
+        required: false
+    depends_on:
+      weaviate:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  weaviate_data:

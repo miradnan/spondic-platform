@@ -1,0 +1,499 @@
+import type {
+  Project,
+  Document,
+  RFPQuestion,
+  RFPAnswer,
+  Chat,
+  ChatMessage,
+  Tag,
+  Team,
+  TeamMember,
+  AuditLog,
+  AnalyticsOverview,
+  PaginatedResponse,
+  CreateProjectRequest,
+  UpdateProjectRequest,
+  UpdateQuestionRequest,
+  UpdateAnswerRequest,
+  ApproveAnswerRequest,
+  AddCommentRequest,
+  CreateTagRequest,
+  SendMessageRequest,
+  CreateChatRequest,
+  SearchDocumentsResponse,
+  ParseRfpResponse,
+  DraftAnswersResponse,
+  ExportResponse,
+  AuditLogFilters,
+  ApprovalStage,
+  AnswerApproval,
+  CreateApprovalStagesRequest,
+  StageApproveRequest,
+  OrgBranding,
+  UpdateBrandingRequest,
+  CRMConnection,
+  ProjectCRMLink,
+  ConnectCRMRequest,
+  LinkProjectToCRMRequest,
+  WebhookIntegration,
+  CreateWebhookRequest,
+  UpdateWebhookRequest,
+} from "./types.ts";
+
+const BASE_URL = import.meta.env.VITE_API_URL || "";
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+async function request<T>(
+  path: string,
+  token: string | null,
+  options: RequestInit = {},
+): Promise<T> {
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string> | undefined),
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  if (
+    !(options.body instanceof FormData) &&
+    !headers["Content-Type"]
+  ) {
+    headers["Content-Type"] = "application/json";
+  }
+  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      (data as { error?: string }).error || `Request failed (${res.status})`,
+    );
+  }
+  // Handle 204 No Content
+  if (res.status === 204) return undefined as T;
+  return res.json() as Promise<T>;
+}
+
+function qs(params: Record<string, string | number | undefined>): string {
+  const entries = Object.entries(params).filter(
+    (e): e is [string, string | number] => e[1] !== undefined,
+  );
+  if (entries.length === 0) return "";
+  return "?" + new URLSearchParams(entries.map(([k, v]) => [k, String(v)])).toString();
+}
+
+// ── Projects ─────────────────────────────────────────────────────────────────
+
+export function createProject(token: string | null, body: CreateProjectRequest): Promise<Project> {
+  return request("/api/projects", token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function listProjects(
+  token: string | null,
+  params?: { status?: string; search?: string; page?: number; limit?: number },
+): Promise<PaginatedResponse<Project>> {
+  return request(`/api/projects${qs(params ?? {})}`, token);
+}
+
+export function getProject(token: string | null, id: string): Promise<Project> {
+  return request(`/api/projects/${id}`, token);
+}
+
+export function updateProject(token: string | null, id: string, body: UpdateProjectRequest): Promise<Project> {
+  return request(`/api/projects/${id}`, token, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
+export function deleteProject(token: string | null, id: string): Promise<void> {
+  return request(`/api/projects/${id}`, token, { method: "DELETE" });
+}
+
+// ── Documents ────────────────────────────────────────────────────────────────
+
+export function uploadDocuments(token: string | null, formData: FormData): Promise<{ documents: Document[] }> {
+  return request("/api/documents", token, {
+    method: "POST",
+    body: formData,
+  });
+}
+
+export function listDocuments(
+  token: string | null,
+  params?: { tag?: string; status?: string; page?: number; limit?: number },
+): Promise<PaginatedResponse<Document>> {
+  return request(`/api/documents${qs(params ?? {})}`, token);
+}
+
+export function getDocument(token: string | null, id: string): Promise<Document> {
+  return request(`/api/documents/${id}`, token);
+}
+
+export function deleteDocument(token: string | null, id: string): Promise<void> {
+  return request(`/api/documents/${id}`, token, { method: "DELETE" });
+}
+
+export function reindexDocument(token: string | null, id: string): Promise<{ status: string }> {
+  return request(`/api/documents/${id}/reindex`, token, { method: "POST" });
+}
+
+export function searchDocuments(
+  token: string | null,
+  query: string,
+  tagIds?: string[],
+  limit?: number,
+): Promise<SearchDocumentsResponse> {
+  const params: Record<string, string | number | undefined> = { q: query, limit };
+  if (tagIds?.length) params.tag_ids = tagIds.join(",");
+  return request(`/api/documents/search${qs(params)}`, token);
+}
+
+// ── RFP Upload & Processing ─────────────────────────────────────────────────
+
+export function uploadRfp(token: string | null, formData: FormData): Promise<{ id: string; documents: Document[] }> {
+  return request("/api/rfp", token, {
+    method: "POST",
+    body: formData,
+  });
+}
+
+export function parseRfp(token: string | null, projectId: string): Promise<ParseRfpResponse> {
+  return request(`/api/rfp/${projectId}/parse`, token, { method: "POST" });
+}
+
+export function draftAnswers(token: string | null, projectId: string): Promise<DraftAnswersResponse> {
+  return request(`/api/rfp/${projectId}/draft`, token, { method: "POST" });
+}
+
+// ── Questions ────────────────────────────────────────────────────────────────
+
+export function listQuestions(token: string | null, projectId: string, params?: { page?: number; limit?: number }): Promise<PaginatedResponse<RFPQuestion>> {
+  return request(`/api/rfp/${projectId}/questions${qs(params ?? {})}`, token);
+}
+
+export function updateQuestion(
+  token: string | null,
+  projectId: string,
+  questionId: string,
+  body: UpdateQuestionRequest,
+): Promise<RFPQuestion> {
+  return request(`/api/rfp/${projectId}/questions/${questionId}`, token, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
+// ── Answers ──────────────────────────────────────────────────────────────────
+
+export function listAnswers(token: string | null, projectId: string): Promise<{ answers: RFPAnswer[] }> {
+  return request(`/api/rfp/${projectId}/answers`, token);
+}
+
+export function updateAnswer(
+  token: string | null,
+  projectId: string,
+  answerId: string,
+  body: UpdateAnswerRequest,
+): Promise<RFPAnswer> {
+  return request(`/api/rfp/${projectId}/answers/${answerId}`, token, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
+export function approveAnswer(
+  token: string | null,
+  projectId: string,
+  answerId: string,
+  body: ApproveAnswerRequest,
+): Promise<RFPAnswer> {
+  return request(`/api/rfp/${projectId}/answers/${answerId}/approve`, token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function addComment(
+  token: string | null,
+  projectId: string,
+  answerId: string,
+  body: AddCommentRequest,
+): Promise<{ id: string }> {
+  return request(`/api/rfp/${projectId}/answers/${answerId}/comment`, token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function redraftAnswer(
+  token: string | null,
+  projectId: string,
+  questionId: string,
+): Promise<RFPAnswer> {
+  return request(`/api/rfp/${projectId}/questions/${questionId}/redraft`, token, {
+    method: "POST",
+  });
+}
+
+// ── Approval Workflows ────────────────────────────────────────────────────────
+
+export function createApprovalStages(
+  token: string | null,
+  projectId: string,
+  body: CreateApprovalStagesRequest,
+): Promise<{ stages: ApprovalStage[] }> {
+  return request(`/api/projects/${projectId}/approval-stages`, token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function listApprovalStages(
+  token: string | null,
+  projectId: string,
+): Promise<{ stages: ApprovalStage[] }> {
+  return request(`/api/projects/${projectId}/approval-stages`, token);
+}
+
+export function stageApprove(
+  token: string | null,
+  projectId: string,
+  answerId: string,
+  body: StageApproveRequest,
+): Promise<AnswerApproval> {
+  return request(`/api/rfp/${projectId}/answers/${answerId}/stage-approve`, token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function listAnswerApprovals(
+  token: string | null,
+  projectId: string,
+  answerId: string,
+): Promise<{ approvals: AnswerApproval[] }> {
+  return request(`/api/rfp/${projectId}/answers/${answerId}/approvals`, token);
+}
+
+export function listAllAnswerApprovals(
+  token: string | null,
+  projectId: string,
+): Promise<{ approvals: Record<string, AnswerApproval[]> }> {
+  return request(`/api/rfp/${projectId}/approvals`, token);
+}
+
+// ── Chat ─────────────────────────────────────────────────────────────────────
+
+export function createChat(token: string | null, body?: CreateChatRequest): Promise<Chat> {
+  return request("/api/chats", token, {
+    method: "POST",
+    body: JSON.stringify(body ?? {}),
+  });
+}
+
+export function listChats(token: string | null): Promise<PaginatedResponse<Chat>> {
+  return request("/api/chats", token);
+}
+
+export function sendMessage(
+  token: string | null,
+  chatId: string,
+  body: SendMessageRequest,
+): Promise<{ user_message: ChatMessage; assistant_message: ChatMessage }> {
+  return request(`/api/chats/${chatId}/messages`, token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function getMessages(token: string | null, chatId: string): Promise<PaginatedResponse<ChatMessage>> {
+  return request(`/api/chats/${chatId}/messages`, token);
+}
+
+// ── Tags ─────────────────────────────────────────────────────────────────────
+
+export function createTag(token: string | null, body: CreateTagRequest): Promise<Tag> {
+  return request("/api/tags", token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function listTags(token: string | null): Promise<{ tags: Tag[] }> {
+  return request("/api/tags", token);
+}
+
+export function deleteTag(token: string | null, id: string): Promise<void> {
+  return request(`/api/tags/${id}`, token, { method: "DELETE" });
+}
+
+export function addTagToDocument(token: string | null, documentId: string, tagId: string): Promise<void> {
+  return request(`/api/documents/${documentId}/tags`, token, {
+    method: "POST",
+    body: JSON.stringify({ tag_id: tagId }),
+  });
+}
+
+export function removeTagFromDocument(token: string | null, documentId: string, tagId: string): Promise<void> {
+  return request(`/api/documents/${documentId}/tags/${tagId}`, token, { method: "DELETE" });
+}
+
+// ── Teams ─────────────────────────────────────────────────────────────────
+
+export function listTeams(token: string | null): Promise<{ teams: Team[]; total: number }> {
+  return request("/api/teams", token);
+}
+
+export function createTeam(token: string | null, data: { name: string }): Promise<Team> {
+  return request("/api/teams", token, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateTeam(token: string | null, id: string, data: { name: string }): Promise<Team> {
+  return request(`/api/teams/${id}`, token, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteTeam(token: string | null, id: string): Promise<void> {
+  return request(`/api/teams/${id}`, token, { method: "DELETE" });
+}
+
+export function seedDefaultTeams(token: string | null): Promise<{ teams: Team[]; created: boolean }> {
+  return request("/api/teams/seed", token, { method: "POST" });
+}
+
+export function listTeamMembers(token: string | null, teamId: string): Promise<{ members: TeamMember[]; total: number }> {
+  return request(`/api/teams/${teamId}/members`, token);
+}
+
+export function addTeamMember(token: string | null, teamId: string, userId: string): Promise<TeamMember> {
+  return request(`/api/teams/${teamId}/members`, token, {
+    method: "POST",
+    body: JSON.stringify({ user_id: userId }),
+  });
+}
+
+export function removeTeamMember(token: string | null, teamId: string, userId: string): Promise<void> {
+  return request(`/api/teams/${teamId}/members/${userId}`, token, { method: "DELETE" });
+}
+
+// ── Export ────────────────────────────────────────────────────────────────────
+
+export function exportDocx(token: string | null, projectId: string): Promise<ExportResponse> {
+  return request(`/api/rfp/${projectId}/export/docx`, token, { method: "POST" });
+}
+
+export function exportPdf(token: string | null, projectId: string): Promise<ExportResponse> {
+  return request(`/api/rfp/${projectId}/export/pdf`, token, { method: "POST" });
+}
+
+// ── Analytics ────────────────────────────────────────────────────────────────
+
+export function getOverview(token: string | null): Promise<AnalyticsOverview> {
+  return request("/api/analytics/overview", token);
+}
+
+// ── Audit ────────────────────────────────────────────────────────────────────
+
+export function listAuditLogs(
+  token: string | null,
+  filters?: AuditLogFilters,
+): Promise<PaginatedResponse<AuditLog>> {
+  return request(`/api/audit-logs${qs(filters ?? {})}`, token);
+}
+
+// ── Branding ──────────────────────────────────────────────────────────────────
+
+export function getBranding(token: string | null): Promise<OrgBranding> {
+  return request("/api/branding", token);
+}
+
+export function updateBranding(token: string | null, body: UpdateBrandingRequest): Promise<OrgBranding> {
+  return request("/api/branding", token, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
+export function uploadBrandingLogo(token: string | null, formData: FormData): Promise<{ logo_url: string }> {
+  return request("/api/branding/logo", token, {
+    method: "POST",
+    body: formData,
+  });
+}
+
+// ── CRM Integrations ─────────────────────────────────────────────────────────
+
+export function listCRMConnections(token: string | null): Promise<{ connections: CRMConnection[] }> {
+  return request("/api/integrations/crm", token);
+}
+
+export function connectCRM(token: string | null, body: ConnectCRMRequest): Promise<{ connection: CRMConnection; status: string; message: string }> {
+  return request("/api/integrations/crm/connect", token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function disconnectCRM(token: string | null, id: string): Promise<void> {
+  return request(`/api/integrations/crm/${id}`, token, { method: "DELETE" });
+}
+
+export function syncCRM(token: string | null, id: string, projectId: string): Promise<{ status: string; message: string }> {
+  return request(`/api/integrations/crm/${id}/sync`, token, {
+    method: "POST",
+    body: JSON.stringify({ project_id: projectId }),
+  });
+}
+
+// ── Project CRM Links ────────────────────────────────────────────────────────
+
+export function getProjectCRMLink(token: string | null, projectId: string): Promise<{ link: ProjectCRMLink | null }> {
+  return request(`/api/projects/${projectId}/crm-link`, token);
+}
+
+export function linkProjectToCRM(token: string | null, projectId: string, body: LinkProjectToCRMRequest): Promise<{ link: ProjectCRMLink }> {
+  return request(`/api/projects/${projectId}/crm-link`, token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function unlinkProjectFromCRM(token: string | null, projectId: string): Promise<void> {
+  return request(`/api/projects/${projectId}/crm-link`, token, { method: "DELETE" });
+}
+
+// ── Webhook Integrations (Slack / Teams) ────────────────────────────────────
+
+export function listWebhooks(token: string | null): Promise<{ webhooks: WebhookIntegration[] }> {
+  return request("/api/integrations/webhooks", token);
+}
+
+export function createWebhook(token: string | null, body: CreateWebhookRequest): Promise<WebhookIntegration> {
+  return request("/api/integrations/webhooks", token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function updateWebhook(token: string | null, id: string, body: UpdateWebhookRequest): Promise<WebhookIntegration> {
+  return request(`/api/integrations/webhooks/${id}`, token, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
+export function deleteWebhook(token: string | null, id: string): Promise<void> {
+  return request(`/api/integrations/webhooks/${id}`, token, { method: "DELETE" });
+}
+
+export function testWebhook(token: string | null, id: string): Promise<{ status: string }> {
+  return request(`/api/integrations/webhooks/${id}/test`, token, { method: "POST" });
+}

@@ -1,0 +1,9 @@
+[build]
+  command = "npm run build"
+  publish = "out"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Next.js static export for Netlify (if using static export)
+# If you use SSR, use @netlify/plugin-nextjs instead and set publish = ".next"

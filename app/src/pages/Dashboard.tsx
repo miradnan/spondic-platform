@@ -1,0 +1,581 @@
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import {
+  PlusIcon,
+  MagnifyingGlassIcon,
+  FunnelIcon,
+  DocumentTextIcon,
+  Squares2X2Icon,
+  TableCellsIcon,
+  ClockIcon,
+  BookOpenIcon,
+  CheckCircleIcon,
+  RocketLaunchIcon,
+} from "@heroicons/react/24/outline";
+import {
+  createColumnHelper,
+  type ColumnDef,
+  type PaginationState,
+  type SortingState,
+} from "@tanstack/react-table";
+import { useProjects, useDocuments } from "../hooks/useApi.ts";
+import { DataTable } from "../components/DataTable.tsx";
+import { PaginationBar } from "../components/ui/pagination-bar.tsx";
+import { Tooltip } from "../components/ui/tooltip.tsx";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select.tsx";
+import { StatusBadge } from "../components/ui/status-badge.tsx";
+import { relativeTime, shortDate } from "../lib/date.ts";
+import type { Project } from "../lib/types.ts";
+
+function useStatusOptions() {
+  const { t } = useTranslation();
+  return [
+    { value: "", label: t("dashboard.allStatuses") },
+    { value: "draft", label: t("dashboard.status.draft") },
+    { value: "in_progress", label: t("dashboard.status.in_progress") },
+    { value: "completed", label: t("dashboard.status.completed") },
+    { value: "submitted", label: t("dashboard.status.submitted") },
+  ] as const;
+}
+
+
+// Re-export shortDate as formatDate for deadline display
+const formatDate = shortDate;
+
+function deadlineInfo(deadline: string | null): { label: string; className: string } | null {
+  if (!deadline) return null;
+  const now = new Date();
+  const dl = new Date(deadline);
+  const daysLeft = Math.ceil((dl.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  if (daysLeft < 0)
+    return { label: "Overdue", className: "text-red-600 bg-red-50 border-red-200" };
+  if (daysLeft <= 3)
+    return { label: `${daysLeft}d left`, className: "text-red-600 bg-red-50 border-red-200" };
+  if (daysLeft <= 7)
+    return { label: `${daysLeft}d left`, className: "text-amber-600 bg-amber-50 border-amber-200" };
+  return { label: formatDate(deadline), className: "text-muted bg-cream-light border-border" };
+}
+
+function SkeletonCard() {
+  return (
+    <div className="rounded-xl border border-border bg-white p-6 animate-pulse">
+      <div className="h-5 w-3/4 rounded bg-gray-200" />
+      <div className="mt-3 h-4 w-1/2 rounded bg-gray-200" />
+      <div className="mt-4 flex gap-3">
+        <div className="h-6 w-16 rounded-full bg-gray-200" />
+        <div className="h-6 w-20 rounded-full bg-gray-200" />
+      </div>
+      <div className="mt-4 h-3 w-1/3 rounded bg-gray-200" />
+    </div>
+  );
+}
+
+type ViewMode = "cards" | "table";
+
+const projectColumnHelper = createColumnHelper<Project>();
+
+// ── Onboarding Checklist ──────────────────────────────────────────────────────
+
+function OnboardingChecklist({
+  hasDocuments,
+  hasProjects,
+}: {
+  hasDocuments: boolean;
+  hasProjects: boolean;
+}) {
+  const { t } = useTranslation();
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return localStorage.getItem("spondic_onboarding_dismissed") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  if (dismissed) return null;
+
+  const steps = [
+    {
+      done: hasDocuments,
+      label: t("dashboard.onboarding.step1"),
+      description: t("dashboard.onboarding.step1Desc"),
+      to: "/knowledge-base",
+      icon: BookOpenIcon,
+    },
+    {
+      done: hasProjects,
+      label: t("dashboard.onboarding.step2"),
+      description: t("dashboard.onboarding.step2Desc"),
+      to: "/rfp/new",
+      icon: DocumentTextIcon,
+    },
+    {
+      done: false,
+      label: t("dashboard.onboarding.step3"),
+      description: t("dashboard.onboarding.step3Desc"),
+      to: undefined,
+      icon: CheckCircleIcon,
+    },
+  ];
+
+  const completedCount = steps.filter((s) => s.done).length;
+
+  return (
+    <div className="mb-6 rounded-xl border border-brand-blue/20 bg-white p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="rounded-lg bg-brand-blue/10 p-2.5">
+            <RocketLaunchIcon className="h-5 w-5 text-brand-blue" />
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-heading">
+              {t("dashboard.onboarding.title")}
+            </h2>
+            <p className="text-sm text-muted mt-0.5">
+              {t("dashboard.onboarding.stepsCompleted", { completed: completedCount, total: steps.length })}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => {
+            setDismissed(true);
+            try {
+              localStorage.setItem("spondic_onboarding_dismissed", "true");
+            } catch {
+              // ignore
+            }
+          }}
+          className="text-xs text-muted hover:text-body transition-colors"
+        >
+          {t("common.dismiss")}
+        </button>
+      </div>
+
+      {/* Progress bar */}
+      <div className="mt-4 h-2 rounded-full bg-gray-100 overflow-hidden">
+        <div
+          className="h-full rounded-full bg-brand-blue transition-all duration-500"
+          style={{ width: `${(completedCount / steps.length) * 100}%` }}
+        />
+      </div>
+
+      {/* Steps */}
+      <div className="mt-4 space-y-2">
+        {steps.map((step, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <div
+              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                step.done
+                  ? "bg-green-100 border-green-500"
+                  : "bg-white border-border"
+              }`}
+            >
+              {step.done ? (
+                <CheckCircleIcon className="h-4 w-4 text-green-600" />
+              ) : (
+                <span className="text-xs font-medium text-muted">
+                  {i + 1}
+                </span>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              {step.to && !step.done ? (
+                <Link
+                  to={step.to}
+                  className="text-sm font-medium text-brand-blue hover:underline"
+                >
+                  {step.label}
+                </Link>
+              ) : (
+                <p
+                  className={`text-sm font-medium ${
+                    step.done ? "text-muted line-through" : "text-heading"
+                  }`}
+                >
+                  {step.label}
+                </p>
+              )}
+              <p className="text-xs text-muted">{step.description}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+
+export function Dashboard() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const STATUS_OPTIONS = useStatusOptions();
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [viewMode, setViewMode] = useState<ViewMode>("cards");
+
+  // Debounce search
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timeout);
+  }, [search]);
+
+  // Server-side pagination
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 25,
+  });
+  const [sorting, setSorting] = useState<SortingState>([]);
+
+  const { data, isLoading, isError, refetch } = useProjects({
+    status: statusFilter || undefined,
+    search: debouncedSearch || undefined,
+    page: pagination.pageIndex + 1,
+    limit: pagination.pageSize,
+  });
+
+  // Fetch documents count for onboarding
+  const { data: docsData } = useDocuments({ page: 1, limit: 1 });
+
+  const projects = data?.data ?? [];
+  const total = data?.pagination?.total ?? 0;
+  const totalPages = data?.pagination?.total_pages ?? Math.max(1, Math.ceil(total / pagination.pageSize));
+
+  const hasDocuments = (docsData?.pagination?.total ?? 0) > 0;
+  const hasProjects = total > 0;
+
+  const handlePageChange = useCallback((page: number) => {
+    setPagination((prev) => ({ ...prev, pageIndex: page - 1 }));
+  }, []);
+
+  const handlePageSizeChange = useCallback((size: number) => {
+    setPagination({ pageIndex: 0, pageSize: size });
+  }, []);
+
+  const tableColumns = useMemo<ColumnDef<Project, unknown>[]>(
+    () => [
+      projectColumnHelper.accessor("name", {
+        header: "Name",
+        enableSorting: true,
+        cell: (info) => (
+          <span className="text-heading font-semibold hover:text-brand-blue transition-colors">
+            {info.getValue()}
+          </span>
+        ),
+      }),
+      projectColumnHelper.accessor("description", {
+        header: "Description",
+        enableSorting: false,
+        cell: (info) => (
+          <span className="text-muted line-clamp-1 max-w-[300px]">
+            {info.getValue() || "-"}
+          </span>
+        ),
+      }),
+      projectColumnHelper.accessor("status", {
+        header: "Status",
+        enableSorting: true,
+        cell: (info) => {
+          const val = info.getValue();
+          return <StatusBadge status={val} />;
+        },
+      }),
+      projectColumnHelper.accessor("deadline", {
+        header: "Deadline",
+        enableSorting: true,
+        cell: (info) => {
+          const dl = deadlineInfo(info.getValue());
+          if (!dl) return <span className="text-muted">-</span>;
+          return (
+            <span className={`inline-block rounded-full border px-2 py-0.5 text-xs font-medium ${dl.className}`}>
+              {dl.label}
+            </span>
+          );
+        },
+      }),
+      projectColumnHelper.accessor("question_count", {
+        header: "Questions",
+        enableSorting: true,
+        cell: (info) => <span className="text-body">{info.getValue()}</span>,
+      }),
+      projectColumnHelper.accessor("approved_count", {
+        header: "Progress",
+        enableSorting: true,
+        cell: (info) => {
+          const project = info.row.original;
+          const total = project.question_count;
+          const approved = project.approved_count;
+          const pct = total > 0 ? Math.round((approved / total) * 100) : 0;
+          return (
+            <div className="flex items-center gap-2 min-w-[100px]">
+              <div className="flex-1 h-1.5 rounded-full bg-gray-200 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-green-500 transition-all"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <span className="text-xs text-muted shrink-0">{pct}%</span>
+            </div>
+          );
+        },
+      }),
+      projectColumnHelper.accessor("updated_at", {
+        header: "Updated",
+        enableSorting: true,
+        cell: (info) => <span className="text-muted">{relativeTime(info.getValue())}</span>,
+      }),
+    ],
+    [],
+  );
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-heading">{t("dashboard.title")}</h1>
+          <p className="mt-1 text-body">{t("dashboard.subtitle")}</p>
+        </div>
+        <Link
+          to="/rfp/new"
+          className="inline-flex items-center gap-2 rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue-hover transition-colors"
+        >
+          <PlusIcon className="h-4 w-4" />
+          {t("dashboard.createProject")}
+        </Link>
+      </div>
+
+      {/* Onboarding Checklist */}
+      {!isLoading && (
+        <div className="mt-6">
+          <OnboardingChecklist
+            hasDocuments={hasDocuments}
+            hasProjects={hasProjects}
+          />
+        </div>
+      )}
+
+      {/* Search & Filter Bar */}
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px] max-w-md">
+          <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+          <input
+            type="text"
+            placeholder={t("dashboard.searchProjects")}
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+            }}
+            className="w-full rounded-lg border border-border bg-white py-2 pl-10 pr-4 text-sm text-heading placeholder-muted focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+          />
+        </div>
+        <Select
+          value={statusFilter}
+          onValueChange={(val) => {
+            setStatusFilter(val === "__all__" ? "" : val);
+            setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+          }}
+        >
+          <SelectTrigger icon={<FunnelIcon className="h-4 w-4" />} className="min-w-[140px]">
+            <SelectValue placeholder={t("dashboard.allStatuses")} />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value || "__all__"} value={opt.value || "__all__"}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* View Toggle */}
+        <div className="flex items-center rounded-lg border border-border bg-white">
+          <Tooltip content="Card view">
+            <button
+              onClick={() => setViewMode("cards")}
+              className={`rounded-l-lg p-2 transition-colors ${
+                viewMode === "cards"
+                  ? "bg-brand-blue text-white"
+                  : "text-muted hover:text-body"
+              }`}
+            >
+              <Squares2X2Icon className="h-4 w-4" />
+            </button>
+          </Tooltip>
+          <Tooltip content="Table view">
+            <button
+              onClick={() => setViewMode("table")}
+              className={`rounded-r-lg p-2 transition-colors ${
+                viewMode === "table"
+                  ? "bg-brand-blue text-white"
+                  : "text-muted hover:text-body"
+              }`}
+            >
+              <TableCellsIcon className="h-4 w-4" />
+            </button>
+          </Tooltip>
+        </div>
+      </div>
+
+      {/* Loading State */}
+      {isLoading && viewMode === "cards" && (
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      )}
+
+      {/* Error State */}
+      {isError && !isLoading && (
+        <div className="mt-8 rounded-xl border border-red-200 bg-red-50 p-8 text-center">
+          <p className="text-sm text-red-700">{t("dashboard.failedToLoad")}</p>
+          <button
+            onClick={() => void refetch()}
+            className="mt-3 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
+          >
+            {t("common.retry")}
+          </button>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!isLoading && !isError && projects.length === 0 && (
+        <div className="mt-8 rounded-xl border border-border bg-cream-light p-8 text-center">
+          <DocumentTextIcon className="mx-auto h-10 w-10 text-muted" />
+          <p className="mt-4 text-body font-medium">{t("dashboard.noProjects")}</p>
+          <p className="mt-1 text-sm text-muted">
+            {t("dashboard.noProjectsDesc")}
+          </p>
+          <Link
+            to="/rfp/new"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue-hover transition-colors"
+          >
+            <PlusIcon className="h-4 w-4" />
+            {t("dashboard.createFirst")}
+          </Link>
+        </div>
+      )}
+
+      {/* Project Cards */}
+      {!isLoading && !isError && projects.length > 0 && viewMode === "cards" && (
+        <>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {projects.map((project) => {
+              const dl = deadlineInfo(project.deadline);
+              const progress =
+                project.question_count > 0
+                  ? Math.round(
+                      (project.approved_count / project.question_count) * 100
+                    )
+                  : 0;
+
+              return (
+                <Link
+                  key={project.id}
+                  to={`/rfp/${project.id}`}
+                  className="group rounded-xl border border-border bg-white p-6 transition-all hover:shadow-md hover:border-brand-blue/30"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-display text-lg font-semibold text-heading group-hover:text-brand-blue transition-colors line-clamp-1">
+                      {project.name}
+                    </h3>
+                    <StatusBadge status={project.status} />
+                  </div>
+
+                  {project.description && (
+                    <p className="mt-2 text-sm text-muted line-clamp-2">{project.description}</p>
+                  )}
+
+                  {/* Deadline */}
+                  {dl && (
+                    <div className="mt-3 flex items-center gap-1.5">
+                      <ClockIcon className="h-3.5 w-3.5 shrink-0 text-muted" />
+                      <span className={`inline-block rounded-full border px-2 py-0.5 text-xs font-medium ${dl.className}`}>
+                        {dl.label}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Progress bar */}
+                  {project.question_count > 0 && (
+                    <div className="mt-3">
+                      <div className="flex items-center justify-between text-xs text-muted mb-1">
+                        <span>{project.approved_count}/{project.question_count} approved</span>
+                        <span>{progress}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-green-500 transition-all"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-3 flex items-center gap-4 text-xs text-muted">
+                    <span>{t("dashboard.questions", { count: project.question_count })}</span>
+                    {project.draft_count > 0 && (
+                      <span>{t("dashboard.drafted", { count: project.draft_count })}</span>
+                    )}
+                  </div>
+
+                  <p className="mt-2 text-xs text-muted">
+                    {t("dashboard.updated", { time: relativeTime(project.updated_at) })}
+                  </p>
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Card Pagination */}
+          <div className="mt-6 rounded-xl border border-border bg-white overflow-hidden">
+            <PaginationBar
+              currentPage={pagination.pageIndex + 1}
+              totalItems={total}
+              pageSize={pagination.pageSize}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+            />
+          </div>
+        </>
+      )}
+
+      {/* Project Table View */}
+      {!isError && projects.length > 0 && viewMode === "table" && (
+        <div className="mt-6">
+          <DataTable
+            columns={tableColumns}
+            data={projects}
+            loading={isLoading}
+            skeletonRows={6}
+            emptyMessage="No projects found."
+            sorting={sorting}
+            onSortingChange={setSorting}
+            manualPagination
+            pageCount={totalPages}
+            pagination={pagination}
+            onPaginationChange={setPagination}
+            totalRows={total}
+            onRowClick={(row) => navigate(`/rfp/${row.original.id}`)}
+          />
+        </div>
+      )}
+
+      {/* Table loading state */}
+      {isLoading && viewMode === "table" && (
+        <div className="mt-6">
+          <DataTable
+            columns={tableColumns}
+            data={[]}
+            loading
+            skeletonRows={6}
+            emptyMessage="No projects found."
+          />
+        </div>
+      )}
+    </div>
+  );
+}
