@@ -49,7 +49,7 @@ ssh -i "$KEY" "$SERVER" "cd $REMOTE_DIR/ai && .venv/bin/pip install -q -r requir
 
 # 6. Health checks
 echo "🏥 Checking health..."
-sleep 5
+sleep 15
 ssh -i "$KEY" "$SERVER" "curl -sf http://localhost:8080/health && echo ' ✅ API OK' || echo ' ❌ API FAILED'"
 ssh -i "$KEY" "$SERVER" "curl -sf http://localhost:8000/health && echo ' ✅ AI OK' || echo ' ❌ AI FAILED'"
 

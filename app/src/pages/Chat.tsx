@@ -14,6 +14,15 @@ import {
 import { Streamdown } from "streamdown";
 import "streamdown/styles.css";
 import { Tooltip } from "../components/ui/tooltip.tsx";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "../components/ui/dialog.tsx";
+import { Button } from "../components/ui/button.tsx";
 import { useWalkthrough, CHAT_STEPS } from "../hooks/useWalkthrough.ts";
 import {
   useCreateChat,
@@ -133,6 +142,7 @@ export function Chat() {
   useWalkthrough({ key: "chat", steps: CHAT_STEPS });
 
   const [input, setInput] = useState("");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState("");
   const [streamingCitations, setStreamingCitations] = useState<StreamChatCitation[]>([]);
@@ -250,12 +260,7 @@ export function Chat() {
       {chatId && (
         <div className="flex justify-end px-4 pt-2">
           <button
-            onClick={() => {
-              if (window.confirm("Delete this chat and all messages?")) {
-                deleteChat.mutate(chatId);
-                navigate("/chat");
-              }
-            }}
+            onClick={() => setShowDeleteModal(true)}
             className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-muted hover:text-red-500 hover:bg-red-50 transition-colors"
             title="Delete chat"
           >
@@ -264,6 +269,36 @@ export function Chat() {
           </button>
         </div>
       )}
+
+      {/* Delete confirmation modal */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete chat</DialogTitle>
+            <DialogDescription>
+              This will permanently delete this chat and all its messages. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (chatId) {
+                  deleteChat.mutate(chatId);
+                  navigate("/chat");
+                }
+                setShowDeleteModal(false);
+              }}
+            >
+              <TrashIcon className="h-4 w-4" />
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto min-h-0 flex flex-col">

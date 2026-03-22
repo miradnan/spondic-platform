@@ -26,9 +26,9 @@ function Calendar({ className, classNames, ...props }: CalendarProps) {
         week: "flex w-full mt-1",
         day: "relative p-0 text-center text-sm focus-within:relative focus-within:z-20",
         day_button:
-          "inline-flex h-10 w-10 items-center justify-center rounded-lg text-sm font-normal text-body hover:bg-brand-blue/10 hover:text-brand-blue transition-colors cursor-pointer aria-selected:opacity-100",
+          "inline-flex h-10 w-10 items-center justify-center rounded-lg text-sm font-normal text-body hover:bg-brand-blue/10 hover:text-brand-blue transition-colors cursor-pointer",
         selected:
-          "bg-brand-blue text-white hover:bg-brand-blue-hover hover:text-white rounded-lg font-medium",
+          "[&>button]:bg-brand-blue [&>button]:text-white [&>button]:hover:bg-brand-blue-hover [&>button]:hover:text-white [&>button]:font-medium rounded-lg",
         today: "bg-cream-light rounded-lg font-semibold text-heading ring-1 ring-brand-blue/30",
         outside: "text-muted/40 hover:bg-transparent hover:text-muted/40",
         disabled: "text-muted/30 hover:bg-transparent cursor-not-allowed",
