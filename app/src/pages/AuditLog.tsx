@@ -5,7 +5,6 @@ import {
 } from "@heroicons/react/24/outline";
 import { useTableParams } from "../hooks/useTableParams.ts";
 import { useOrganization } from "@clerk/react";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select.tsx";
 import {
   createColumnHelper,
   type ColumnDef,
@@ -171,68 +170,52 @@ export function AuditLog() {
           {/* Action */}
           <div>
             <label className="block text-xs font-medium text-muted mb-1">Action</label>
-            <Select
-              value={actionFilter || "__all__"}
-              onValueChange={(val) => { updateParams({ action: val === "__all__" ? null : val }); resetPage(); }}
+            <select
+              value={actionFilter}
+              onChange={(e) => { updateParams({ action: e.target.value || null }); resetPage(); }}
+              className="h-9 min-w-[130px] rounded-lg border border-border bg-white px-3 text-sm text-heading focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
             >
-              <SelectTrigger className="min-w-[130px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">All actions</SelectItem>
-                <SelectItem value="create">Create</SelectItem>
-                <SelectItem value="update">Update</SelectItem>
-                <SelectItem value="delete">Delete</SelectItem>
-                <SelectItem value="approve">Approve</SelectItem>
-                <SelectItem value="reject">Reject</SelectItem>
-                <SelectItem value="upload">Upload</SelectItem>
-                <SelectItem value="export">Export</SelectItem>
-                <SelectItem value="parse">Parse</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-              </SelectContent>
-            </Select>
+              <option value="">All actions</option>
+              <option value="create">Create</option>
+              <option value="update">Update</option>
+              <option value="delete">Delete</option>
+              <option value="approve">Approve</option>
+              <option value="reject">Reject</option>
+              <option value="upload">Upload</option>
+              <option value="export">Export</option>
+              <option value="parse">Parse</option>
+              <option value="draft">Draft</option>
+            </select>
           </div>
 
           {/* User */}
           <div>
             <label className="block text-xs font-medium text-muted mb-1">User</label>
-            <Select
-              value={userFilter || "__all__"}
-              onValueChange={(val) => { updateParams({ user: val === "__all__" ? null : val }); resetPage(); }}
+            <select
+              value={userFilter}
+              onChange={(e) => { updateParams({ user: e.target.value || null }); resetPage(); }}
+              className="h-9 min-w-[150px] rounded-lg border border-border bg-white px-3 text-sm text-heading focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
             >
-              <SelectTrigger className="min-w-[150px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">All users</SelectItem>
-                {userOptions.map((u) => (
-                  <SelectItem key={u.value} value={u.value}>
-                    {u.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <option value="">All users</option>
+              {userOptions.map((u) => (
+                <option key={u.value} value={u.value}>{u.label}</option>
+              ))}
+            </select>
           </div>
 
           {/* Entity Type */}
           <div>
             <label className="block text-xs font-medium text-muted mb-1">Entity type</label>
-            <Select
-              value={entityTypeFilter || "__all__"}
-              onValueChange={(val) => { updateParams({ entity: val === "__all__" ? null : val }); resetPage(); }}
+            <select
+              value={entityTypeFilter}
+              onChange={(e) => { updateParams({ entity: e.target.value || null }); resetPage(); }}
+              className="h-9 min-w-[130px] rounded-lg border border-border bg-white px-3 text-sm text-heading focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
             >
-              <SelectTrigger className="min-w-[130px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">All types</SelectItem>
-                {ENTITY_TYPES.map((et) => (
-                  <SelectItem key={et.value} value={et.value}>
-                    {et.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <option value="">All types</option>
+              {ENTITY_TYPES.map((et) => (
+                <option key={et.value} value={et.value}>{et.label}</option>
+              ))}
+            </select>
           </div>
 
           {/* Date From */}
