@@ -13,6 +13,7 @@ type Config struct {
 	AIServiceURL       string
 	StripeSecretKey    string
 	StripeWebhookSecret string
+	SESRegion          string
 	SESFromEmail       string
 }
 
@@ -28,6 +29,7 @@ func Load() *Config {
 		AIServiceURL:       getEnv("AI_SERVICE_URL", "http://localhost:8000"),
 		StripeSecretKey:    getEnv("STRIPE_SECRET_KEY", ""),
 		StripeWebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET", ""),
+		SESRegion:          getEnv("SES_AWS_REGION", "ap-south-1"),
 		SESFromEmail:       getEnv("SES_FROM_EMAIL", ""),
 	}
 }

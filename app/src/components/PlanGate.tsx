@@ -1,4 +1,4 @@
-import { useAuth, useOrganization, PricingTable } from "@clerk/react";
+import { useAuth, PricingTable } from "@clerk/react";
 
 function LoadingScreen() {
   return (
@@ -9,8 +9,6 @@ function LoadingScreen() {
 }
 
 function PlanSelectionScreen() {
-  const { organization } = useOrganization();
-
   const handleStartFree = async () => {
     // The Free plan is auto-assigned by Clerk as "free_org".
     // We just need to reload so the PlanGate re-checks and lets them through.

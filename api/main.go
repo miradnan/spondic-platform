@@ -55,7 +55,7 @@ func main() {
 	var sesClient *services.SESClient
 	if cfg.SESFromEmail != "" {
 		var sesErr error
-		sesClient, sesErr = services.NewSESClient(cfg.AWSRegion, cfg.SESFromEmail)
+		sesClient, sesErr = services.NewSESClient(cfg.SESRegion, cfg.SESFromEmail)
 		if sesErr != nil {
 			log.Printf("warning: SES client initialization failed: %v", sesErr)
 		} else {
