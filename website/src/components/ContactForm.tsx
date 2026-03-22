@@ -6,12 +6,38 @@ import { useTranslation } from "react-i18next";
 
 export default function ContactForm() {
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const { t } = useTranslation();
   const businessName = process.env.NEXT_PUBLIC_BUSINESS_NAME || "Spondic";
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setSubmitted(true);
+    setSubmitting(true);
+    setError("");
+
+    const formData = new FormData(e.currentTarget);
+    const data = {
+      fullName: formData.get("fullName"),
+      email: formData.get("email"),
+      organization: formData.get("organization"),
+      message: formData.get("message"),
+    };
+
+    try {
+      const res = await fetch("/.netlify/functions/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) throw new Error("Failed to send");
+      setSubmitted(true);
+    } catch {
+      setError("Something went wrong. Please email us directly at hello@spondic.com");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -76,11 +102,27 @@ export default function ContactForm() {
               placeholder={t("contact.messagePlaceholder")}
             />
           </div>
+          {error && (
+            <p className="rounded-lg bg-red-50 px-4 py-3 text-[13px] text-red-700">
+              {error}
+            </p>
+          )}
           <button
             type="submit"
-            className="w-full rounded-lg bg-brand-blue py-3 text-[13px] font-semibold text-white hover:bg-brand-blue-hover transition-colors"
+            disabled={submitting}
+            className="w-full rounded-lg bg-brand-blue py-3 text-[13px] font-semibold text-white hover:bg-brand-blue-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {t("contact.submit")}
+            {submitting ? (
+              <span className="inline-flex items-center gap-2">
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                {t("contact.sending", "Sending...")}
+              </span>
+            ) : (
+              t("contact.submit")
+            )}
           </button>
         </form>
       )}
