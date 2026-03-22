@@ -1,5 +1,5 @@
 import { DayPicker, type DayPickerProps } from "react-day-picker";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
 
 type CalendarProps = DayPickerProps;
@@ -7,39 +7,40 @@ type CalendarProps = DayPickerProps;
 function Calendar({ className, classNames, ...props }: CalendarProps) {
   return (
     <DayPicker
-      className={cn("p-3", className)}
+      className={cn("p-4", className)}
       classNames={{
+        root: "relative",
         months: "flex flex-col sm:flex-row gap-2",
         month: "flex flex-col gap-4",
-        month_caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium text-navy",
-        nav: "flex items-center gap-1",
+        month_caption: "flex justify-center items-center h-10",
+        caption_label: "text-sm font-semibold text-heading",
+        nav: "absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none z-10",
         button_previous:
-          "absolute left-1 top-0 inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-transparent text-muted hover:bg-cream-light hover:text-navy",
+          "pointer-events-auto inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-white text-body shadow-sm hover:bg-cream hover:text-heading transition-colors",
         button_next:
-          "absolute right-1 top-0 inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-transparent text-muted hover:bg-cream-light hover:text-navy",
+          "pointer-events-auto inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-white text-body shadow-sm hover:bg-cream hover:text-heading transition-colors",
         month_grid: "w-full border-collapse",
         weekdays: "flex",
         weekday:
-          "text-muted w-9 font-normal text-[0.8rem]",
-        week: "flex w-full mt-2",
+          "text-muted w-10 font-medium text-xs uppercase tracking-wider",
+        week: "flex w-full mt-1",
         day: "relative p-0 text-center text-sm focus-within:relative focus-within:z-20",
         day_button:
-          "inline-flex h-9 w-9 items-center justify-center rounded-md text-sm font-normal text-body hover:bg-cream-light hover:text-navy transition-colors aria-selected:opacity-100",
+          "inline-flex h-10 w-10 items-center justify-center rounded-lg text-sm font-normal text-body hover:bg-brand-blue/10 hover:text-brand-blue transition-colors cursor-pointer aria-selected:opacity-100",
         selected:
-          "bg-brand-blue text-white hover:bg-brand-blue-hover hover:text-white rounded-md",
-        today: "bg-cream text-navy font-semibold",
-        outside: "text-muted/50",
-        disabled: "text-muted/30",
+          "bg-brand-blue text-white hover:bg-brand-blue-hover hover:text-white rounded-lg font-medium",
+        today: "bg-cream-light rounded-lg font-semibold text-heading ring-1 ring-brand-blue/30",
+        outside: "text-muted/40 hover:bg-transparent hover:text-muted/40",
+        disabled: "text-muted/30 hover:bg-transparent cursor-not-allowed",
         hidden: "invisible",
         ...classNames,
       }}
       components={{
         Chevron: ({ orientation }) => {
           if (orientation === "left") {
-            return <ChevronLeft className="h-4 w-4" />;
+            return <ChevronLeftIcon className="h-4 w-4" />;
           }
-          return <ChevronRight className="h-4 w-4" />;
+          return <ChevronRightIcon className="h-4 w-4" />;
         },
       }}
       {...props}

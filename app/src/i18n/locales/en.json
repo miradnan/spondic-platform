@@ -136,7 +136,16 @@
       "uploading": "Uploading and creating project...",
       "errorName": "Please provide a project name.",
       "errorContent": "Paste text or upload at least one file.",
-      "errorOrg": "Organization context is required. Switch to an organization or sign in with one."
+      "errorOrg": "Organization context is required. Switch to an organization or sign in with one.",
+      "projectDetails": "Project Details",
+      "rfpContent": "RFP Content",
+      "rfpContentHint": "Upload your RFP document or paste the questions directly",
+      "creatingProject": "Creating project...",
+      "uploadingFiles": "Uploading RFP content...",
+      "step1of2": "Step 1 of 2",
+      "step2of2": "Step 2 of 2",
+      "errorTitle": "Something went wrong",
+      "success": "RFP project created successfully!"
     },
     "view": {
       "questions": "Questions",

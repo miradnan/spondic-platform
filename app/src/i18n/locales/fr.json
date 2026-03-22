@@ -136,7 +136,16 @@
       "uploading": "Import et cr\u00e9ation du projet...",
       "errorName": "Veuillez fournir un nom de projet.",
       "errorContent": "Collez du texte ou importez au moins un fichier.",
-      "errorOrg": "Le contexte d'organisation est requis. Basculez vers une organisation ou connectez-vous avec une."
+      "errorOrg": "Le contexte d'organisation est requis. Basculez vers une organisation ou connectez-vous avec une.",
+      "projectDetails": "Détails du projet",
+      "rfpContent": "Contenu de l'appel d'offres",
+      "rfpContentHint": "Importez votre document d'appel d'offres ou collez les questions directement",
+      "creatingProject": "Création du projet...",
+      "uploadingFiles": "Import du contenu de l'appel d'offres...",
+      "step1of2": "Étape 1 sur 2",
+      "step2of2": "Étape 2 sur 2",
+      "errorTitle": "Une erreur est survenue",
+      "success": "Projet d'appel d'offres créé avec succès !"
     },
     "view": {
       "questions": "Questions",

@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useTableParams } from "../hooks/useTableParams.ts";
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -212,10 +213,15 @@ export function Dashboard() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const STATUS_OPTIONS = useStatusOptions();
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [viewMode, setViewMode] = useState<ViewMode>("cards");
+
+  const { sorting, onSortingChange, pagination, onPaginationChange, resetPage, updateParams, searchParams } = useTableParams();
+
+  // Read filters from URL
+  const search = searchParams.get("q") ?? "";
+  const statusFilter = searchParams.get("status") ?? "";
+  const viewMode = (searchParams.get("view") as ViewMode) || "cards";
+
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
 
   // Debounce search
   useEffect(() => {
@@ -223,12 +229,19 @@ export function Dashboard() {
     return () => clearTimeout(timeout);
   }, [search]);
 
-  // Server-side pagination
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 25,
-  });
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const setSearch = useCallback((val: string) => {
+    updateParams({ q: val || null });
+    resetPage();
+  }, [updateParams, resetPage]);
+
+  const setStatusFilter = useCallback((val: string) => {
+    updateParams({ status: val || null });
+    resetPage();
+  }, [updateParams, resetPage]);
+
+  const setViewMode = useCallback((val: ViewMode) => {
+    updateParams({ view: val === "cards" ? null : val });
+  }, [updateParams]);
 
   const { data, isLoading, isError, refetch } = useProjects({
     status: statusFilter || undefined,
@@ -250,12 +263,12 @@ export function Dashboard() {
   useWalkthrough({ key: "dashboard", steps: DASHBOARD_STEPS });
 
   const handlePageChange = useCallback((page: number) => {
-    setPagination((prev) => ({ ...prev, pageIndex: page - 1 }));
-  }, []);
+    onPaginationChange({ pageIndex: page - 1, pageSize: pagination.pageSize });
+  }, [onPaginationChange, pagination.pageSize]);
 
   const handlePageSizeChange = useCallback((size: number) => {
-    setPagination({ pageIndex: 0, pageSize: size });
-  }, []);
+    onPaginationChange({ pageIndex: 0, pageSize: size });
+  }, [onPaginationChange]);
 
   const tableColumns = useMemo(
     () => [
@@ -368,19 +381,13 @@ export function Dashboard() {
             type="text"
             placeholder={t("dashboard.searchProjects")}
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-            }}
+            onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-lg border border-border bg-white py-2 pl-10 pr-4 text-sm text-heading placeholder-muted focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
           />
         </div>
         <Select
-          value={statusFilter}
-          onValueChange={(val) => {
-            setStatusFilter(val === "__all__" ? "" : val);
-            setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-          }}
+          value={statusFilter || "__all__"}
+          onValueChange={(val) => setStatusFilter(val === "__all__" ? "" : val)}
         >
           <SelectTrigger icon={<FunnelIcon className="h-4 w-4" />} className="min-w-[140px]">
             <SelectValue placeholder={t("dashboard.allStatuses")} />
@@ -557,11 +564,11 @@ export function Dashboard() {
             skeletonRows={6}
             emptyMessage="No projects found."
             sorting={sorting}
-            onSortingChange={setSorting}
+            onSortingChange={onSortingChange}
             manualPagination
             pageCount={totalPages}
             pagination={pagination}
-            onPaginationChange={setPagination}
+            onPaginationChange={onPaginationChange}
             totalRows={total}
             onRowClick={(row) => navigate(`/rfp/${row.original.id}`)}
           />

@@ -112,6 +112,7 @@ button:disabled,
   color: white;
   border: none;
   padding: 0.4rem 1rem;
+  text-shadow: none;
 }
 .spondic-tour-popover .driver-popover-next-btn:hover {
   background-color: #245090;

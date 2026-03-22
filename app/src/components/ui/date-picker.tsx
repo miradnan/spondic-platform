@@ -1,8 +1,7 @@
 import * as React from "react";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
-import { Button } from "./button.tsx";
 import { Calendar } from "./calendar.tsx";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover.tsx";
 
@@ -26,18 +25,41 @@ function DatePicker({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
+        <button
+          type="button"
           disabled={disabled}
           className={cn(
-            "w-full justify-start text-left font-normal",
-            !value && "text-muted",
+            "flex h-10 w-full items-center gap-2 rounded-lg border border-border bg-white px-3 text-sm transition-colors",
+            "hover:border-body/30 focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue",
+            "disabled:cursor-not-allowed disabled:opacity-50",
+            value ? "text-heading" : "text-muted",
             className,
           )}
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {value ? format(value, "PPP") : placeholder}
-        </Button>
+          <CalendarIcon className="h-4 w-4 shrink-0 text-muted" />
+          <span className="flex-1 text-left truncate">
+            {value ? format(value, "PPP") : placeholder}
+          </span>
+          {value && (
+            <span
+              role="button"
+              tabIndex={-1}
+              className="shrink-0 rounded p-0.5 text-muted hover:text-red-500 hover:bg-red-50 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange(undefined);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.stopPropagation();
+                  onChange(undefined);
+                }
+              }}
+            >
+              <XMarkIcon className="h-3.5 w-3.5" />
+            </span>
+          )}
+        </button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start" side="bottom">
         <Calendar

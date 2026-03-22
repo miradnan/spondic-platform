@@ -136,7 +136,16 @@
       "uploading": "Hochladen und Projekt erstellen...",
       "errorName": "Bitte geben Sie einen Projektnamen an.",
       "errorContent": "F\u00fcgen Sie Text ein oder laden Sie mindestens eine Datei hoch.",
-      "errorOrg": "Organisationskontext erforderlich. Wechseln Sie zu einer Organisation oder melden Sie sich mit einer an."
+      "errorOrg": "Organisationskontext erforderlich. Wechseln Sie zu einer Organisation oder melden Sie sich mit einer an.",
+      "projectDetails": "Projektdetails",
+      "rfpContent": "Ausschreibungsinhalt",
+      "rfpContentHint": "Laden Sie Ihr Ausschreibungsdokument hoch oder fügen Sie die Fragen direkt ein",
+      "creatingProject": "Projekt wird erstellt...",
+      "uploadingFiles": "Ausschreibungsinhalt wird hochgeladen...",
+      "step1of2": "Schritt 1 von 2",
+      "step2of2": "Schritt 2 von 2",
+      "errorTitle": "Etwas ist schiefgelaufen",
+      "success": "Ausschreibungsprojekt erfolgreich erstellt!"
     },
     "view": {
       "questions": "Fragen",

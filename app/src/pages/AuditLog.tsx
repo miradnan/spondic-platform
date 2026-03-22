@@ -1,15 +1,14 @@
-import { useState, useMemo, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import {
   ArrowPathIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
+import { useTableParams } from "../hooks/useTableParams.ts";
 import { useOrganization } from "@clerk/react";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select.tsx";
 import {
   createColumnHelper,
   type ColumnDef,
-  type PaginationState,
-  type SortingState,
 } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { useAuditLogs } from "../hooks/useApi.ts";
@@ -64,38 +63,32 @@ export function AuditLog() {
     }));
   }, [userNameMap]);
 
-  const [actionFilter, setActionFilter] = useState("");
-  const [userFilter, setUserFilter] = useState("");
-  const [entityTypeFilter, setEntityTypeFilter] = useState("");
-  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
-  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "created_at", desc: true },
-  ]);
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 25,
+  const { sorting, onSortingChange, pagination, onPaginationChange, resetPage, updateParams, searchParams } = useTableParams({
+    sortId: "created_at",
+    sortDesc: true,
   });
+
+  // Read filters from URL
+  const actionFilter = searchParams.get("action") ?? "";
+  const userFilter = searchParams.get("user") ?? "";
+  const entityTypeFilter = searchParams.get("entity") ?? "";
+  const dateFromStr = searchParams.get("from") ?? "";
+  const dateToStr = searchParams.get("to") ?? "";
+  const dateFrom = dateFromStr ? new Date(dateFromStr) : undefined;
+  const dateTo = dateToStr ? new Date(dateToStr) : undefined;
 
   const hasFilters = actionFilter || userFilter || entityTypeFilter || dateFrom || dateTo;
 
-  const clearFilters = () => {
-    setActionFilter("");
-    setUserFilter("");
-    setEntityTypeFilter("");
-    setDateFrom(undefined);
-    setDateTo(undefined);
-    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-  };
-
-  const resetPage = () => setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  const clearFilters = useCallback(() => {
+    updateParams({ action: null, user: null, entity: null, from: null, to: null, page: null });
+  }, [updateParams]);
 
   const { data, isLoading, isError, refetch } = useAuditLogs({
     action: actionFilter || undefined,
     user_id: userFilter || undefined,
     entity_type: entityTypeFilter || undefined,
-    date_from: dateFrom ? format(dateFrom, "yyyy-MM-dd") : undefined,
-    date_to: dateTo ? format(dateTo, "yyyy-MM-dd") : undefined,
+    date_from: dateFromStr || undefined,
+    date_to: dateToStr || undefined,
     page: pagination.pageIndex + 1,
     limit: pagination.pageSize,
   });
@@ -177,10 +170,7 @@ export function AuditLog() {
             <label className="block text-xs font-medium text-muted mb-1">Action</label>
             <Select
               value={actionFilter || "__all__"}
-              onValueChange={(val) => {
-                setActionFilter(val === "__all__" ? "" : val);
-                resetPage();
-              }}
+              onValueChange={(val) => { updateParams({ action: val === "__all__" ? null : val }); resetPage(); }}
             >
               <SelectTrigger className="min-w-[130px]">
                 <SelectValue />
@@ -205,10 +195,7 @@ export function AuditLog() {
             <label className="block text-xs font-medium text-muted mb-1">User</label>
             <Select
               value={userFilter || "__all__"}
-              onValueChange={(val) => {
-                setUserFilter(val === "__all__" ? "" : val);
-                resetPage();
-              }}
+              onValueChange={(val) => { updateParams({ user: val === "__all__" ? null : val }); resetPage(); }}
             >
               <SelectTrigger className="min-w-[150px]">
                 <SelectValue />
@@ -229,10 +216,7 @@ export function AuditLog() {
             <label className="block text-xs font-medium text-muted mb-1">Entity type</label>
             <Select
               value={entityTypeFilter || "__all__"}
-              onValueChange={(val) => {
-                setEntityTypeFilter(val === "__all__" ? "" : val);
-                resetPage();
-              }}
+              onValueChange={(val) => { updateParams({ entity: val === "__all__" ? null : val }); resetPage(); }}
             >
               <SelectTrigger className="min-w-[130px]">
                 <SelectValue />
@@ -254,7 +238,7 @@ export function AuditLog() {
             <DatePicker
               value={dateFrom}
               onChange={(date) => {
-                setDateFrom(date);
+                updateParams({ from: date ? format(date, "yyyy-MM-dd") : null });
                 resetPage();
               }}
               placeholder="Start date"
@@ -267,7 +251,7 @@ export function AuditLog() {
             <DatePicker
               value={dateTo}
               onChange={(date) => {
-                setDateTo(date);
+                updateParams({ to: date ? format(date, "yyyy-MM-dd") : null });
                 resetPage();
               }}
               placeholder="End date"
@@ -317,11 +301,11 @@ export function AuditLog() {
           skeletonRows={8}
           emptyMessage="No audit log entries found."
           sorting={sorting}
-          onSortingChange={setSorting}
+          onSortingChange={onSortingChange}
           manualPagination
           pageCount={totalPages}
           pagination={pagination}
-          onPaginationChange={setPagination}
+          onPaginationChange={onPaginationChange}
           totalRows={total}
         />
       </div>
