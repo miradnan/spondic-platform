@@ -1,7 +1,6 @@
 import { useAuth, PricingTable } from "@clerk/react";
 import {
   CreditCardIcon,
-  ArrowPathIcon,
 } from "@heroicons/react/24/outline";
 import { Badge } from "@/components/ui/badge";
 import { useAnalytics } from "@/hooks/useApi";
@@ -85,10 +84,6 @@ export function AdminBilling() {
             </div>
             <p className="text-2xl font-bold text-heading mt-1">{planInfo.price}</p>
             <p className="text-sm text-muted mt-1">30-day free trial included with all plans</p>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted">
-            <ArrowPathIcon className="h-4 w-4" />
-            Plan is managed via Clerk billing
           </div>
         </div>
       </div>
