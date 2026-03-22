@@ -17,7 +17,7 @@ import { DatePicker } from "../components/ui/date-picker.tsx";
 import { StatusBadge } from "../components/ui/status-badge.tsx";
 import { Tooltip } from "../components/ui/tooltip.tsx";
 import { relativeTime, fullDateTime } from "../lib/date.ts";
-import type { AuditLog as AuditLogType } from "../lib/types.ts";
+import type { AuditLog as AuditLogType, AuditLogFilters } from "../lib/types.ts";
 
 const ENTITY_TYPES = [
   { value: "project", label: "Project" },
@@ -91,7 +91,7 @@ export function AuditLog() {
     date_to: dateToStr || undefined,
     page: pagination.pageIndex + 1,
     limit: pagination.pageSize,
-  });
+  } as AuditLogFilters);
 
   const logs = data?.data ?? [];
   const total = data?.pagination?.total ?? 0;

@@ -21,6 +21,8 @@ func (h *Handler) ListAuditLogs(c echo.Context) error {
 	actionFilter := c.QueryParam("action")
 	userFilter := c.QueryParam("user_id")
 	entityTypeFilter := c.QueryParam("entity_type")
+	dateFrom := c.QueryParam("date_from")
+	dateTo := c.QueryParam("date_to")
 
 	// Build count query
 	countQuery := `SELECT COUNT(*) FROM audit_logs WHERE organization_id = $1`
@@ -40,6 +42,16 @@ func (h *Handler) ListAuditLogs(c echo.Context) error {
 	if entityTypeFilter != "" {
 		countQuery += " AND entity_type = $" + itoa(argIdx)
 		args = append(args, entityTypeFilter)
+		argIdx++
+	}
+	if dateFrom != "" {
+		countQuery += " AND created_at >= $" + itoa(argIdx) + "::timestamptz"
+		args = append(args, dateFrom)
+		argIdx++
+	}
+	if dateTo != "" {
+		countQuery += " AND created_at < ($" + itoa(argIdx) + "::date + interval '1 day')"
+		args = append(args, dateTo)
 		argIdx++
 	}
 
@@ -69,6 +81,16 @@ func (h *Handler) ListAuditLogs(c echo.Context) error {
 	if entityTypeFilter != "" {
 		fetchQuery += " AND entity_type = $" + itoa(fetchIdx)
 		fetchArgs = append(fetchArgs, entityTypeFilter)
+		fetchIdx++
+	}
+	if dateFrom != "" {
+		fetchQuery += " AND created_at >= $" + itoa(fetchIdx) + "::timestamptz"
+		fetchArgs = append(fetchArgs, dateFrom)
+		fetchIdx++
+	}
+	if dateTo != "" {
+		fetchQuery += " AND created_at < ($" + itoa(fetchIdx) + "::date + interval '1 day')"
+		fetchArgs = append(fetchArgs, dateTo)
 		fetchIdx++
 	}
 
