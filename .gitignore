@@ -5,6 +5,8 @@ node_modules/
 .env
 .env.local
 .env.*.local
+.env.production
+.secrets-backup/
 
 # Build / output
 dist/
