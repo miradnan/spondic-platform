@@ -1,4 +1,5 @@
-import { useAuth, PricingTable } from "@clerk/react";
+import { useState, useCallback } from "react";
+import { useAuth, useSession, PricingTable } from "@clerk/react";
 
 function LoadingScreen() {
   return (
@@ -8,7 +9,16 @@ function LoadingScreen() {
   );
 }
 
-function PlanSelectionScreen() {
+function PlanSelectionScreen({ onRefresh }: { onRefresh: () => void }) {
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleContinue = async () => {
+    setRefreshing(true);
+    onRefresh();
+    // Small delay to let the session refresh
+    setTimeout(() => setRefreshing(false), 2000);
+  };
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-cream px-4 py-12">
       <div className="w-full max-w-5xl">
@@ -52,6 +62,26 @@ function PlanSelectionScreen() {
           />
         </div>
 
+        {/* Continue button — refreshes session to pick up new plan */}
+        <div className="mt-8 text-center">
+          <p className="text-sm text-navy/50 mb-3">
+            Already selected a plan?
+          </p>
+          <button
+            onClick={handleContinue}
+            disabled={refreshing}
+            className="rounded-xl bg-brand-blue px-8 py-3 text-sm font-medium text-white hover:bg-brand-blue/90 transition-colors disabled:opacity-50"
+          >
+            {refreshing ? (
+              <span className="flex items-center gap-2">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Refreshing...
+              </span>
+            ) : (
+              "Continue to Dashboard →"
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -59,13 +89,27 @@ function PlanSelectionScreen() {
 
 export function PlanGate({ children }: { children: React.ReactNode }) {
   const { has, sessionClaims, isLoaded } = useAuth();
+  const { session } = useSession();
+  const [forceCheck, setForceCheck] = useState(0);
+
+  const refreshSession = useCallback(async () => {
+    // Force Clerk to refresh the session token so the new plan appears
+    try {
+      await session?.getToken({ skipCache: true });
+      // Trigger re-render to re-check the plan
+      setForceCheck((c) => c + 1);
+      // Also reload after a short delay as a fallback
+      setTimeout(() => window.location.reload(), 1500);
+    } catch {
+      window.location.reload();
+    }
+  }, [session]);
 
   if (!isLoaded) {
     return <LoadingScreen />;
   }
 
   // Check if org has an explicitly chosen plan (not Clerk's auto-assigned free_org)
-  // "free" = our testing plan (explicitly selected), "free_org" = Clerk's default (not chosen)
   const hasFreePlan = has?.({ plan: "free" });
   const hasStarterPlan = has?.({ plan: "starter" });
   const hasGrowthPlan = has?.({ plan: "growth" });
@@ -77,13 +121,15 @@ export function PlanGate({ children }: { children: React.ReactNode }) {
   if (!hasChosenPlan) {
     const planClaim = (sessionClaims as Record<string, unknown>)?.pla as string | undefined;
     const plan = planClaim?.replace("o:", "") || "";
-    // "free_org" is Clerk's auto-assigned default — don't count it as a chosen plan
     const hasPlanFromJWT = ["free", "starter", "growth", "enterprise"].includes(plan);
 
     if (!hasPlanFromJWT) {
-      return <PlanSelectionScreen />;
+      return <PlanSelectionScreen onRefresh={refreshSession} />;
     }
   }
+
+  // Suppress unused variable warning
+  void forceCheck;
 
   return <>{children}</>;
 }
