@@ -17,8 +17,6 @@ import {
 import {
   createColumnHelper,
   type ColumnDef,
-  type PaginationState,
-  type SortingState,
 } from "@tanstack/react-table";
 import { useProjects, useDocuments } from "../hooks/useApi.ts";
 import { useWalkthrough, DASHBOARD_STEPS } from "../hooks/useWalkthrough.ts";

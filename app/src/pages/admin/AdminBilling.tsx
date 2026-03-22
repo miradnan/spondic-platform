@@ -6,7 +6,6 @@ import {
   DocumentTextIcon,
   RocketLaunchIcon,
   ChatBubbleLeftRightIcon,
-  UsersIcon,
   ArrowTrendingUpIcon,
   ShieldCheckIcon,
   CheckIcon,
@@ -18,12 +17,6 @@ function barColor(pct: number): string {
   if (pct > 95) return "bg-red-500";
   if (pct > 80) return "bg-amber-500";
   return "bg-brand-blue";
-}
-
-function barBgColor(pct: number): string {
-  if (pct > 95) return "bg-red-100";
-  if (pct > 80) return "bg-amber-100";
-  return "bg-brand-blue/10";
 }
 
 function UsageCard({
