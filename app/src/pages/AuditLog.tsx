@@ -104,7 +104,7 @@ export function AuditLog() {
   const total = data?.pagination?.total ?? 0;
   const totalPages = data?.pagination?.total_pages ?? Math.max(1, Math.ceil(total / pagination.pageSize));
 
-  const columns = useMemo<ColumnDef<AuditLogType, unknown>[]>(
+  const columns = useMemo(
     () => [
       columnHelper.accessor("created_at", {
         header: "Timestamp",
@@ -158,7 +158,7 @@ export function AuditLog() {
           </span>
         ),
       }),
-    ],
+    ] as ColumnDef<AuditLogType>[],
     [resolveUserName],
   );
 

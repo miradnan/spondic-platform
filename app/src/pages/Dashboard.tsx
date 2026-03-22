@@ -254,7 +254,7 @@ export function Dashboard() {
     setPagination({ pageIndex: 0, pageSize: size });
   }, []);
 
-  const tableColumns = useMemo<ColumnDef<Project, unknown>[]>(
+  const tableColumns = useMemo(
     () => [
       projectColumnHelper.accessor("name", {
         header: "Name",
@@ -326,7 +326,7 @@ export function Dashboard() {
         enableSorting: true,
         cell: (info) => <span className="text-muted">{relativeTime(info.getValue())}</span>,
       }),
-    ],
+    ] as ColumnDef<Project>[],
     [],
   );
 

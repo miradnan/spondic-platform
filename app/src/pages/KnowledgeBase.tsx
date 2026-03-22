@@ -179,7 +179,7 @@ export function KnowledgeBase() {
     );
   };
 
-  const columns = useMemo<ColumnDef<DocType, unknown>[]>(
+  const columns = useMemo(
     () => [
       columnHelper.accessor("title", {
         header: "Title",
@@ -329,7 +329,7 @@ export function KnowledgeBase() {
           );
         },
       }),
-    ],
+    ] as ColumnDef<DocType>[],
     [tags, tagDocId, reindexDoc.isPending, deleteDoc.isPending],
   );
 

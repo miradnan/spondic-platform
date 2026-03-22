@@ -406,7 +406,7 @@ export function listAuditLogs(
   token: string | null,
   filters?: AuditLogFilters,
 ): Promise<PaginatedResponse<AuditLog>> {
-  return request(`/api/audit-logs${qs(filters ?? {})}`, token);
+  return request(`/api/audit-logs${qs(filters as Record<string, string | number | undefined> ?? {})}`, token);
 }
 
 // ── Branding ──────────────────────────────────────────────────────────────────

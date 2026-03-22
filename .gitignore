@@ -36,3 +36,6 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .eggs/
+
+
+spondic.pem

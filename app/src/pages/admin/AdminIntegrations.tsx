@@ -4,7 +4,6 @@ import {
   LinkIcon,
   XMarkIcon,
   CheckCircleIcon,
-  ExclamationCircleIcon,
   PlusIcon,
   TrashIcon,
   PaperAirplaneIcon,
@@ -222,7 +221,7 @@ export function AdminIntegrations() {
       {/* Disconnect Confirmation */}
       <ConfirmDialog
         open={!!disconnectTarget}
-        onClose={() => setDisconnectTarget(null)}
+        onCancel={() => setDisconnectTarget(null)}
         onConfirm={handleDisconnect}
         title={`Disconnect ${disconnectTarget?.platform === "salesforce" ? "Salesforce" : "HubSpot"}?`}
         description="This will deactivate the CRM connection and clear stored tokens. Existing project-deal links will be preserved but will no longer sync."

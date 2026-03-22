@@ -67,6 +67,8 @@ function SkeletonBlock({ className }: { className?: string }) {
   return <div className={`animate-pulse rounded bg-gray-200 ${className ?? ""}`} />;
 }
 
+type Tab = "questions" | "review" | "export";
+
 // ── Main Component ───────────────────────────────────────────────────────────
 
 export function RfpView() {
@@ -317,7 +319,7 @@ function QuestionsTab({
     [questions, answerMap],
   );
 
-  const columns = useMemo<ColumnDef<QuestionRow, unknown>[]>(
+  const columns = useMemo(
     () => [
       questionColumnHelper.accessor("question_number", {
         header: "#",
@@ -360,7 +362,7 @@ function QuestionsTab({
           return <StatusBadge status={status} />;
         },
       }),
-    ],
+    ] as ColumnDef<QuestionRow>[],
     [],
   );
 

@@ -102,7 +102,7 @@ export function AdminMembers() {
     setActionLoading(userId);
     setActionError("");
     try {
-      await organization.updateMember({ userId, role: newRole });
+      await organization!.updateMember({ userId, role: newRole });
       memberships?.revalidate?.();
     } catch (err: unknown) {
       const message =
@@ -119,7 +119,7 @@ export function AdminMembers() {
     setActionLoading(userId);
     setActionError("");
     try {
-      await organization.removeMember(userId);
+      await organization!.removeMember(userId);
       memberships?.revalidate?.();
       setConfirmRemove(null);
     } catch (err: unknown) {

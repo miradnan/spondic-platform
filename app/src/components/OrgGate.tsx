@@ -12,7 +12,7 @@ export function OrgGate({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
   const { organization, isLoaded } = useOrganization();
   const {
-    organizationList,
+    userMemberships,
     createOrganization,
     setActive,
     isLoaded: listLoaded,
@@ -32,7 +32,7 @@ export function OrgGate({ children }: { children: React.ReactNode }) {
   }
 
   if (!organization) {
-    const otherOrgs = organizationList ?? [];
+    const otherOrgs = userMemberships?.data ?? [];
 
     async function handleCreate(e: React.FormEvent) {
       e.preventDefault();
@@ -134,7 +134,9 @@ export function OrgGate({ children }: { children: React.ReactNode }) {
                 <div className="h-px flex-1 bg-navy/10" />
               </div>
               <div className="space-y-2">
-                {otherOrgs.map(({ membership, organization: org }) => (
+                {otherOrgs.map((membership) => {
+                  const org = membership.organization;
+                  return (
                   <div
                     key={org.id}
                     className="flex items-center gap-3 rounded-xl border border-border bg-white px-4 py-3"
@@ -163,7 +165,8 @@ export function OrgGate({ children }: { children: React.ReactNode }) {
                       )}
                     </Button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
