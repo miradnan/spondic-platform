@@ -11,6 +11,9 @@ interface DatePickerProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  disablePast?: boolean;
+  minDate?: Date;
+  maxDate?: Date;
 }
 
 function DatePicker({
@@ -19,7 +22,15 @@ function DatePicker({
   placeholder = "Pick a date",
   className,
   disabled = false,
+  disablePast = false,
+  minDate,
+  maxDate,
 }: DatePickerProps) {
+  const disabledDays = disablePast
+    ? { before: minDate ?? new Date() }
+    : minDate
+      ? { before: minDate }
+      : undefined;
   const [open, setOpen] = React.useState(false);
 
   return (
@@ -75,6 +86,7 @@ function DatePicker({
             onChange(day);
             setOpen(false);
           }}
+          disabled={disabledDays}
           autoFocus
         />
       </PopoverContent>

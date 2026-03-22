@@ -289,6 +289,7 @@ export function RfpNew() {
                     value={deadline}
                     onChange={setDeadline}
                     placeholder={t("rfp.new.deadlinePlaceholder")}
+                    disablePast
                   />
                 </div>
               </div>
