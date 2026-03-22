@@ -1,5 +1,4 @@
-import { useAuth } from "@clerk/react";
-import { PricingTable } from "@clerk/react/experimental";
+import { useAuth, PricingTable } from "@clerk/react";
 
 function LoadingScreen() {
   return (
