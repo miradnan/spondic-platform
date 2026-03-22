@@ -1,0 +1,37 @@
+# Frontend — deployed to Netlify, not EC2
+website/
+app/
+
+# Dependencies — installed on server via Docker build
+node_modules/
+.venv/
+venv/
+__pycache__/
+
+# Build artifacts
+dist/
+out/
+.next/
+
+# Git
+.git/
+.gitignore
+
+# Local dev
+.env.local
+*.pem
+.DS_Store
+Thumbs.db
+
+# Docker volumes (server-side)
+postgres_data/
+weaviate_data/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Plans and memory (Claude internal)
+.claude/
