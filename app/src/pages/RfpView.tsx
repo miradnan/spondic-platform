@@ -53,6 +53,21 @@ import { StatusBadge } from "../components/ui/status-badge.tsx";
 import { RichTextEditor } from "../components/ui/rich-text-editor.tsx";
 import { ProjectCRMLinkPanel } from "../components/ProjectCRMLink.tsx";
 
+function relativeTime(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diff = now - then;
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 function stripHtmlWordCount(html: string): number {
   const text = html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
   return text ? text.split(" ").length : 0;
@@ -191,6 +206,7 @@ export function RfpView() {
             <p className="mt-1 text-sm text-muted truncate">{project.description}</p>
           )}
         </div>
+        <ProjectCRMLinkPanel projectId={id!} />
       </div>
 
       {/* Progress Pipeline */}
@@ -238,11 +254,6 @@ export function RfpView() {
             <span className="h-2 w-2 rounded-full bg-gray-300" /> {Math.max(0, totalQuestions - draftedCount)} {t("rfp.view.pending")}
           </span>
         </div>
-      </div>
-
-      {/* CRM Deal Link */}
-      <div className="mt-4">
-        <ProjectCRMLinkPanel projectId={id!} />
       </div>
 
       {/* Tabs */}
@@ -506,6 +517,8 @@ function ReviewTab({
   const [showQuestionList, setShowQuestionList] = useState(false);
   const [showRedraftConfirm, setShowRedraftConfirm] = useState(false);
   const [pendingNavIndex, setPendingNavIndex] = useState<number | null>(null);
+  const [sidebarSearch, setSidebarSearch] = useState("");
+  const [sidebarStatusFilter, setSidebarStatusFilter] = useState<string>("all");
 
   // Find selected index
   const selectedIndex = questions.findIndex((q) => q.id === selectedQuestionId);
@@ -704,7 +717,7 @@ function ReviewTab({
       />
 
       {/* Navigation + Question List Toggle */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="sticky top-0 z-10 bg-cream/95 backdrop-blur-sm -mx-1 px-1 py-2 flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Tooltip content="Toggle question list">
             <button
@@ -755,7 +768,7 @@ function ReviewTab({
       <div className="flex gap-4">
         {/* Question List Sidebar */}
         {showQuestionList && (
-          <div className="w-64 shrink-0 rounded-xl border border-border bg-white overflow-hidden">
+          <div className="w-64 shrink-0 rounded-xl border border-border bg-white overflow-hidden flex flex-col">
             <div className="flex items-center justify-between p-3 border-b border-border">
               <span className="text-xs font-medium text-muted uppercase tracking-wide">Questions</span>
               <button
@@ -765,11 +778,34 @@ function ReviewTab({
                 <XMarkIcon className="h-4 w-4" />
               </button>
             </div>
-            <div className="overflow-y-auto max-h-[calc(100vh-300px)]">
+            <div className="p-2 border-b border-border space-y-1.5">
+              <input
+                type="text"
+                value={sidebarSearch}
+                onChange={(e) => setSidebarSearch(e.target.value)}
+                placeholder="Search questions..."
+                className="w-full rounded-md border border-border bg-cream-light/50 px-2.5 py-1.5 text-xs text-heading placeholder-muted focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+              />
+              <select
+                value={sidebarStatusFilter}
+                onChange={(e) => setSidebarStatusFilter(e.target.value)}
+                className="w-full rounded-md border border-border bg-cream-light/50 px-2.5 py-1.5 text-xs text-body focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+              >
+                <option value="all">All statuses</option>
+                <option value="draft">Draft</option>
+                <option value="in_review">In Review</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+            <div className="overflow-y-auto max-h-[calc(100vh-380px)]">
               {questions.map((q, i) => {
                 const qAnswer = answerMap.get(q.id);
                 const qStatus = qAnswer?.status ?? q.status;
                 const isActive = i === currentIndex;
+                // Apply filters
+                if (sidebarStatusFilter !== "all" && qStatus !== sidebarStatusFilter) return null;
+                if (sidebarSearch && !q.question_text.toLowerCase().includes(sidebarSearch.toLowerCase())) return null;
                 return (
                   <button
                     key={q.id}
@@ -796,7 +832,7 @@ function ReviewTab({
         )}
 
         {/* Three-column layout */}
-        <div className="flex-1 min-w-0 grid gap-4 lg:grid-cols-[1fr_2fr_1fr]">
+        <div className="flex-1 min-w-0 grid gap-4 lg:grid-cols-[1fr_2fr] xl:grid-cols-[1fr_2fr_1fr]">
           {/* LEFT: Question */}
           <div className="rounded-xl border border-border bg-white p-5 shadow-sm">
             <h3 className="text-xs font-medium text-muted uppercase tracking-wide mb-3">{t("rfp.view.question")}</h3>
@@ -826,7 +862,9 @@ function ReviewTab({
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-medium text-muted uppercase tracking-wide">{t("rfp.view.aiDraftAnswer")}</h3>
               <div className="flex items-center gap-2 text-xs text-muted">
-                <span>{t("rfp.view.words", { count: wordCount })}</span>
+                <span className={question?.word_limit && wordCount > question.word_limit ? "text-red-600 font-medium" : ""}>
+                  {question?.word_limit ? `${wordCount} / ${question.word_limit} words` : t("rfp.view.words", { count: wordCount })}
+                </span>
                 {confidenceScore != null && (
                   <Tooltip content="AI confidence — based on knowledge base relevance. Green ≥ 80%, yellow ≥ 50%, red < 50%">
                     <span className={`flex items-center gap-1 cursor-help ${confidenceColor}`}>
@@ -866,7 +904,7 @@ function ReviewTab({
                   placeholder={isEditing ? "Write your answer..." : ""}
                   editable={isEditing}
                 />
-                {isEditing && (
+                {isEditing ? (
                   <div className="mt-3 flex gap-2">
                     <button
                       onClick={handleSaveEdit}
@@ -882,54 +920,61 @@ function ReviewTab({
                       {t("common.cancel")}
                     </button>
                   </div>
+                ) : (
+                  <div className="mt-4 space-y-3">
+                    {/* Primary: status actions */}
+                    <div className="flex flex-wrap gap-2">
+                      <Tooltip content="Approve (a)">
+                        <button
+                          onClick={() => handleApprove("approved")}
+                          disabled={approveAnswer.isPending}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors disabled:opacity-50"
+                        >
+                          <CheckCircleIcon className="h-4 w-4" />
+                          {t("rfp.view.approve")}
+                        </button>
+                      </Tooltip>
+                      <button
+                        onClick={() => handleApprove("in_review")}
+                        disabled={approveAnswer.isPending}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-yellow-300 bg-yellow-50 px-3 py-2 text-sm font-medium text-yellow-700 hover:bg-yellow-100 transition-colors disabled:opacity-50"
+                      >
+                        <ClockIcon className="h-4 w-4" />
+                        {t("rfp.view.inReview")}
+                      </button>
+                      <Tooltip content="Reject (r)">
+                        <button
+                          onClick={() => handleApprove("rejected")}
+                          disabled={approveAnswer.isPending}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50"
+                        >
+                          {t("rfp.view.reject")}
+                        </button>
+                      </Tooltip>
+                    </div>
+                    {/* Secondary: editing actions */}
+                    <div className="flex flex-wrap gap-2 border-t border-border pt-3">
+                      <Tooltip content="Edit answer (e)">
+                        <button
+                          onClick={handleStartEdit}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-body hover:bg-cream-light transition-colors"
+                        >
+                          {t("rfp.view.edit")}
+                        </button>
+                      </Tooltip>
+                      <Tooltip content={t("rfp.view.reGenerate")}>
+                        <button
+                          onClick={handleRedraft}
+                          disabled={redraft.isPending}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-body hover:bg-cream-light transition-colors disabled:opacity-50"
+                        >
+                          <ArrowPathIcon className={`h-4 w-4 ${redraft.isPending ? "animate-spin" : ""}`} />
+                          {redraft.isPending ? t("rfp.view.generating") : t("rfp.view.reGenerate")}
+                        </button>
+                      </Tooltip>
+                    </div>
+                  </div>
                 )}
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Tooltip content="Edit answer (e)">
-                    <button
-                      onClick={handleStartEdit}
-                      className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-body hover:bg-cream-light transition-colors"
-                    >
-                      {t("rfp.view.edit")}
-                    </button>
-                  </Tooltip>
-                  <Tooltip content={t("rfp.view.reGenerate")}>
-                    <button
-                      onClick={handleRedraft}
-                      disabled={redraft.isPending}
-                      className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-sm font-medium text-body hover:bg-cream-light transition-colors disabled:opacity-50"
-                    >
-                      <ArrowPathIcon className={`h-4 w-4 ${redraft.isPending ? "animate-spin" : ""}`} />
-                      {redraft.isPending ? t("rfp.view.generating") : t("rfp.view.reGenerate")}
-                    </button>
-                  </Tooltip>
-                  <button
-                    onClick={() => handleApprove("in_review")}
-                    disabled={approveAnswer.isPending}
-                    className="rounded-lg border border-yellow-300 bg-yellow-50 px-3 py-2 text-sm font-medium text-yellow-700 hover:bg-yellow-100 transition-colors disabled:opacity-50"
-                  >
-                    <ClockIcon className="inline h-4 w-4 mr-1" />
-                    {t("rfp.view.inReview")}
-                  </button>
-                  <Tooltip content={t("rfp.view.approve")}>
-                    <button
-                      onClick={() => handleApprove("approved")}
-                      disabled={approveAnswer.isPending}
-                      className="rounded-lg border border-green-300 bg-green-50 px-3 py-2 text-sm font-medium text-green-700 hover:bg-green-100 transition-colors disabled:opacity-50"
-                    >
-                      <CheckCircleIcon className="inline h-4 w-4 mr-1" />
-                      {t("rfp.view.approve")}
-                    </button>
-                  </Tooltip>
-                  <Tooltip content={t("rfp.view.reject")}>
-                    <button
-                      onClick={() => handleApprove("rejected")}
-                      disabled={approveAnswer.isPending}
-                      className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50"
-                    >
-                      {t("rfp.view.reject")}
-                    </button>
-                  </Tooltip>
-                </div>
               </div>
             )}
 
@@ -949,9 +994,11 @@ function ReviewTab({
                     {answer.comments.map((c) => (
                       <li key={c.id} className="rounded-lg bg-cream-light px-3 py-2 text-sm">
                         <span className="font-medium text-heading">{c.user_name}</span>
-                        <span className="text-muted ml-2 text-xs">
-                          {new Date(c.created_at).toLocaleString()}
-                        </span>
+                        <Tooltip content={new Date(c.created_at).toLocaleString()}>
+                          <span className="text-muted ml-2 text-xs cursor-help">
+                            {relativeTime(c.created_at)}
+                          </span>
+                        </Tooltip>
                         <p className="mt-1 text-body">{c.comment_text}</p>
                       </li>
                     ))}
@@ -1013,9 +1060,15 @@ function ReviewTab({
                           {c.document_title}
                         </span>
                       </div>
-                      <span className="text-xs text-muted shrink-0 ml-2">
+                      <span className={`text-xs font-medium shrink-0 ml-2 ${c.relevance_score >= 0.8 ? "text-green-600" : c.relevance_score >= 0.5 ? "text-yellow-600" : "text-red-500"}`}>
                         {(c.relevance_score * 100).toFixed(0)}%
                       </span>
+                    </div>
+                    <div className="h-1 rounded-full bg-gray-200 overflow-hidden mb-2">
+                      <div
+                        className={`h-full rounded-full transition-all ${c.relevance_score >= 0.8 ? "bg-green-500" : c.relevance_score >= 0.5 ? "bg-yellow-400" : "bg-red-400"}`}
+                        style={{ width: `${(c.relevance_score * 100).toFixed(0)}%` }}
+                      />
                     </div>
                     <p className="text-xs text-body leading-relaxed line-clamp-4">
                       {c.citation_text}
@@ -1240,32 +1293,60 @@ function ExportTab({
     });
   };
 
+  const unansweredCount = totalQuestions - draftedCount;
+  const readinessPercent = totalQuestions > 0 ? Math.round((approvedCount / totalQuestions) * 100) : 0;
+
   return (
-    <div className="max-w-lg">
+    <div className="max-w-2xl">
       <h3 className="font-display text-lg font-semibold text-heading">Export Summary</h3>
 
-      <div className="mt-4 space-y-3">
-        <div className="flex items-center justify-between rounded-lg border border-border bg-white px-4 py-3">
-          <span className="text-sm text-body">Total Questions</span>
-          <span className="text-sm font-medium text-heading">{totalQuestions}</span>
+      {/* Readiness warning */}
+      {unansweredCount > 0 && (
+        <div className="mt-4 flex items-center gap-3 rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3">
+          <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600 shrink-0" />
+          <p className="text-sm text-yellow-800">
+            {unansweredCount} question{unansweredCount > 1 ? "s" : ""} still unanswered and {pendingCount} pending review.
+            Export will include blank entries for unanswered questions.
+          </p>
         </div>
-        <div className="flex items-center justify-between rounded-lg border border-border bg-white px-4 py-3">
-          <span className="text-sm text-body flex items-center gap-2">
-            <CheckCircleSolid className="h-4 w-4 text-green-600" />
-            Approved
+      )}
+
+      {/* Readiness bar */}
+      <div className="mt-4 rounded-lg border border-border bg-white p-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-heading">Export Readiness</span>
+          <span className={`text-sm font-semibold ${readinessPercent === 100 ? "text-green-600" : readinessPercent >= 50 ? "text-yellow-600" : "text-red-600"}`}>
+            {readinessPercent}%
           </span>
-          <span className="text-sm font-medium text-green-600">{approvedCount}</span>
         </div>
-        <div className="flex items-center justify-between rounded-lg border border-border bg-white px-4 py-3">
-          <span className="text-sm text-body flex items-center gap-2">
-            <ClockIcon className="h-4 w-4 text-yellow-600" />
-            Pending Review
-          </span>
-          <span className="text-sm font-medium text-yellow-600">{pendingCount}</span>
+        <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+          <div
+            className={`h-full transition-all rounded-full ${readinessPercent === 100 ? "bg-green-500" : readinessPercent >= 50 ? "bg-yellow-400" : "bg-red-400"}`}
+            style={{ width: `${readinessPercent}%` }}
+          />
         </div>
-        <div className="flex items-center justify-between rounded-lg border border-border bg-white px-4 py-3">
-          <span className="text-sm text-body">Drafted</span>
-          <span className="text-sm font-medium text-brand-blue">{draftedCount}</span>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="rounded-lg border border-border bg-white px-4 py-3 text-center">
+          <span className="text-lg font-semibold text-heading">{totalQuestions}</span>
+          <p className="text-xs text-muted mt-0.5">Total</p>
+        </div>
+        <div className="rounded-lg border border-border bg-white px-4 py-3 text-center">
+          <span className="text-lg font-semibold text-green-600">{approvedCount}</span>
+          <p className="text-xs text-muted mt-0.5 flex items-center justify-center gap-1">
+            <CheckCircleSolid className="h-3 w-3 text-green-600" /> Approved
+          </p>
+        </div>
+        <div className="rounded-lg border border-border bg-white px-4 py-3 text-center">
+          <span className="text-lg font-semibold text-yellow-600">{pendingCount}</span>
+          <p className="text-xs text-muted mt-0.5 flex items-center justify-center gap-1">
+            <ClockIcon className="h-3 w-3 text-yellow-600" /> Pending
+          </p>
+        </div>
+        <div className="rounded-lg border border-border bg-white px-4 py-3 text-center">
+          <span className="text-lg font-semibold text-brand-blue">{draftedCount}</span>
+          <p className="text-xs text-muted mt-0.5">Drafted</p>
         </div>
       </div>
 
