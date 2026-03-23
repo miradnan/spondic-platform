@@ -1,8 +1,12 @@
 package handlers
 
 import (
+	"encoding/json"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -32,6 +36,10 @@ type teamRow struct {
 type teamMemberRow struct {
 	TeamID    string    `json:"team_id"`
 	UserID    string    `json:"user_id"`
+	FirstName string    `json:"first_name,omitempty"`
+	LastName  string    `json:"last_name,omitempty"`
+	Email     string    `json:"email,omitempty"`
+	ImageURL  string    `json:"image_url,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -213,6 +221,11 @@ func (h *Handler) ListTeamMembers(c echo.Context) error {
 		members = append(members, m)
 	}
 
+	// Enrich members with Clerk user details
+	if clerkSecretKey != "" && len(members) > 0 {
+		enrichTeamMembers(members)
+	}
+
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"members": members,
 		"total":   len(members),
@@ -370,4 +383,91 @@ func (h *Handler) seedResponse(c echo.Context, orgID string, created bool) error
 		"teams":   teams,
 		"created": created,
 	})
+}
+
+// ── enrichTeamMembers — resolve Clerk user details for team members ──────────
+
+func enrichTeamMembers(members []teamMemberRow) {
+	if len(members) == 0 {
+		return
+	}
+
+	// Collect user IDs
+	ids := make([]string, len(members))
+	for i, m := range members {
+		ids[i] = m.UserID
+	}
+
+	// Batch fetch from Clerk: GET /v1/users?user_id=...&user_id=...
+	reqURL := "https://api.clerk.com/v1/users?" + strings.Join(func() []string {
+		params := make([]string, len(ids))
+		for i, id := range ids {
+			params[i] = "user_id=" + id
+		}
+		return params
+	}(), "&")
+
+	req, err := http.NewRequest("GET", reqURL, nil)
+	if err != nil {
+		log.Printf("enrichTeamMembers: failed to create request: %v", err)
+		return
+	}
+	req.Header.Set("Authorization", "Bearer "+clerkSecretKey)
+
+	resp, err := (&http.Client{Timeout: 5 * time.Second}).Do(req)
+	if err != nil {
+		log.Printf("enrichTeamMembers: Clerk API error: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		log.Printf("enrichTeamMembers: Clerk API returned %d: %s", resp.StatusCode, body)
+		return
+	}
+
+	var clerkUsers []struct {
+		ID             string `json:"id"`
+		FirstName      *string `json:"first_name"`
+		LastName       *string `json:"last_name"`
+		ImageURL       *string `json:"image_url"`
+		EmailAddresses []struct {
+			EmailAddress string `json:"email_address"`
+		} `json:"email_addresses"`
+		PrimaryEmailAddressID *string `json:"primary_email_address_id"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&clerkUsers); err != nil {
+		log.Printf("enrichTeamMembers: failed to decode Clerk response: %v", err)
+		return
+	}
+
+	// Build lookup map
+	userMap := make(map[string]int, len(clerkUsers))
+	for i, u := range clerkUsers {
+		userMap[u.ID] = i
+	}
+
+	// Enrich members
+	for i := range members {
+		idx, ok := userMap[members[i].UserID]
+		if !ok {
+			continue
+		}
+		u := clerkUsers[idx]
+		if u.FirstName != nil {
+			members[i].FirstName = *u.FirstName
+		}
+		if u.LastName != nil {
+			members[i].LastName = *u.LastName
+		}
+		if u.ImageURL != nil {
+			members[i].ImageURL = *u.ImageURL
+		}
+		if len(u.EmailAddresses) > 0 {
+			members[i].Email = u.EmailAddresses[0].EmailAddress
+		}
+	}
+
+	_ = fmt.Sprintf // ensure fmt is used
 }

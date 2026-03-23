@@ -518,12 +518,26 @@ function TeamMembersPanel({
           {members.map((m) => (
             <li
               key={m.user_id}
-              className="flex items-center justify-between rounded-lg bg-surface border border-border px-3 py-2 text-xs"
+              className="flex items-center gap-2.5 rounded-lg bg-surface border border-border px-3 py-2 text-xs"
             >
-              <span className="font-mono text-heading truncate">{m.user_id}</span>
+              {m.image_url ? (
+                <img src={m.image_url} alt="" className="h-6 w-6 rounded-full object-cover shrink-0" />
+              ) : (
+                <div className="h-6 w-6 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center text-[10px] font-semibold shrink-0">
+                  {(m.first_name?.[0] ?? "").toUpperCase()}{(m.last_name?.[0] ?? "").toUpperCase()}
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-heading truncate">
+                  {[m.first_name, m.last_name].filter(Boolean).join(" ") || m.user_id}
+                </p>
+                {m.email && (
+                  <p className="text-[10px] text-muted truncate">{m.email}</p>
+                )}
+              </div>
               <button
                 onClick={() => handleRemoveMember(m.user_id)}
-                className="ml-2 shrink-0 rounded p-1 text-muted hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 transition-colors"
+                className="shrink-0 rounded p-1 text-muted hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 transition-colors"
                 title="Remove member"
               >
                 <TrashIcon className="h-3.5 w-3.5" />

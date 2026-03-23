@@ -128,7 +128,7 @@ func (h *Handler) CreateCheckout(c echo.Context) error {
 	// Create checkout session
 	checkoutURL, err := stripeClient.CreateCheckoutSession(customerID, body.Plan, body.SuccessURL, body.CancelURL)
 	if err != nil {
-		log.Printf("error creating checkout session: %v", err)
+		log.Printf("error creating checkout session for org=%s plan=%s customer=%s: %v", orgID, body.Plan, customerID, err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to create checkout session"})
 	}
 
@@ -192,7 +192,7 @@ func (h *Handler) CreatePortalSession(c echo.Context) error {
 
 	portalURL, err := stripeClient.CreatePortalSession(customerID, body.ReturnURL)
 	if err != nil {
-		log.Printf("error creating portal session: %v", err)
+		log.Printf("error creating portal session for org=%s customer=%s: %v", orgID, customerID, err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to create portal session"})
 	}
 
