@@ -158,16 +158,34 @@ func (h *Handler) CreatePortalSession(c echo.Context) error {
 
 	ctx := context.Background()
 
-	// Get subscription for org
+	// Get or create subscription row with Stripe customer
 	var customerID string
 	err := h.DB.QueryRowContext(ctx,
 		`SELECT stripe_customer_id FROM subscriptions WHERE organization_id = $1`,
 		orgID,
 	).Scan(&customerID)
+
 	if err == sql.ErrNoRows {
-		return c.JSON(http.StatusNotFound, map[string]string{"error": "no subscription found"})
-	}
-	if err != nil {
+		// No subscription yet — create a Stripe customer and subscription row
+		userID := getUserID(c)
+		newCustomerID, createErr := stripeClient.CreateCustomer(orgID, userID+"@spondic.app")
+		if createErr != nil {
+			log.Printf("error creating Stripe customer for portal: %v", createErr)
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to create billing customer"})
+		}
+		customerID = newCustomerID
+
+		_, insertErr := h.DB.ExecContext(ctx,
+			`INSERT INTO subscriptions (organization_id, stripe_customer_id, plan, status)
+			 VALUES ($1, $2, 'free', 'active')
+			 ON CONFLICT (organization_id) DO NOTHING`,
+			orgID, customerID,
+		)
+		if insertErr != nil {
+			log.Printf("error inserting subscription for portal: %v", insertErr)
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+		}
+	} else if err != nil {
 		log.Printf("error querying subscription: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
 	}
