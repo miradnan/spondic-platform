@@ -59,7 +59,7 @@ function Section({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <section className="rounded-xl border border-border bg-white overflow-hidden">
+    <section className="rounded-xl border border-border bg-surface overflow-hidden">
       <div
         className={`flex items-start gap-3 p-6 pb-0 ${collapsible ? "cursor-pointer select-none" : ""}`}
         onClick={collapsible ? () => setOpen(!open) : undefined}
@@ -178,12 +178,12 @@ export function AdminOrganization() {
   if (!isLoaded || !organization) {
     return (
       <div className="w-full max-w-7xl mx-auto space-y-5">
-        <div className="h-6 w-48 animate-pulse rounded bg-gray-200" />
-        <div className="h-4 w-72 animate-pulse rounded bg-gray-200" />
-        <div className="rounded-xl border border-border bg-white p-6 space-y-4">
-          <div className="h-10 w-full animate-pulse rounded-lg bg-gray-200" />
-          <div className="h-10 w-full animate-pulse rounded-lg bg-gray-200" />
-          <div className="h-10 w-32 animate-pulse rounded-lg bg-gray-200" />
+        <div className="h-6 w-48 animate-pulse rounded bg-surface-inset" />
+        <div className="h-4 w-72 animate-pulse rounded bg-surface-inset" />
+        <div className="rounded-xl border border-border bg-surface p-6 space-y-4">
+          <div className="h-10 w-full animate-pulse rounded-lg bg-surface-inset" />
+          <div className="h-10 w-full animate-pulse rounded-lg bg-surface-inset" />
+          <div className="h-10 w-32 animate-pulse rounded-lg bg-surface-inset" />
         </div>
       </div>
     );
@@ -490,7 +490,7 @@ export function AdminOrganization() {
             <Label htmlFor="idp-certificate">IdP Certificate</Label>
             <textarea
               id="idp-certificate"
-              className="mt-1.5 flex w-full rounded-lg border border-border bg-white px-4 py-3 text-sm text-heading placeholder-muted transition-colors focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue disabled:cursor-not-allowed disabled:opacity-50 font-mono"
+              className="mt-1.5 flex w-full rounded-lg border border-border bg-surface px-4 py-3 text-sm text-heading placeholder-muted transition-colors focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue disabled:cursor-not-allowed disabled:opacity-50 font-mono"
               rows={3}
               value={idpCertificate}
               onChange={(e) => setIdpCertificate(e.target.value)}
@@ -551,7 +551,7 @@ export function AdminOrganization() {
             disabled={!ssoEnabled}
             onClick={() => setSsoEnforced(!ssoEnforced)}
             className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
-              ssoEnforced ? "bg-brand-blue" : "bg-gray-300"
+              ssoEnforced ? "bg-brand-blue" : "bg-surface-inset"
             }`}
           >
             <span
@@ -575,16 +575,16 @@ export function AdminOrganization() {
       </Section>
 
       {/* ── Danger Zone ──────────────────────────────────────────────── */}
-      <section className="rounded-xl border-2 border-red-200 bg-white overflow-hidden">
+      <section className="rounded-xl border-2 border-red-300 dark:border-red-900/60 bg-surface overflow-hidden">
         <div className="flex items-start gap-3 p-6">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-50">
-            <ExclamationTriangleIcon className="h-4.5 w-4.5 text-red-500" />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/30">
+            <ExclamationTriangleIcon className="h-4.5 w-4.5 text-red-500 dark:text-red-400" />
           </div>
           <div className="flex-1">
-            <h3 className="text-base font-semibold text-red-700">
+            <h3 className="text-base font-semibold text-red-700 dark:text-red-400">
               Danger Zone
             </h3>
-            <p className="text-sm text-red-600/80 mt-0.5">
+            <p className="text-sm text-red-600/80 dark:text-red-400/70 mt-0.5">
               Permanently delete this organization and all its data. This action
               cannot be undone.
             </p>
@@ -822,11 +822,11 @@ function BrandingSection() {
 
   if (isLoading) {
     return (
-      <section className="rounded-xl border border-border bg-white p-6">
-        <div className="h-5 w-32 animate-pulse rounded bg-gray-200 mb-4" />
+      <section className="rounded-xl border border-border bg-surface p-6">
+        <div className="h-5 w-32 animate-pulse rounded bg-surface-inset mb-4" />
         <div className="space-y-3">
-          <div className="h-10 w-full animate-pulse rounded-lg bg-gray-200" />
-          <div className="h-10 w-full animate-pulse rounded-lg bg-gray-200" />
+          <div className="h-10 w-full animate-pulse rounded-lg bg-surface-inset" />
+          <div className="h-10 w-full animate-pulse rounded-lg bg-surface-inset" />
         </div>
       </section>
     );
@@ -984,7 +984,7 @@ function BrandingSection() {
                 </Label>
                 <textarea
                   id="brand-email-footer"
-                  className="mt-1.5 flex w-full rounded-lg border border-border bg-white px-4 py-3 text-sm text-heading placeholder-muted transition-colors focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                  className="mt-1.5 flex w-full rounded-lg border border-border bg-surface px-4 py-3 text-sm text-heading placeholder-muted transition-colors focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue disabled:cursor-not-allowed disabled:opacity-50 resize-none"
                   rows={2}
                   value={emailFooter}
                   onChange={(e) => setEmailFooter(e.target.value)}

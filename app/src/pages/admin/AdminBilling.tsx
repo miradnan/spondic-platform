@@ -40,7 +40,7 @@ function UsageCard({
   const isNearLimit = pct > 80;
 
   return (
-    <div className="rounded-xl border border-border bg-white p-5">
+    <div className="rounded-xl border border-border bg-surface p-5">
       <div className="flex items-start justify-between mb-4">
         <div
           className={`flex h-10 w-10 items-center justify-center rounded-xl ${
@@ -88,7 +88,7 @@ function UsageCard({
           </span>
         )}
       </p>
-      <div className="mt-3 h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
+      <div className="mt-3 h-1.5 w-full rounded-full bg-surface-inset overflow-hidden">
         {!isUnlimited && (
           <div
             className={`h-full rounded-full transition-all ${barColor(pct)}`}
@@ -300,7 +300,7 @@ export function AdminBilling() {
       )}
 
       {/* ── Current Plan Card ───────────────────────────────────────────── */}
-      <section className="rounded-xl border border-border bg-white overflow-hidden">
+      <section className="rounded-xl border border-border bg-surface overflow-hidden">
         <div className="flex flex-col sm:flex-row">
           {/* Plan info */}
           <div className="flex-1 p-6">
@@ -476,7 +476,7 @@ export function AdminBilling() {
       {/* ── Change Plan (Stripe Checkout) ────────────────────────────────── */}
       <section
         id="change-plan"
-        className="rounded-xl border border-border bg-white p-6"
+        className="rounded-xl border border-border bg-surface p-6"
       >
         <h2 className="text-lg font-semibold text-heading mb-1">
           {hasActivePlan ? "Change Plan" : "Choose a Plan"}
@@ -499,7 +499,7 @@ export function AdminBilling() {
                 className={`flex flex-col rounded-xl border p-5 ${
                   isCurrent
                     ? "border-brand-blue ring-2 ring-brand-blue/20 bg-brand-blue/5"
-                    : "border-border bg-white"
+                    : "border-border bg-surface"
                 }`}
               >
                 <h3 className="text-lg font-semibold text-heading">
@@ -545,7 +545,7 @@ export function AdminBilling() {
                     disabled={checkout.isPending}
                     className={`w-full rounded-lg px-4 py-2.5 text-sm font-medium transition-colors disabled:opacity-50 ${
                       isDowngrade
-                        ? "border border-border text-body hover:bg-gray-50"
+                        ? "border border-border text-body hover:bg-cream-light"
                         : "bg-navy text-white hover:bg-navy/90"
                     }`}
                   >
@@ -568,7 +568,7 @@ export function AdminBilling() {
       </section>
 
       {/* ── Payment & Subscription Management (Stripe Portal) ────────────── */}
-      <section className="rounded-xl border border-border bg-white p-6">
+      <section className="rounded-xl border border-border bg-surface p-6">
         <h2 className="text-lg font-semibold text-heading mb-1">
           Payment & Subscription
         </h2>

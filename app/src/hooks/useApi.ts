@@ -195,6 +195,19 @@ export function useReindexDocument() {
   });
 }
 
+export function useDocumentPreviewUrl(id: string | undefined) {
+  const getToken = useToken();
+  return useQuery({
+    queryKey: ["documentPreviewUrl", id],
+    queryFn: async () => {
+      const token = await getToken();
+      return api.getDocumentPreviewUrl(token, id!);
+    },
+    enabled: !!id,
+    staleTime: 4 * 60 * 1000, // 4 min (URL valid for 5 min)
+  });
+}
+
 export function useSearchDocuments() {
   const getToken = useToken();
   return useMutation({

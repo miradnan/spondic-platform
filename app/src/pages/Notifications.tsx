@@ -102,7 +102,7 @@ export function Notifications() {
           onClick={() => setFilter("all")}
           className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
             filter === "all"
-              ? "bg-white text-heading shadow-sm"
+              ? "bg-surface text-heading shadow-sm"
               : "text-muted hover:text-body"
           }`}
         >
@@ -112,7 +112,7 @@ export function Notifications() {
           onClick={() => setFilter("unread")}
           className={`flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
             filter === "unread"
-              ? "bg-white text-heading shadow-sm"
+              ? "bg-surface text-heading shadow-sm"
               : "text-muted hover:text-body"
           }`}
         >
@@ -126,7 +126,7 @@ export function Notifications() {
       </div>
 
       {/* Notification list */}
-      <div className="rounded-xl border border-border bg-white overflow-hidden">
+      <div className="rounded-xl border border-border bg-surface overflow-hidden">
         {isLoading ? (
           <div className="px-6 py-12 text-center">
             <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-brand-blue border-t-transparent" />

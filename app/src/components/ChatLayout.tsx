@@ -53,8 +53,16 @@ export function ChatLayout() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape" && searchQuery) {
+                e.preventDefault();
+                e.stopPropagation();
+                setSearchQuery("");
+              }
+            }}
             placeholder="Search chats..."
-            className="flex-1 min-w-0 bg-transparent text-xs text-heading placeholder-muted focus:outline-none"
+            style={{ boxShadow: "none" }}
+            className="flex-1 min-w-0 bg-transparent text-xs text-heading placeholder-muted focus:outline-none focus:ring-0 focus:shadow-none"
           />
           {searchQuery && (
             <button

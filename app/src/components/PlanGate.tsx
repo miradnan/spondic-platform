@@ -43,7 +43,7 @@ function PlanSelectionScreen() {
             appearance={{
               elements: {
                 pricingTable: "gap-6",
-                pricingTableCard: "rounded-2xl border border-border shadow-sm hover:shadow-lg transition-shadow bg-white",
+                pricingTableCard: "rounded-2xl border border-border shadow-sm hover:shadow-lg transition-shadow bg-surface",
                 pricingTableCardActive: "border-brand-blue ring-2 ring-brand-blue/20",
                 pricingTableCardTitle: "text-lg font-semibold text-navy",
                 pricingTableCardPrice: "text-3xl font-bold text-navy",
@@ -63,7 +63,7 @@ function PlanSelectionScreen() {
         <div className="mt-8 text-center">
           <button
             onClick={handleStartFree}
-            className="rounded-xl border-2 border-navy/20 bg-white px-8 py-3 text-sm font-medium text-navy hover:border-navy/40 hover:bg-cream-light transition-colors"
+            className="rounded-xl border-2 border-navy/20 bg-surface px-8 py-3 text-sm font-medium text-navy hover:border-navy/40 hover:bg-cream-light transition-colors"
           >
             Start with Free Plan →
           </button>

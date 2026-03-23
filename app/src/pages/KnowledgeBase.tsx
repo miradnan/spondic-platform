@@ -13,6 +13,8 @@ import {
   BookOpenIcon,
   ExclamationTriangleIcon,
   DocumentTextIcon,
+  CheckCircleIcon,
+  ClockIcon,
 } from "@heroicons/react/24/outline";
 import {
   createColumnHelper,
@@ -29,6 +31,7 @@ import {
   useCreateTag,
   useAddTagToDocument,
   useRemoveTagFromDocument,
+  useDocumentPreviewUrl,
 } from "../hooks/useApi.ts";
 import { usePlanLimits } from "../hooks/usePlanLimits.ts";
 import { useWalkthrough, KNOWLEDGE_BASE_STEPS } from "../hooks/useWalkthrough.ts";
@@ -68,6 +71,142 @@ function formatElapsed(dateStr: string): string {
   if (diffHr < 24) return `${diffHr}h ago`;
   const diffDays = Math.floor(diffHr / 24);
   return `${diffDays}d ago`;
+}
+
+const PREVIEWABLE_EXTENSIONS = new Set([".pdf", ".txt", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"]);
+
+function DocumentPreviewPanel({
+  doc,
+  onClose,
+  onReindex,
+}: {
+  doc: DocType;
+  onClose: () => void;
+  onReindex: (doc: DocType) => void;
+}) {
+  const { data: previewData, isLoading: previewLoading, isError: previewError } = useDocumentPreviewUrl(doc.id);
+
+  const ext = doc.file_name
+    ? "." + doc.file_name.split(".").pop()?.toLowerCase()
+    : "";
+  const canEmbed = PREVIEWABLE_EXTENSIONS.has(ext);
+  const isImage = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"].includes(ext);
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      <div className="fixed right-0 top-0 h-full w-[600px] max-w-[90vw] bg-surface shadow-xl z-50 flex flex-col animate-in slide-in-from-right duration-200">
+        {/* Header */}
+        <div className="shrink-0 border-b border-border px-6 py-4">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 rounded-lg p-1.5 text-muted hover:text-heading hover:bg-cream-light transition-colors"
+            aria-label="Close preview"
+          >
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+
+          <div className="flex items-start gap-3 pr-8">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-blue/10">
+              <DocumentTextIcon className="h-5 w-5 text-brand-blue" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold text-heading leading-tight truncate">
+                {doc.title}
+              </h2>
+              <div className="mt-1 flex items-center gap-3 text-xs text-muted">
+                <StatusBadge status={doc.status} />
+                <span>{formatFileSize(doc.file_size_bytes)}</span>
+                <span>Uploaded {formatDate(doc.created_at)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Tags + actions row */}
+          <div className="mt-3 flex items-center justify-between gap-2">
+            <div className="flex flex-wrap gap-1.5">
+              {doc.tags && doc.tags.map((tag: Tag) => (
+                <span
+                  key={tag.id}
+                  className="inline-flex items-center rounded-full bg-cream px-2.5 py-0.5 text-xs text-body"
+                >
+                  {tag.name}
+                </span>
+              ))}
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onReindex(doc);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-body hover:bg-cream-light transition-colors shrink-0"
+            >
+              <ArrowPathIcon className="h-3.5 w-3.5" />
+              Re-index
+            </button>
+          </div>
+        </div>
+
+        {/* Document Preview Content */}
+        <div className="flex-1 min-h-0 overflow-hidden">
+          {previewLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="flex items-center gap-2 text-sm text-muted">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-brand-blue border-t-transparent" />
+                Loading preview...
+              </div>
+            </div>
+          ) : previewError || !previewData?.url ? (
+            <div className="flex flex-col items-center justify-center h-full px-6 text-center">
+              <DocumentTextIcon className="h-12 w-12 text-muted/30" />
+              <p className="mt-3 text-sm font-medium text-heading">Preview unavailable</p>
+              <p className="mt-1 text-xs text-muted">
+                {doc.status !== "indexed"
+                  ? "Document is still being processed. Preview will be available after indexing."
+                  : "Unable to load document preview. Try refreshing."}
+              </p>
+            </div>
+          ) : canEmbed ? (
+            isImage ? (
+              <div className="flex items-center justify-center h-full p-6 bg-white">
+                <img
+                  src={previewData.url}
+                  alt={doc.title ?? "Document preview"}
+                  className="max-w-full max-h-full object-contain rounded-lg shadow-sm"
+                />
+              </div>
+            ) : (
+              <iframe
+                src={previewData.url}
+                title={`Preview of ${doc.title}`}
+                className="w-full h-full border-0 bg-white"
+                sandbox="allow-same-origin"
+              />
+            )
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full px-6 text-center">
+              <DocumentTextIcon className="h-12 w-12 text-muted/30" />
+              <p className="mt-3 text-sm font-medium text-heading">
+                No inline preview for .{ext.replace(".", "")} files
+              </p>
+              <p className="mt-1 text-xs text-muted mb-4">
+                This file type cannot be previewed in the browser.
+              </p>
+              <a
+                href={previewData.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue-hover transition-colors"
+              >
+                <ArrowPathIcon className="h-4 w-4" />
+                Download to view
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
 }
 
 const columnHelper = createColumnHelper<DocType>();
@@ -489,75 +628,11 @@ export function KnowledgeBase() {
 
       {/* Document Preview Side Panel */}
       {previewDoc && (
-        <>
-          {/* Backdrop overlay */}
-          <div
-            className="fixed inset-0 bg-black/30 z-40"
-            onClick={() => setPreviewDoc(null)}
-          />
-          {/* Side panel */}
-          <div className="fixed right-0 top-0 h-full w-[400px] bg-white shadow-xl z-50 overflow-y-auto animate-in slide-in-from-right duration-200">
-            <div className="p-6">
-              {/* Close button */}
-              <button
-                onClick={() => setPreviewDoc(null)}
-                className="absolute top-4 right-4 rounded-lg p-1.5 text-muted hover:text-heading hover:bg-cream-light transition-colors"
-                aria-label="Close preview"
-              >
-                <XMarkIcon className="h-5 w-5" />
-              </button>
-
-              {/* Document title */}
-              <div className="flex items-start gap-3 pr-8">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-blue/10">
-                  <DocumentTextIcon className="h-5 w-5 text-brand-blue" />
-                </div>
-                <h2 className="text-lg font-semibold text-heading leading-tight">
-                  {previewDoc.title}
-                </h2>
-              </div>
-
-              {/* Status badge */}
-              <div className="mt-4">
-                <StatusBadge status={previewDoc.status} />
-              </div>
-
-              {/* File size + upload date */}
-              <div className="mt-4 flex items-center gap-4 text-sm text-muted">
-                <span>{formatFileSize(previewDoc.file_size_bytes)}</span>
-                <span>Uploaded {formatDate(previewDoc.created_at)}</span>
-              </div>
-
-              {/* Tags list */}
-              {previewDoc.tags && previewDoc.tags.length > 0 && (
-                <div className="mt-4">
-                  <h3 className="text-xs font-medium text-muted uppercase tracking-wider mb-2">Tags</h3>
-                  <div className="flex flex-wrap gap-1.5">
-                    {previewDoc.tags.map((tag: Tag) => (
-                      <span
-                        key={tag.id}
-                        className="inline-flex items-center rounded-full bg-cream px-2.5 py-1 text-xs text-body"
-                      >
-                        {tag.name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Content Preview section */}
-              <div className="mt-6 border-t border-border pt-4">
-                <h3 className="text-xs font-medium text-muted uppercase tracking-wider mb-3">Content Preview</h3>
-                <div className="rounded-lg border border-border bg-cream-light/50 p-6 text-center">
-                  <DocumentTextIcon className="mx-auto h-8 w-8 text-muted/50" />
-                  <p className="mt-2 text-sm text-muted">
-                    Document content preview will be available after indexing.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
+        <DocumentPreviewPanel
+          doc={previewDoc}
+          onClose={() => setPreviewDoc(null)}
+          onReindex={handleReindex}
+        />
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -671,8 +746,13 @@ export function KnowledgeBase() {
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter") handleSemanticSearch();
+              if (e.key === "Escape" && search) {
+                e.preventDefault();
+                e.stopPropagation();
+                setSearch("");
+              }
             }}
-            className="w-full rounded-lg border border-border bg-white py-2 pl-10 pr-4 text-sm text-heading placeholder-muted focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+            className="w-full rounded-lg border border-border bg-surface py-2 pl-10 pr-4 text-sm text-heading placeholder-muted focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
           />
         </div>
 
@@ -705,7 +785,7 @@ export function KnowledgeBase() {
               value={newTagName}
               onChange={(e) => setNewTagName(e.target.value)}
               placeholder="Tag name"
-              className="rounded-lg border border-border bg-white px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+              className="rounded-lg border border-border bg-surface px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleCreateTag();
               }}
@@ -791,7 +871,7 @@ export function KnowledgeBase() {
 
       {/* Floating bulk action bar */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 rounded-xl border border-border bg-white px-5 py-3 shadow-lg">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 rounded-xl border border-border bg-surface px-5 py-3 shadow-lg">
           <span className="text-sm font-medium text-heading">
             {selectedIds.size} selected
           </span>
@@ -810,7 +890,7 @@ export function KnowledgeBase() {
             {bulkTagOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setBulkTagOpen(false)} />
-                <div className="absolute bottom-full left-0 mb-2 w-48 rounded-lg border border-border bg-white shadow-lg z-20 max-h-48 overflow-y-auto">
+                <div className="absolute bottom-full left-0 mb-2 w-48 rounded-lg border border-border bg-surface shadow-lg z-20 max-h-48 overflow-y-auto">
                   {(tags ?? []).length === 0 ? (
                     <div className="py-3 px-4 text-sm text-muted text-center">No tags available</div>
                   ) : (

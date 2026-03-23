@@ -128,7 +128,7 @@ export function AdminIntegrations() {
         </div>
 
         {hasCRM ? (
-        <div className="rounded-lg border border-border bg-white shadow-sm">
+        <div className="rounded-lg border border-border bg-surface shadow-sm">
           <div className="p-4 border-b border-border">
             <p className="text-sm text-muted">
               Link your CRM to automatically sync RFP projects with deals and opportunities.
@@ -142,8 +142,8 @@ export function AdminIntegrations() {
           <div className="p-4 space-y-4">
             {isLoading ? (
               <div className="space-y-3">
-                <div className="animate-pulse h-20 rounded-lg bg-gray-100" />
-                <div className="animate-pulse h-20 rounded-lg bg-gray-100" />
+                <div className="animate-pulse h-20 rounded-lg bg-surface-inset" />
+                <div className="animate-pulse h-20 rounded-lg bg-surface-inset" />
               </div>
             ) : (
               CRM_PLATFORMS.map((platform) => {
@@ -177,7 +177,7 @@ export function AdminIntegrations() {
                       {conn ? (
                         <button
                           onClick={() => setDisconnectTarget(conn)}
-                          className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                          className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-surface px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
                         >
                           <XMarkIcon className="h-4 w-4" />
                           Disconnect
@@ -205,7 +205,7 @@ export function AdminIntegrations() {
 
           {/* Active Connections Summary */}
           {connections.filter((c) => c.is_active).length > 0 && (
-            <div className="border-t border-border p-4 bg-gray-50 rounded-b-lg">
+            <div className="border-t border-border p-4 bg-surface-inset rounded-b-lg">
               <h3 className="text-sm font-medium text-heading mb-2">Active Connections</h3>
               <div className="space-y-2">
                 {connections
@@ -229,7 +229,7 @@ export function AdminIntegrations() {
           )}
         </div>
         ) : (
-        <div className="rounded-lg border border-border bg-white shadow-sm p-6">
+        <div className="rounded-lg border border-border bg-surface shadow-sm p-6">
           <div className="flex items-start gap-3">
             <LockClosedIcon className="h-5 w-5 text-muted mt-0.5 shrink-0" />
             <div>
@@ -338,7 +338,7 @@ function WebhookCard({
   const events = (webhook.notify_on ?? []) as WebhookEventType[];
 
   return (
-    <div className="rounded-xl border border-border bg-white p-5 flex flex-col gap-4">
+    <div className="rounded-xl border border-border bg-surface p-5 flex flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className={`flex h-10 w-10 items-center justify-center rounded-lg text-white ${info.color}`}>
@@ -362,7 +362,7 @@ function WebhookCard({
           aria-checked={webhook.is_active}
           onClick={() => onToggle(webhook.id, !webhook.is_active)}
           className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-brand-blue focus:ring-offset-2 ${
-            webhook.is_active ? "bg-brand-blue" : "bg-gray-200"
+            webhook.is_active ? "bg-brand-blue" : "bg-surface-inset"
           }`}
         >
           <span
@@ -444,7 +444,7 @@ function AddWebhookForm({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-xl border border-border bg-white p-6 space-y-5">
+    <form onSubmit={handleSubmit} className="rounded-xl border border-border bg-surface p-6 space-y-5">
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold text-heading">Add Webhook</h3>
         <button type="button" onClick={onClose} className="text-sm text-muted hover:text-heading">Cancel</button>
@@ -470,7 +470,7 @@ function AddWebhookForm({ onClose }: { onClose: () => void }) {
                 className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all ${
                   platform === p
                     ? "border-brand-blue ring-1 ring-brand-blue/20 bg-brand-blue/5 text-brand-blue"
-                    : "border-border text-heading hover:border-gray-300"
+                    : "border-border text-heading hover:border-border"
                 }`}
               >
                 <WebhookPlatformIcon platform={p} className="h-4 w-4" />
@@ -489,7 +489,7 @@ function AddWebhookForm({ onClose }: { onClose: () => void }) {
           value={webhookUrl}
           onChange={(e) => setWebhookUrl(e.target.value)}
           placeholder={platform === "slack" ? "https://hooks.slack.com/services/..." : "https://outlook.office.com/webhook/..."}
-          className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-heading placeholder:text-muted focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+          className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-heading placeholder:text-muted focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
           required
         />
       </div>
@@ -504,7 +504,7 @@ function AddWebhookForm({ onClose }: { onClose: () => void }) {
           value={channelName}
           onChange={(e) => setChannelName(e.target.value)}
           placeholder="#rfp-alerts"
-          className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-heading placeholder:text-muted focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+          className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-heading placeholder:text-muted focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
         />
       </div>
 
@@ -517,7 +517,7 @@ function AddWebhookForm({ onClose }: { onClose: () => void }) {
                 type="checkbox"
                 checked={selectedEvents.includes(opt.value)}
                 onChange={() => toggleEvent(opt.value)}
-                className="h-4 w-4 rounded border-gray-300 text-brand-blue focus:ring-brand-blue"
+                className="h-4 w-4 rounded border-border text-brand-blue focus:ring-brand-blue"
               />
               <span className="text-heading">{opt.label}</span>
             </label>
@@ -598,7 +598,7 @@ function WebhookSection() {
         )}
       </div>
 
-      <div className="rounded-lg border border-border bg-white shadow-sm">
+      <div className="rounded-lg border border-border bg-surface shadow-sm">
         <div className="p-4 border-b border-border">
           <p className="text-sm text-muted">
             Send real-time notifications to your Slack or Microsoft Teams channels when RFPs are parsed,
@@ -621,11 +621,11 @@ function WebhookSection() {
 
           {isLoading ? (
             <div className="space-y-3">
-              <div className="animate-pulse h-32 rounded-lg bg-gray-100" />
+              <div className="animate-pulse h-32 rounded-lg bg-surface-inset" />
             </div>
           ) : webhooks.length === 0 && !showForm ? (
             <div className="py-8 text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-surface-inset">
                 <PaperAirplaneIcon className="h-6 w-6 text-muted" />
               </div>
               <h3 className="mt-3 text-sm font-medium text-heading">No webhooks configured</h3>

@@ -280,11 +280,21 @@ function OrgNav({ pathname, onLinkClick }: { pathname: string; onLinkClick?: () 
     { to: "/admin/teams", label: t("nav.teams"), icon: UserGroupIcon },
     { to: "/admin/billing", label: t("nav.billing"), icon: CreditCardIcon },
     { to: "/admin/integrations", label: t("nav.integrations"), icon: LinkIcon },
-    { to: "/admin/organization", label: t("nav.settings"), icon: Cog6ToothIcon },
+    { to: "/admin/organization", label: "Org Settings", icon: Cog6ToothIcon },
   ];
 
   return (
-    <div className="mt-2 space-y-1">
+    <div className="mt-4">
+      {/* Section label */}
+      <div className="flex items-center gap-2 px-3 mb-2">
+        <span className="text-[10px] font-semibold uppercase tracking-widest text-white/40">Admin</span>
+        <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide bg-brand-gold/20 text-brand-gold">
+          Admin
+        </span>
+        <div className="flex-1 h-px bg-white/10" />
+      </div>
+
+      {/* Toggle button */}
       <button
         onClick={() => setExpanded(!expanded)}
         className={`${navLink} w-full justify-between ${isOrgActive ? navLinkActive : ""}`}
@@ -293,25 +303,35 @@ function OrgNav({ pathname, onLinkClick }: { pathname: string; onLinkClick?: () 
           <BuildingOffice2Icon className="h-5 w-5 shrink-0" />
           {t("nav.organization")}
         </span>
-        <ChevronDownIcon
-          className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-0" : "-rotate-90"}`}
+        <ChevronRightIcon
+          className={`h-4 w-4 transition-transform duration-200 ${expanded ? "rotate-90" : "rotate-0"}`}
         />
       </button>
-      {expanded && (
-        <div className="space-y-0.5 mt-1">
+
+      {/* Expandable sub-items */}
+      <div
+        className={`overflow-hidden transition-all duration-200 ease-in-out ${
+          expanded ? "max-h-[300px] opacity-100" : "max-h-0 opacity-0"
+        }`}
+      >
+        <div className="mt-1 ml-3 space-y-0.5 border-l border-white/10 pl-0">
           {orgLinks.map((item) => (
             <Link
               key={item.to}
               to={item.to}
               onClick={onLinkClick}
-              className={`${navLinkNested} ${pathname === item.to ? "text-white bg-navy-light" : ""}`}
+              className={`flex items-center gap-3 rounded-r-lg px-3 py-1.5 text-sm transition-colors ${
+                pathname === item.to
+                  ? "text-white bg-navy-light border-l-2 border-brand-gold -ml-px"
+                  : "text-white/50 hover:bg-navy-light hover:text-white/80"
+              }`}
             >
               <item.icon className="h-4 w-4 shrink-0" />
               {item.label}
             </Link>
           ))}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -539,7 +559,6 @@ function SidebarContent({
   const insightsItems = [
     { to: "/analytics", label: t("nav.analytics"), icon: ChartBarIcon, match: (p: string) => p === "/analytics" },
     { to: "/admin/audit", label: t("nav.auditLog"), icon: ClipboardDocumentListIcon, match: (p: string) => p === "/admin/audit" },
-    { to: "/settings", label: "Settings", icon: Cog6ToothIcon, match: (p: string) => p === "/settings" },
   ];
 
   const renderNavGroup = (
@@ -601,6 +620,18 @@ function SidebarContent({
           <OrgNav pathname={location.pathname} onLinkClick={onLinkClick} />
         )}
       </nav>
+
+      {/* Settings — pinned above plan badge */}
+      <div className="px-4 pb-2">
+        <Link
+          to="/settings"
+          onClick={onLinkClick}
+          className={`${navLink} ${location.pathname === "/settings" ? navLinkActive : ""}`}
+        >
+          <Cog6ToothIcon className="h-5 w-5 shrink-0" />
+          {t("nav.settings")}
+        </Link>
+      </div>
 
       {/* Plan badge at bottom of sidebar */}
       <PlanBadge />

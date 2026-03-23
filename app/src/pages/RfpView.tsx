@@ -107,7 +107,7 @@ const STATUS_DOTS: Record<string, string> = {
 };
 
 function SkeletonBlock({ className }: { className?: string }) {
-  return <div className={`animate-pulse rounded bg-gray-200 ${className ?? ""}`} />;
+  return <div className={`animate-pulse rounded bg-surface-inset ${className ?? ""}`} />;
 }
 
 type Tab = "questions" | "review" | "export";
@@ -222,12 +222,12 @@ export function RfpView() {
       </div>
 
       {/* Progress Pipeline */}
-      <div className="mt-4 rounded-lg border border-border bg-white p-4 shadow-sm">
+      <div className="mt-4 rounded-lg border border-border bg-surface p-4 shadow-sm">
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xs font-medium text-muted uppercase tracking-wide">{t("rfp.view.progressPipeline")}</span>
           <span className="text-xs text-muted">{t("rfp.view.questionsTotal", { count: totalQuestions })}</span>
         </div>
-        <div className="flex items-center gap-1 h-3 rounded-full overflow-hidden bg-gray-100">
+        <div className="flex items-center gap-1 h-3 rounded-full overflow-hidden bg-surface-inset">
           {approvedCount > 0 && (
             <div
               className="h-full bg-green-500 transition-all"
@@ -450,7 +450,7 @@ function QuestionsTab({
             type="checkbox"
             checked={selectedIds.size === questions.length && questions.length > 0}
             onChange={toggleSelectAll}
-            className="h-4 w-4 rounded border-gray-300 text-brand-blue focus:ring-brand-blue cursor-pointer"
+            className="h-4 w-4 rounded border-border text-brand-blue focus:ring-brand-blue cursor-pointer"
           />
         ),
         cell: (info) => (
@@ -459,7 +459,7 @@ function QuestionsTab({
             checked={selectedIds.has(info.row.original.id)}
             onClick={(e) => toggleSelect(info.row.original.id, e)}
             onChange={() => {}}
-            className="h-4 w-4 rounded border-gray-300 text-brand-blue focus:ring-brand-blue cursor-pointer"
+            className="h-4 w-4 rounded border-border text-brand-blue focus:ring-brand-blue cursor-pointer"
           />
         ),
       }),
@@ -602,7 +602,7 @@ function QuestionsTab({
 
       {/* Floating batch action bar */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl border border-border bg-white px-5 py-3 shadow-lg">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl border border-border bg-surface px-5 py-3 shadow-lg">
           <span className="text-sm font-medium text-heading">{selectedIds.size} selected</span>
           <button
             onClick={handleBatchApprove}
@@ -951,7 +951,7 @@ function ReviewTab({
       <div className="flex gap-4">
         {/* Question List Sidebar */}
         {showQuestionList && (
-          <div className="w-64 shrink-0 rounded-xl border border-border bg-white overflow-hidden flex flex-col">
+          <div className="w-64 shrink-0 rounded-xl border border-border bg-surface overflow-hidden flex flex-col">
             <div className="flex items-center justify-between p-3 border-b border-border">
               <span className="text-xs font-medium text-muted uppercase tracking-wide">Questions</span>
               <button
@@ -966,6 +966,13 @@ function ReviewTab({
                 type="text"
                 value={sidebarSearch}
                 onChange={(e) => setSidebarSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape" && sidebarSearch) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSidebarSearch("");
+                  }
+                }}
                 placeholder="Search questions..."
                 className="w-full rounded-md border border-border bg-cream-light/50 px-2.5 py-1.5 text-xs text-heading placeholder-muted focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
               />
@@ -1017,7 +1024,7 @@ function ReviewTab({
         {/* Three-column layout */}
         <div className="flex-1 min-w-0 grid gap-4 lg:grid-cols-[1fr_2fr] xl:grid-cols-[1fr_2fr_1fr]">
           {/* LEFT: Question */}
-          <div className="rounded-xl border border-border bg-white p-5 shadow-sm">
+          <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
             <h3 className="text-xs font-medium text-muted uppercase tracking-wide mb-3">{t("rfp.view.question")}</h3>
             {question && (
               <>
@@ -1041,7 +1048,7 @@ function ReviewTab({
           </div>
 
           {/* CENTER: Answer Editor */}
-          <div className="rounded-xl border border-border bg-white p-5 shadow-sm">
+          <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-medium text-muted uppercase tracking-wide">{t("rfp.view.aiDraftAnswer")}</h3>
               <div className="flex items-center gap-2 text-xs text-muted">
@@ -1190,7 +1197,7 @@ function ReviewTab({
                     ))}
                   </ul>
                 )}
-                <div className="rounded-lg border border-border bg-white focus-within:border-brand-blue focus-within:ring-1 focus-within:ring-brand-blue transition-colors">
+                <div className="rounded-lg border border-border bg-surface focus-within:border-brand-blue focus-within:ring-1 focus-within:ring-brand-blue transition-colors">
                   <textarea
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
@@ -1228,7 +1235,7 @@ function ReviewTab({
 
           {/* RIGHT: Citations + History */}
           <div className="space-y-4">
-            <div className="rounded-xl border border-border bg-white p-5 shadow-sm">
+            <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
               <h3 className="text-xs font-medium text-muted uppercase tracking-wide mb-3">{t("rfp.view.sourceCitations")}</h3>
               {answer?.citations && answer.citations.length > 0 ? (
                 <ul className="space-y-3">
@@ -1251,7 +1258,7 @@ function ReviewTab({
                           {(c.relevance_score * 100).toFixed(0)}%
                         </span>
                       </div>
-                      <div className="h-1 rounded-full bg-gray-200 overflow-hidden mb-2">
+                      <div className="h-1 rounded-full bg-surface-inset overflow-hidden mb-2">
                         <div
                           className={`h-full rounded-full transition-all ${c.relevance_score >= 0.8 ? "bg-green-500" : c.relevance_score >= 0.5 ? "bg-yellow-400" : "bg-red-400"}`}
                           style={{ width: `${(c.relevance_score * 100).toFixed(0)}%` }}
@@ -1302,7 +1309,7 @@ function AnswerHistoryPanel({
   const history = data?.history ?? [];
 
   return (
-    <div className="rounded-xl border border-border bg-white p-5 shadow-sm">
+    <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
       <h3 className="text-xs font-medium text-muted uppercase tracking-wide mb-3">
         History
       </h3>
@@ -1332,7 +1339,7 @@ function AnswerHistoryPanel({
               return (
                 <li key={entry.id} className="relative flex items-start gap-3 pl-6">
                   {/* Dot */}
-                  <div className={`absolute left-0 top-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-white border border-border`}>
+                  <div className={`absolute left-0 top-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-surface border border-border`}>
                     <Icon className={`h-3 w-3 ${config.color}`} />
                   </div>
 
@@ -1450,7 +1457,7 @@ function ApprovalPipeline({
                   ) : status === "skipped" ? (
                     <ArrowPathIcon className="h-4 w-4 text-amber-600" />
                   ) : (
-                    <ClockIcon className="h-4 w-4 text-gray-400" />
+                    <ClockIcon className="h-4 w-4 text-muted" />
                   )}
                 </div>
 
@@ -1511,7 +1518,7 @@ function ApprovalPipeline({
             onChange={(e) => setStageComment(e.target.value)}
             placeholder="Optional comment..."
             rows={2}
-            className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-heading placeholder-muted focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue resize-none mb-2"
+            className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-heading placeholder-muted focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue resize-none mb-2"
           />
           <div className="flex gap-2">
             <button
@@ -1585,14 +1592,14 @@ function ExportTab({
       )}
 
       {/* Readiness bar */}
-      <div className="mt-4 rounded-lg border border-border bg-white p-4">
+      <div className="mt-4 rounded-lg border border-border bg-surface p-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium text-heading">Export Readiness</span>
           <span className={`text-sm font-semibold ${readinessPercent === 100 ? "text-green-600" : readinessPercent >= 50 ? "text-yellow-600" : "text-red-600"}`}>
             {readinessPercent}%
           </span>
         </div>
-        <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+        <div className="h-2 rounded-full bg-surface-inset overflow-hidden">
           <div
             className={`h-full transition-all rounded-full ${readinessPercent === 100 ? "bg-green-500" : readinessPercent >= 50 ? "bg-yellow-400" : "bg-red-400"}`}
             style={{ width: `${readinessPercent}%` }}
@@ -1601,23 +1608,23 @@ function ExportTab({
       </div>
 
       <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded-lg border border-border bg-white px-4 py-3 text-center">
+        <div className="rounded-lg border border-border bg-surface px-4 py-3 text-center">
           <span className="text-lg font-semibold text-heading">{totalQuestions}</span>
           <p className="text-xs text-muted mt-0.5">Total</p>
         </div>
-        <div className="rounded-lg border border-border bg-white px-4 py-3 text-center">
+        <div className="rounded-lg border border-border bg-surface px-4 py-3 text-center">
           <span className="text-lg font-semibold text-green-600">{approvedCount}</span>
           <p className="text-xs text-muted mt-0.5 flex items-center justify-center gap-1">
             <CheckCircleSolid className="h-3 w-3 text-green-600" /> Approved
           </p>
         </div>
-        <div className="rounded-lg border border-border bg-white px-4 py-3 text-center">
+        <div className="rounded-lg border border-border bg-surface px-4 py-3 text-center">
           <span className="text-lg font-semibold text-yellow-600">{pendingCount}</span>
           <p className="text-xs text-muted mt-0.5 flex items-center justify-center gap-1">
             <ClockIcon className="h-3 w-3 text-yellow-600" /> Pending
           </p>
         </div>
-        <div className="rounded-lg border border-border bg-white px-4 py-3 text-center">
+        <div className="rounded-lg border border-border bg-surface px-4 py-3 text-center">
           <span className="text-lg font-semibold text-brand-blue">{draftedCount}</span>
           <p className="text-xs text-muted mt-0.5">Drafted</p>
         </div>
@@ -1635,7 +1642,7 @@ function ExportTab({
         <button
           onClick={() => handleExport("pdf")}
           disabled={exportPdf.isPending}
-          className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-body hover:bg-cream-light transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-body hover:bg-cream-light transition-colors disabled:opacity-50"
         >
           <DocumentArrowDownIcon className="h-4 w-4" />
           {exportPdf.isPending ? "Exporting..." : "Export as PDF"}

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -268,6 +269,54 @@ func (h *Handler) GetDocument(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, d)
+}
+
+// DocumentPreviewURL handles GET /api/documents/:id/preview-url
+// Returns a presigned S3 URL valid for 5 minutes.
+func (h *Handler) DocumentPreviewURL(c echo.Context) error {
+	orgID := getOrgID(c)
+	docID := c.Param("id")
+
+	var fileName sql.NullString
+	var status string
+	err := h.DB.QueryRow(
+		`SELECT file_name, status FROM documents
+		 WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+		docID, orgID,
+	).Scan(&fileName, &status)
+	if err == sql.ErrNoRows {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "document not found"})
+	}
+	if err != nil {
+		log.Printf("error getting document for preview: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+	}
+
+	if h.S3 == nil {
+		return c.JSON(http.StatusServiceUnavailable, map[string]string{"error": "file storage not configured"})
+	}
+
+	// Reconstruct S3 key: {org_id}/documents/{doc_id}{ext}
+	ext := ".bin"
+	if fileName.Valid && fileName.String != "" {
+		e := strings.ToLower(filepath.Ext(fileName.String))
+		if e != "" {
+			ext = e
+		}
+	}
+	s3Key := orgID + "/documents/" + docID + ext
+
+	url, err := h.S3.PresignedURL(c.Request().Context(), s3Key, 5*time.Minute)
+	if err != nil {
+		log.Printf("error generating presigned URL: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to generate preview URL"})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"url":       url,
+		"file_name": fileName.String,
+		"ext":       ext,
+	})
 }
 
 // DeleteDocument handles DELETE /api/documents/:id (soft delete)

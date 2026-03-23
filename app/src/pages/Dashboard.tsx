@@ -455,7 +455,7 @@ export function Dashboard() {
         cell: (info) => (
           <input
             type="checkbox"
-            className="h-4 w-4 rounded border-gray-300 text-brand-blue focus:ring-brand-blue cursor-pointer"
+            className="h-4 w-4 rounded border-border text-brand-blue focus:ring-brand-blue cursor-pointer"
             checked={selectedIds.has(info.row.original.id)}
             onChange={(e) => {
               e.stopPropagation();
@@ -594,6 +594,13 @@ export function Dashboard() {
             placeholder={t("dashboard.searchProjects")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape" && search) {
+                e.preventDefault();
+                e.stopPropagation();
+                setSearch("");
+              }
+            }}
             className="w-full rounded-lg border border-border bg-surface py-2 pl-10 pr-4 text-sm text-heading placeholder-muted focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
           />
         </div>
@@ -750,7 +757,7 @@ export function Dashboard() {
                   <div className="absolute top-3 left-3 z-10">
                     <input
                       type="checkbox"
-                      className="h-4 w-4 rounded border-gray-300 text-brand-blue focus:ring-brand-blue cursor-pointer"
+                      className="h-4 w-4 rounded border-border text-brand-blue focus:ring-brand-blue cursor-pointer"
                       checked={isSelected}
                       onChange={() => toggleSelect(project.id)}
                     />

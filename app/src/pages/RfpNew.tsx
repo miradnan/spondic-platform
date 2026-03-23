@@ -343,7 +343,7 @@ export function RfpNew() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Section 1: Project Details */}
-        <section className="rounded-xl border border-border bg-white p-6 shadow-sm">
+        <section className="rounded-xl border border-border bg-surface p-6 shadow-sm">
           <div className="flex items-center gap-2.5 mb-5">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-blue text-xs font-semibold text-white">
               1
@@ -406,7 +406,7 @@ export function RfpNew() {
                 rows={2}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm text-heading placeholder-muted focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue resize-none transition-colors"
+                className="mt-1.5 w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-sm text-heading placeholder-muted focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue resize-none transition-colors"
                 placeholder={t("rfp.new.descriptionPlaceholder")}
               />
             </div>
@@ -414,7 +414,7 @@ export function RfpNew() {
         </section>
 
         {/* Section 2: RFP Content */}
-        <section className="rounded-xl border border-border bg-white p-6 shadow-sm">
+        <section className="rounded-xl border border-border bg-surface p-6 shadow-sm">
           <div className="flex items-center gap-2.5 mb-1">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-blue text-xs font-semibold text-white">
               2
@@ -492,7 +492,7 @@ export function RfpNew() {
                     className="rounded-lg border border-border bg-cream-lighter group/file"
                   >
                     <div className="flex items-center gap-3 px-4 py-2.5">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white border border-border">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface border border-border">
                         {getFileIcon(file.name)}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -591,7 +591,7 @@ export function RfpNew() {
               rows={8}
               value={paste}
               onChange={(e) => setPaste(e.target.value)}
-              className="w-full rounded-lg border border-border bg-white px-4 py-3 text-sm text-heading placeholder-muted focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue resize-y transition-colors font-mono leading-relaxed"
+              className="w-full rounded-lg border border-border bg-surface px-4 py-3 text-sm text-heading placeholder-muted focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue resize-y transition-colors font-mono leading-relaxed"
               placeholder={t("rfp.new.pastePlaceholder")}
             />
             {/* #14: Paste text preview panel */}
@@ -607,7 +607,7 @@ export function RfpNew() {
         {/* Upload Overlay */}
         {isSubmitting && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-            <div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-8 shadow-2xl text-center">
+            <div className="mx-4 w-full max-w-sm rounded-2xl bg-surface p-8 shadow-2xl text-center">
               {/* Animated spinner */}
               <div className="mx-auto mb-5 relative h-16 w-16">
                 <div className="absolute inset-0 rounded-full border-4 border-brand-blue/15" />
@@ -650,7 +650,7 @@ export function RfpNew() {
                   <div className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
                     submittingStep === "upload"
                       ? "bg-brand-blue text-white animate-pulse"
-                      : "bg-gray-200 text-muted"
+                      : "bg-surface-inset text-muted"
                   }`}>
                     2
                   </div>
@@ -682,7 +682,7 @@ export function RfpNew() {
         )}
 
         {/* #17: Simplified Sticky Action Bar — just Cancel + Submit */}
-        <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-white/80 backdrop-blur-lg lg:left-56">
+        <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-surface/80 backdrop-blur-lg lg:left-56">
           <div className="w-full max-w-7xl mx-auto flex items-center justify-end px-4 lg:px-6 py-3 gap-3">
             <Button
               type="button"

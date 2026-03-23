@@ -67,17 +67,17 @@ export function ProjectCRMLinkPanel({ projectId }: ProjectCRMLinkProps) {
 
   if (linkLoading) {
     return (
-      <div className="rounded-lg border border-border bg-white p-3 shadow-sm">
-        <div className="animate-pulse h-5 w-48 rounded bg-gray-200" />
+      <div className="rounded-lg border border-border bg-surface p-3 shadow-sm">
+        <div className="animate-pulse h-5 w-48 rounded bg-surface-inset" />
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg border border-border bg-white shadow-sm">
+    <div className="rounded-lg border border-border bg-surface shadow-sm">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center justify-between p-3 text-left hover:bg-gray-50 transition-colors rounded-lg"
+        className="flex w-full items-center justify-between p-3 text-left hover:bg-cream-light transition-colors rounded-lg"
       >
         <div className="flex items-center gap-2">
           <LinkIcon className="h-4 w-4 text-brand-blue" />
@@ -102,7 +102,7 @@ export function ProjectCRMLinkPanel({ projectId }: ProjectCRMLinkProps) {
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs font-medium uppercase text-muted">
+                    <span className="rounded bg-surface-inset px-1.5 py-0.5 text-xs font-medium uppercase text-muted">
                       {link.platform}
                     </span>
                     <span className="text-sm font-medium text-heading">
@@ -232,7 +232,7 @@ export function ProjectCRMLinkPanel({ projectId }: ProjectCRMLinkProps) {
                 </button>
                 <button
                   onClick={() => setShowForm(false)}
-                  className="rounded border border-border px-3 py-1.5 text-xs text-muted hover:bg-gray-50 transition-colors"
+                  className="rounded border border-border px-3 py-1.5 text-xs text-muted hover:bg-cream-light transition-colors"
                 >
                   Cancel
                 </button>

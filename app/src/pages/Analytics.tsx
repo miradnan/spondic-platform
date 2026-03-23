@@ -167,7 +167,7 @@ function StatCard({
   iconColor: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-white p-5">
+    <div className="rounded-xl border border-border bg-surface p-5">
       <div className="flex items-center justify-between mb-3">
         <div
           className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconBg}`}
@@ -183,10 +183,10 @@ function StatCard({
 
 function SkeletonCard() {
   return (
-    <div className="rounded-xl border border-border bg-white p-5 animate-pulse">
-      <div className="h-10 w-10 rounded-xl bg-gray-200 mb-3" />
-      <div className="h-7 w-16 rounded bg-gray-200" />
-      <div className="mt-1.5 h-4 w-24 rounded bg-gray-200" />
+    <div className="rounded-xl border border-border bg-surface p-5 animate-pulse">
+      <div className="h-10 w-10 rounded-xl bg-surface-inset mb-3" />
+      <div className="h-7 w-16 rounded bg-surface-inset" />
+      <div className="mt-1.5 h-4 w-24 rounded bg-surface-inset" />
     </div>
   );
 }
@@ -302,7 +302,7 @@ function WinRateVisual({ won, lost }: { won: number; lost: number }) {
 
   return (
     <div>
-      <div className="flex h-3 rounded-full overflow-hidden bg-gray-100">
+      <div className="flex h-3 rounded-full overflow-hidden bg-surface-inset">
         {wonPct > 0 && (
           <div
             className="bg-green-500 transition-all duration-500"
@@ -353,7 +353,7 @@ function LossReasons({ reasons }: { reasons: Record<string, number> }) {
             </span>
             <span className="text-xs text-muted tabular-nums">{count}</span>
           </div>
-          <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+          <div className="h-1.5 rounded-full bg-surface-inset overflow-hidden">
             <div
               className="h-full rounded-full bg-red-400 transition-all duration-500"
               style={{ width: `${(count / maxCount) * 100}%` }}
@@ -468,7 +468,7 @@ function ChartTooltipContent({
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border border-border bg-white px-3 py-2 shadow-lg text-xs">
+    <div className="rounded-lg border border-border bg-surface px-3 py-2 shadow-lg text-xs">
       <p className="font-medium text-heading mb-1">{label}</p>
       {payload.map((entry) => (
         <div key={entry.name} className="flex items-center gap-2">
@@ -596,7 +596,7 @@ export function Analytics() {
         <div className="flex flex-col items-end gap-2">
           <div className="flex items-center gap-3">
             {/* Date Preset Tabs */}
-            <div className="flex items-center rounded-lg border border-border bg-white p-0.5">
+            <div className="flex items-center rounded-lg border border-border bg-surface p-0.5">
               {DATE_PRESETS.map((preset) => (
                 <button
                   key={preset.value}
@@ -630,14 +630,14 @@ export function Analytics() {
                 type="date"
                 value={customFrom}
                 onChange={(e) => setCustomFrom(e.target.value)}
-                className="rounded-md border border-border bg-white px-2.5 py-1.5 text-xs text-heading focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:border-brand-blue"
+                className="rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs text-heading focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:border-brand-blue"
               />
               <label className="text-xs text-muted">To</label>
               <input
                 type="date"
                 value={customTo}
                 onChange={(e) => setCustomTo(e.target.value)}
-                className="rounded-md border border-border bg-white px-2.5 py-1.5 text-xs text-heading focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:border-brand-blue"
+                className="rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs text-heading focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:border-brand-blue"
               />
             </div>
           )}
@@ -702,7 +702,7 @@ export function Analytics() {
           </div>
 
           {/* ── Timeline Chart ────────────────────────────────────────── */}
-          <div className="mt-6 rounded-xl border border-border bg-white p-6">
+          <div className="mt-6 rounded-xl border border-border bg-surface p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <ArrowTrendingUpIcon className="h-5 w-5 text-brand-blue" />
@@ -729,7 +729,7 @@ export function Analytics() {
               </div>
             </div>
             {timelineLoading ? (
-              <div className="h-64 animate-pulse rounded-lg bg-gray-100" />
+              <div className="h-64 animate-pulse rounded-lg bg-surface-inset" />
             ) : chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={280}>
                 <AreaChart
@@ -829,7 +829,7 @@ export function Analytics() {
           {/* ── Confidence + Win/Loss Row ─────────────────────────────── */}
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {/* AI Confidence */}
-            <div className="rounded-xl border border-border bg-white p-6">
+            <div className="rounded-xl border border-border bg-surface p-6">
               <div className="flex items-center gap-2 mb-5">
                 <StarIcon className="h-5 w-5 text-amber-500" />
                 <h2 className="text-sm font-semibold text-heading uppercase tracking-wide">
@@ -853,7 +853,7 @@ export function Analytics() {
             </div>
 
             {/* Win Rate */}
-            <div className="rounded-xl border border-border bg-white p-6">
+            <div className="rounded-xl border border-border bg-surface p-6">
               <div className="flex items-center gap-2 mb-5">
                 <TrophyIcon className="h-5 w-5 text-brand-gold" />
                 <h2 className="text-sm font-semibold text-heading uppercase tracking-wide">
@@ -867,8 +867,8 @@ export function Analytics() {
               </div>
               {winLossLoading ? (
                 <div className="space-y-3 animate-pulse">
-                  <div className="h-3 rounded-full bg-gray-200" />
-                  <div className="h-4 w-40 rounded bg-gray-200" />
+                  <div className="h-3 rounded-full bg-surface-inset" />
+                  <div className="h-4 w-40 rounded bg-surface-inset" />
                 </div>
               ) : hasWinLoss ? (
                 <WinRateVisual
@@ -921,7 +921,7 @@ export function Analytics() {
           {/* Loss Reasons */}
           {winLoss?.loss_reasons &&
             Object.keys(winLoss.loss_reasons).length > 0 && (
-              <div className="mt-4 rounded-xl border border-border bg-white p-6">
+              <div className="mt-4 rounded-xl border border-border bg-surface p-6">
                 <div className="flex items-center gap-2 mb-5">
                   <XCircleIcon className="h-5 w-5 text-red-400" />
                   <h2 className="text-sm font-semibold text-heading uppercase tracking-wide">
@@ -935,7 +935,7 @@ export function Analytics() {
             )}
 
           {/* ── RFP Pipeline Funnel ────────────────────────────────────── */}
-          <div className="mt-6 rounded-xl border border-border bg-white p-6">
+          <div className="mt-6 rounded-xl border border-border bg-surface p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <ChartBarIcon className="h-5 w-5 text-brand-blue" />
@@ -987,7 +987,7 @@ export function Analytics() {
           </div>
 
           {/* ── User Performance ──────────────────────────────────────── */}
-          <div className="mt-6 rounded-xl border border-border bg-white p-6">
+          <div className="mt-6 rounded-xl border border-border bg-surface p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <UserGroupIcon className="h-5 w-5 text-brand-blue" />
@@ -1028,14 +1028,14 @@ export function Analytics() {
                 {Array.from({ length: 3 }).map((_, i) => (
                   <div
                     key={i}
-                    className="flex items-center gap-3 rounded-lg bg-gray-50 p-3"
+                    className="flex items-center gap-3 rounded-lg bg-surface-inset p-3"
                   >
-                    <div className="h-8 w-8 rounded-full bg-gray-200" />
+                    <div className="h-8 w-8 rounded-full bg-surface-inset" />
                     <div className="flex-1">
-                      <div className="h-4 w-32 rounded bg-gray-200" />
+                      <div className="h-4 w-32 rounded bg-surface-inset" />
                     </div>
-                    <div className="h-4 w-12 rounded bg-gray-200" />
-                    <div className="h-4 w-12 rounded bg-gray-200" />
+                    <div className="h-4 w-12 rounded bg-surface-inset" />
+                    <div className="h-4 w-12 rounded bg-surface-inset" />
                   </div>
                 ))}
               </div>
@@ -1172,7 +1172,7 @@ export function Analytics() {
                                 </span>
                                 <span className="w-28 text-right">
                                   <div className="flex items-center justify-end gap-2">
-                                    <div className="w-16 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                                    <div className="w-16 h-1.5 rounded-full bg-surface-inset overflow-hidden">
                                       <div
                                         className={`h-full rounded-full transition-all ${
                                           completionRate >= 80

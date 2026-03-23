@@ -40,7 +40,7 @@ function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (val: boole
       aria-checked={enabled}
       onClick={() => onChange(!enabled)}
       className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-blue focus:ring-offset-2 ${
-        enabled ? "bg-brand-blue" : "bg-gray-200"
+        enabled ? "bg-brand-blue" : "bg-surface-inset"
       }`}
     >
       <span
@@ -56,12 +56,12 @@ function SkeletonRow() {
   return (
     <div className="flex items-center justify-between py-4 border-b border-border animate-pulse">
       <div className="space-y-2">
-        <div className="h-4 w-32 bg-gray-200 rounded" />
-        <div className="h-3 w-56 bg-gray-100 rounded" />
+        <div className="h-4 w-32 bg-surface-inset rounded" />
+        <div className="h-3 w-56 bg-surface-inset rounded" />
       </div>
       <div className="flex items-center gap-8">
-        <div className="h-6 w-11 bg-gray-200 rounded-full" />
-        <div className="h-6 w-11 bg-gray-200 rounded-full" />
+        <div className="h-6 w-11 bg-surface-inset rounded-full" />
+        <div className="h-6 w-11 bg-surface-inset rounded-full" />
       </div>
     </div>
   );
@@ -69,7 +69,7 @@ function SkeletonRow() {
 
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <kbd className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-md border border-gray-300 bg-gray-50 px-1.5 text-xs font-medium text-heading shadow-sm">
+    <kbd className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-md border border-border bg-surface-inset px-1.5 text-xs font-medium text-heading shadow-sm">
       {children}
     </kbd>
   );
@@ -135,7 +135,7 @@ export function Settings() {
       </div>
 
       {/* Display Preferences Section */}
-      <div className="rounded-xl border border-border bg-white p-6">
+      <div className="rounded-xl border border-border bg-surface p-6">
         <div className="flex items-center gap-2 mb-1">
           <ComputerDesktopIcon className="h-5 w-5 text-brand-blue" />
           <h2 className="text-base font-semibold text-heading">Display Preferences</h2>
@@ -161,7 +161,7 @@ export function Settings() {
             <select
               value={defaultView}
               onChange={(e) => handleDefaultViewChange(e.target.value as "card" | "table")}
-              className="rounded-lg border border-border bg-white px-3 py-1.5 text-sm text-heading focus:outline-none focus:ring-2 focus:ring-brand-blue focus:ring-offset-1"
+              className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-heading focus:outline-none focus:ring-2 focus:ring-brand-blue focus:ring-offset-1"
             >
               <option value="card">Card view</option>
               <option value="table">Table view</option>
@@ -171,7 +171,7 @@ export function Settings() {
       </div>
 
       {/* Notification Preferences Section */}
-      <div className="rounded-xl border border-border bg-white p-6">
+      <div className="rounded-xl border border-border bg-surface p-6">
         <div className="flex items-center gap-2 mb-1">
           <BellIcon className="h-5 w-5 text-brand-blue" />
           <h2 className="text-base font-semibold text-heading">Notification Preferences</h2>
@@ -224,7 +224,7 @@ export function Settings() {
       </div>
 
       {/* Keyboard Shortcuts Section */}
-      <div className="rounded-xl border border-border bg-white p-6">
+      <div className="rounded-xl border border-border bg-surface p-6">
         <div className="flex items-center gap-2 mb-1">
           <CommandLineIcon className="h-5 w-5 text-brand-blue" />
           <h2 className="text-base font-semibold text-heading">Keyboard Shortcuts</h2>

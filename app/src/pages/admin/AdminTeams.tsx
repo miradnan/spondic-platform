@@ -139,19 +139,19 @@ export function AdminTeams() {
     return (
       <div>
         <div className="mb-6">
-          <div className="h-6 w-24 bg-gray-200 rounded animate-pulse" />
-          <div className="h-4 w-64 bg-gray-100 rounded animate-pulse mt-2" />
+          <div className="h-6 w-24 bg-surface-inset rounded animate-pulse" />
+          <div className="h-4 w-64 bg-surface-inset rounded animate-pulse mt-2" />
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
-              className="flex items-center gap-4 rounded-xl border border-border bg-white p-4"
+              className="flex items-center gap-4 rounded-xl border border-border bg-surface p-4"
             >
-              <div className="h-10 w-10 bg-gray-100 rounded-lg animate-pulse" />
+              <div className="h-10 w-10 bg-surface-inset rounded-lg animate-pulse" />
               <div className="flex-1 space-y-2">
-                <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
-                <div className="h-3 w-16 bg-gray-100 rounded animate-pulse" />
+                <div className="h-4 w-24 bg-surface-inset rounded animate-pulse" />
+                <div className="h-3 w-16 bg-surface-inset rounded animate-pulse" />
               </div>
             </div>
           ))}
@@ -169,8 +169,8 @@ export function AdminTeams() {
         <div
           className={`fixed top-4 right-4 z-50 rounded-lg px-4 py-3 text-sm font-medium shadow-lg transition-all ${
             toast.type === "success"
-              ? "bg-green-50 text-green-800 border border-green-200"
-              : "bg-red-50 text-red-800 border border-red-200"
+              ? "bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800"
+              : "bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800"
           }`}
         >
           {toast.message}
@@ -226,14 +226,14 @@ export function AdminTeams() {
           {teams.map((team) => (
             <div key={team.id}>
               <div
-                className={`group flex items-center gap-4 rounded-xl border bg-white p-4 transition-all hover:shadow-md cursor-pointer ${
+                className={`group flex items-center gap-4 rounded-xl border bg-surface p-4 transition-all hover:shadow-md cursor-pointer ${
                   expandedTeamId === team.id
                     ? "border-brand-blue shadow-md"
                     : "border-border"
                 }`}
                 onClick={() => toggleExpand(team.id)}
               >
-                <div className="rounded-lg bg-purple-50 p-2.5 text-purple-600">
+                <div className="rounded-lg bg-brand-blue/10 p-2.5 text-brand-blue">
                   <UserGroupIcon className="h-5 w-5" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -249,12 +249,12 @@ export function AdminTeams() {
                           if (e.key === "Escape") cancelEdit();
                         }}
                         onBlur={saveEdit}
-                        className="flex-1 min-w-0 rounded border border-brand-blue bg-white px-2 py-0.5 text-sm text-heading focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                        className="flex-1 min-w-0 rounded border border-brand-blue bg-surface px-2 py-0.5 text-sm text-heading focus:outline-none focus:ring-1 focus:ring-brand-blue"
                       />
                       <button
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={saveEdit}
-                        className="p-1 text-green-600 hover:bg-green-50 rounded"
+                        className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 rounded"
                       >
                         <CheckIcon className="h-3.5 w-3.5" />
                       </button>
@@ -264,7 +264,7 @@ export function AdminTeams() {
                           e.stopPropagation();
                           cancelEdit();
                         }}
-                        className="p-1 text-gray-400 hover:bg-gray-50 rounded"
+                        className="p-1 text-muted hover:bg-cream-light rounded"
                       >
                         <XMarkIcon className="h-3.5 w-3.5" />
                       </button>
@@ -300,14 +300,14 @@ export function AdminTeams() {
                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => handleDelete(team.id)}
-                          className="rounded-lg p-1.5 text-red-600 hover:bg-red-50 transition-colors"
+                          className="rounded-lg p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
                           title="Confirm delete"
                         >
                           <CheckIcon className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => setDeletingId(null)}
-                          className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-50 transition-colors"
+                          className="rounded-lg p-1.5 text-muted hover:bg-cream-light transition-colors"
                           title="Cancel"
                         >
                           <XMarkIcon className="h-4 w-4" />
@@ -319,7 +319,7 @@ export function AdminTeams() {
                           e.stopPropagation();
                           setDeletingId(team.id);
                         }}
-                        className="rounded-lg p-1.5 text-muted hover:bg-red-50 hover:text-red-600 transition-colors"
+                        className="rounded-lg p-1.5 text-muted hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 transition-colors"
                         title={`Delete ${team.name}`}
                       >
                         <TrashIcon className="h-4 w-4" />
@@ -343,7 +343,7 @@ export function AdminTeams() {
           ))}
         </div>
       ) : (
-        <div className="rounded-xl border border-border bg-white p-8 text-center">
+        <div className="rounded-xl border border-border bg-surface p-8 text-center">
           <UserGroupIcon className="mx-auto h-10 w-10 text-muted mb-3" />
           <p className="text-sm text-muted">
             No teams yet. Create one to get started.
@@ -433,7 +433,7 @@ function TeamMembersPanel({
       {isLoading ? (
         <div className="space-y-2">
           {[1, 2].map((i) => (
-            <div key={i} className="h-8 bg-gray-100 rounded animate-pulse" />
+            <div key={i} className="h-8 bg-surface-inset rounded animate-pulse" />
           ))}
         </div>
       ) : members.length > 0 ? (
@@ -441,12 +441,12 @@ function TeamMembersPanel({
           {members.map((m) => (
             <li
               key={m.user_id}
-              className="flex items-center justify-between rounded-lg bg-white border border-border px-3 py-2 text-xs"
+              className="flex items-center justify-between rounded-lg bg-surface border border-border px-3 py-2 text-xs"
             >
               <span className="font-mono text-heading truncate">{m.user_id}</span>
               <button
                 onClick={() => handleRemoveMember(m.user_id)}
-                className="ml-2 shrink-0 rounded p-1 text-muted hover:bg-red-50 hover:text-red-600 transition-colors"
+                className="ml-2 shrink-0 rounded p-1 text-muted hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 transition-colors"
                 title="Remove member"
               >
                 <TrashIcon className="h-3.5 w-3.5" />

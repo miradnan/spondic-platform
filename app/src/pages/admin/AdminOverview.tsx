@@ -24,7 +24,7 @@ function StatCard({
   loading?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-white p-5 shadow-sm">
+    <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
       <div className="flex items-center gap-3">
         <div className={`rounded-lg p-2.5 ${color}`}>
           <Icon className="h-5 w-5" />
@@ -34,7 +34,7 @@ function StatCard({
             {label}
           </p>
           {loading ? (
-            <div className="mt-1 h-7 w-12 animate-pulse rounded bg-gray-200" />
+            <div className="mt-1 h-7 w-12 animate-pulse rounded bg-surface-inset" />
           ) : (
             <p className="mt-1 text-2xl font-bold text-heading">{value}</p>
           )}
@@ -58,7 +58,7 @@ function QuickLink({
   return (
     <Link
       to={to}
-      className="group flex items-center gap-4 rounded-xl border border-border bg-white p-5 shadow-sm hover:border-brand-blue/30 hover:shadow-md transition-all"
+      className="group flex items-center gap-4 rounded-xl border border-border bg-surface p-5 shadow-sm hover:border-brand-blue/30 hover:shadow-md transition-all"
     >
       <div className="rounded-lg bg-brand-blue/10 p-2.5 text-brand-blue">
         <Icon className="h-5 w-5" />

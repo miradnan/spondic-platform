@@ -147,6 +147,13 @@ export function reindexDocument(token: string | null, id: string): Promise<{ sta
   return request(`/api/documents/${id}/reindex`, token, { method: "POST" });
 }
 
+export function getDocumentPreviewUrl(
+  token: string | null,
+  id: string,
+): Promise<{ url: string; file_name: string; ext: string }> {
+  return request(`/api/documents/${id}/preview-url`, token);
+}
+
 export function searchDocuments(
   token: string | null,
   query: string,

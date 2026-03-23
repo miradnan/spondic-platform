@@ -214,7 +214,7 @@ export function AuditLog() {
         <button
           onClick={handleExportCsv}
           disabled={!logs.length}
-          className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-heading shadow-sm hover:bg-cream-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-heading shadow-sm hover:bg-cream-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <ArrowDownTrayIcon className="h-4 w-4" />
           Export CSV
@@ -222,7 +222,7 @@ export function AuditLog() {
       </div>
 
       {/* Filters */}
-      <div className="mt-6 rounded-xl border border-border bg-white p-4 shadow-sm">
+      <div className="mt-6 rounded-xl border border-border bg-surface p-4 shadow-sm">
         <div className="flex flex-wrap items-end gap-3">
           {/* Action */}
           <div>

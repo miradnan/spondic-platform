@@ -142,15 +142,15 @@ export function AdminMembers() {
   if (!isLoaded || !organization) {
     return (
       <div className="w-full max-w-7xl mx-auto space-y-4">
-        <div className="h-6 w-40 animate-pulse rounded bg-gray-200" />
-        <div className="h-4 w-64 animate-pulse rounded bg-gray-200" />
-        <div className="rounded-xl border border-border bg-white p-6 space-y-3">
+        <div className="h-6 w-40 animate-pulse rounded bg-surface-inset" />
+        <div className="h-4 w-64 animate-pulse rounded bg-surface-inset" />
+        <div className="rounded-xl border border-border bg-surface p-6 space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="flex items-center gap-4">
-              <div className="h-10 w-10 animate-pulse rounded-full bg-gray-200" />
+              <div className="h-10 w-10 animate-pulse rounded-full bg-surface-inset" />
               <div className="flex-1 space-y-2">
-                <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
-                <div className="h-3 w-48 animate-pulse rounded bg-gray-200" />
+                <div className="h-4 w-32 animate-pulse rounded bg-surface-inset" />
+                <div className="h-3 w-48 animate-pulse rounded bg-surface-inset" />
               </div>
             </div>
           ))}
@@ -333,7 +333,7 @@ export function AdminMembers() {
       )}
 
       {/* ── Invite Section ─────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-border bg-white p-5 mb-6">
+      <div className="rounded-xl border border-border bg-surface p-5 mb-6">
         <h3 className="text-sm font-semibold text-heading mb-3 flex items-center gap-2">
           <EnvelopeIcon className="h-4 w-4 text-brand-blue" />
           Invite Members
@@ -443,10 +443,10 @@ export function AdminMembers() {
                 <p className="text-xs font-medium text-heading mb-2">
                   Preview ({csvRows.filter((r) => r.valid).length} valid of {csvRows.length} rows)
                 </p>
-                <div className="max-h-48 overflow-y-auto rounded-lg border border-border bg-white">
+                <div className="max-h-48 overflow-y-auto rounded-lg border border-border bg-surface">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-border bg-gray-50">
+                      <tr className="border-b border-border bg-surface-inset">
                         <th className="px-3 py-2 text-left text-xs font-medium text-muted">Email</th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-muted">Role</th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-muted">Status</th>
@@ -507,7 +507,7 @@ export function AdminMembers() {
       </div>
 
       {/* ── Member List ────────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-border bg-white overflow-hidden mb-6">
+      <div className="rounded-xl border border-border bg-surface overflow-hidden mb-6">
         <div className="px-5 py-4 border-b border-border">
           <h3 className="text-sm font-semibold text-heading">
             Active Members ({memberList.length})
@@ -515,7 +515,7 @@ export function AdminMembers() {
         </div>
 
         {/* Column headers for team */}
-        <div className="hidden sm:flex items-center gap-4 px-5 py-2 border-b border-border bg-gray-50/50 text-xs font-medium text-muted uppercase tracking-wider">
+        <div className="hidden sm:flex items-center gap-4 px-5 py-2 border-b border-border bg-surface-inset/50 text-xs font-medium text-muted uppercase tracking-wider">
           <div className="w-10" />
           <div className="flex-1">Member</div>
           <div className="w-20 text-center">Role</div>
@@ -576,7 +576,7 @@ export function AdminMembers() {
                   <select
                     value={teamAssignments[userId] ?? ""}
                     onChange={(e) => handleTeamChange(userId, e.target.value)}
-                    className="w-full rounded-md border border-border bg-white px-2 py-1 text-xs text-heading focus:outline-none focus:ring-2 focus:ring-brand-blue focus:ring-offset-1"
+                    className="w-full rounded-md border border-border bg-surface px-2 py-1 text-xs text-heading focus:outline-none focus:ring-2 focus:ring-brand-blue focus:ring-offset-1"
                   >
                     <option value="">No team</option>
                     {teamNames.map((team) => (
@@ -660,7 +660,7 @@ export function AdminMembers() {
 
       {/* ── Pending Invitations ────────────────────────────────────────── */}
       {invitationList.length > 0 && (
-        <div className="rounded-xl border border-border bg-white overflow-hidden mb-6">
+        <div className="rounded-xl border border-border bg-surface overflow-hidden mb-6">
           <div className="px-5 py-4 border-b border-border">
             <h3 className="text-sm font-semibold text-heading flex items-center gap-2">
               <ClockIcon className="h-4 w-4 text-muted" />
@@ -711,7 +711,7 @@ export function AdminMembers() {
       )}
 
       {/* ── Role Permissions Matrix ──────────────────────────────────── */}
-      <div className="rounded-xl border border-border bg-white overflow-hidden">
+      <div className="rounded-xl border border-border bg-surface overflow-hidden">
         <button
           onClick={() => setPermissionsOpen(!permissionsOpen)}
           className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-cream-light/30 transition-colors"
@@ -731,7 +731,7 @@ export function AdminMembers() {
           <div className="border-t border-border">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border bg-gray-50/50">
+                <tr className="border-b border-border bg-surface-inset/50">
                   <th className="px-5 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">
                     Permission
                   </th>
@@ -751,21 +751,21 @@ export function AdminMembers() {
                       {perm.member ? (
                         <CheckCircleIcon className="h-5 w-5 text-green-500 inline-block" />
                       ) : (
-                        <XCircleIcon className="h-5 w-5 text-gray-300 inline-block" />
+                        <XCircleIcon className="h-5 w-5 text-muted inline-block" />
                       )}
                     </td>
                     <td className="px-5 py-3 text-center">
                       {perm.admin ? (
                         <CheckCircleIcon className="h-5 w-5 text-green-500 inline-block" />
                       ) : (
-                        <XCircleIcon className="h-5 w-5 text-gray-300 inline-block" />
+                        <XCircleIcon className="h-5 w-5 text-muted inline-block" />
                       )}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <div className="px-5 py-3 border-t border-border bg-gray-50/30">
+            <div className="px-5 py-3 border-t border-border bg-surface-inset/30">
               <p className="text-xs text-muted">
                 This matrix is informational only. Role permissions are enforced server-side.
               </p>

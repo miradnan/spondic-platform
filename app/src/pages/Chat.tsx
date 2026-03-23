@@ -423,7 +423,7 @@ export function Chat() {
                       key={prompt.fullPrompt}
                       type="button"
                       onClick={() => handleSelectPrompt(prompt.fullPrompt)}
-                      className="rounded-xl bg-white border border-border px-4 py-3.5 text-left transition-all hover:shadow-md hover:border-brand-blue/30"
+                      className="rounded-xl bg-surface border border-border px-4 py-3.5 text-left transition-all hover:shadow-md hover:border-brand-blue/30"
                     >
                       <p className="text-sm font-medium text-heading">{prompt.title}</p>
                       <p className="mt-0.5 text-xs text-muted">{prompt.subtitle}</p>
@@ -497,7 +497,7 @@ export function Chat() {
                         {msg.citations.map((c, idx) => (
                           <li
                             key={c.id || idx}
-                            className="rounded bg-white/80 px-2 py-1 text-xs text-body"
+                            className="rounded bg-surface/80 px-2 py-1 text-xs text-body"
                           >
                             <span className="font-medium text-brand-blue">
                               {c.document_title}
@@ -556,7 +556,7 @@ export function Chat() {
                         {streamingCitations.map((c, idx) => (
                           <li
                             key={idx}
-                            className="rounded bg-white/80 px-2 py-1 text-xs text-body"
+                            className="rounded bg-surface/80 px-2 py-1 text-xs text-body"
                           >
                             <span className="font-medium text-brand-blue">
                               {c.document_title}

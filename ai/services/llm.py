@@ -4,6 +4,7 @@ Groq LLM client for answer generation and question extraction.
 
 import json
 import logging
+import re
 import time
 from dataclasses import dataclass, field
 
@@ -84,7 +85,12 @@ def _call_groq(
             if usage is not None and response.usage:
                 usage.add(response.usage.prompt_tokens, response.usage.completion_tokens)
 
-            return response.choices[0].message.content or ""
+            text = response.choices[0].message.content or ""
+
+            # Strip <think>...</think> tags from thinking models (e.g., qwen3)
+            text = re.sub(r"<think>[\s\S]*?</think>\s*", "", text)
+
+            return text
         except RateLimitError as exc:
             wait = 2 ** attempt
             logger.warning("Groq rate limited (attempt %d/%d, model=%s), waiting %ds: %s",

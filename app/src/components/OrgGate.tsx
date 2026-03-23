@@ -86,7 +86,7 @@ export function OrgGate({ children }: { children: React.ReactNode }) {
           {/* Create form */}
           <form
             onSubmit={handleCreate}
-            className="rounded-xl border border-border bg-white p-6 shadow-sm"
+            className="rounded-xl border border-border bg-surface p-6 shadow-sm"
           >
             <label
               htmlFor="org-name"
@@ -139,7 +139,7 @@ export function OrgGate({ children }: { children: React.ReactNode }) {
                   return (
                   <div
                     key={org.id}
-                    className="flex items-center gap-3 rounded-xl border border-border bg-white px-4 py-3"
+                    className="flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3"
                   >
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-navy/10 text-sm font-semibold text-navy">
                       {org.name.charAt(0).toUpperCase()}

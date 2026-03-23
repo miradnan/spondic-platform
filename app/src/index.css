@@ -47,33 +47,33 @@
    Toggle by adding 'dark' class to <html>.
    ======================================== */
 .dark {
-  --bg-cream: #1a1a1a;
-  --bg-cream-light: #242424;
-  --bg-cream-lighter: #1e1e1e;
+  --bg-cream: #121212;
+  --bg-cream-light: #1e1e1e;
+  --bg-cream-lighter: #161616;
   --text-dark: #f0f0f0;
-  --text-body: #c0c0c0;
-  --text-muted: #888888;
-  --border: #333333;
-  --gold: #c49a3c;
-  --blue: #4a8ad4;
-  --blue-hover: #3a78c0;
-  --navy: #111827;
-  --navy-light: #1e293b;
+  --text-body: #b8b8b8;
+  --text-muted: #777777;
+  --border: #2a2a2a;
+  --gold: #d4a84c;
+  --blue: #5b9ae6;
+  --blue-hover: #4a88d4;
+  --navy: #0d1117;
+  --navy-light: #161b22;
 
   /* Override Tailwind theme colors for dark mode */
-  --color-cream: #1a1a1a;
-  --color-cream-light: #242424;
-  --color-cream-lighter: #1e1e1e;
-  --color-heading: #f0f0f0;
-  --color-body: #c0c0c0;
-  --color-muted: #888888;
-  --color-border: #333333;
-  --color-navy: #111827;
-  --color-navy-light: #1e293b;
+  --color-cream: #121212;
+  --color-cream-light: #1e1e1e;
+  --color-cream-lighter: #161616;
+  --color-heading: #e8e8e8;
+  --color-body: #b8b8b8;
+  --color-muted: #777777;
+  --color-border: #2a2a2a;
+  --color-navy: #0d1117;
+  --color-navy-light: #161b22;
 
   /* Surface colors for dark mode */
-  --color-surface: #262626;
-  --color-surface-inset: #2a2a2a;
+  --color-surface: #1a1a1a;
+  --color-surface-inset: #222222;
 
   color-scheme: dark;
 }

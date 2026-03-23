@@ -151,6 +151,7 @@ func main() {
 	api.GET("/documents/events", h.DocumentEvents)
 	api.GET("/documents/:id", h.GetDocument)
 	api.DELETE("/documents/:id", h.DeleteDocument)
+	api.GET("/documents/:id/preview-url", h.DocumentPreviewURL)
 	api.POST("/documents/:id/reindex", h.ReindexDocument)
 	api.POST("/documents/:id/tags", h.AddDocumentTag)
 	api.DELETE("/documents/:id/tags/:tagId", h.RemoveDocumentTag)
