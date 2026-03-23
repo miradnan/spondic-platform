@@ -519,8 +519,8 @@ export function Dashboard() {
         </div>
       )}
 
-      {/* Empty State */}
-      {!isLoading && !isError && projects.length === 0 && (
+      {/* Empty State — no projects at all */}
+      {!isLoading && !isError && projects.length === 0 && !hasProjects && !statusFilter && !deadlineFilter && !search && (
         <div className="mt-8 rounded-xl border border-border bg-cream-light p-8 text-center">
           <DocumentTextIcon className="mx-auto h-10 w-10 text-muted" />
           <p className="mt-4 text-body font-medium">{t("dashboard.noProjects")}</p>
@@ -534,6 +534,17 @@ export function Dashboard() {
             <PlusIcon className="h-4 w-4" />
             {t("dashboard.createFirst")}
           </Link>
+        </div>
+      )}
+
+      {/* No results for current filters */}
+      {!isLoading && !isError && projects.length === 0 && (statusFilter || deadlineFilter || search) && (
+        <div className="mt-8 rounded-xl border border-border bg-cream-light p-8 text-center">
+          <MagnifyingGlassIcon className="mx-auto h-10 w-10 text-muted" />
+          <p className="mt-4 text-body font-medium">No projects match your filters</p>
+          <p className="mt-1 text-sm text-muted">
+            Try adjusting your search or filter criteria.
+          </p>
         </div>
       )}
 
