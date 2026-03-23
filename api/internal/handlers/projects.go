@@ -34,6 +34,11 @@ func (h *Handler) CreateProject(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "name is required"})
 	}
 
+	// Check monthly RFP creation limit
+	if err := h.checkRFPLimit(c, orgID); err != nil {
+		return c.JSON(http.StatusForbidden, map[string]string{"error": err.Error()})
+	}
+
 	var deadline *time.Time
 	if body.Deadline != nil && *body.Deadline != "" {
 		t, err := time.Parse(time.RFC3339, *body.Deadline)

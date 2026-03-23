@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import { useOrganization } from "@clerk/react";
 import {
   EnvelopeIcon,
+  ExclamationTriangleIcon,
   TrashIcon,
   ClockIcon,
   XMarkIcon,
@@ -19,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { useTeams } from "../../hooks/useApi.ts";
 import { useToast } from "../../components/Toast.tsx";
+import { usePlanLimits } from "../../hooks/usePlanLimits.ts";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -100,6 +102,7 @@ export function AdminMembers() {
 
   const { data: teamsData } = useTeams();
   const { toast } = useToast();
+  const { canInviteMembers, limits } = usePlanLimits();
 
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<RoleOption>("org:member");
@@ -169,6 +172,13 @@ export function AdminMembers() {
     const email = inviteEmail.trim();
     if (!email || !organization) return;
 
+    if (!canInviteMembers) {
+      setInviteError(
+        `You've reached the ${limits.maxUsers} member limit on your plan. Upgrade to invite more members.`,
+      );
+      return;
+    }
+
     setInviting(true);
     setInviteError("");
     setInviteSuccess("");
@@ -214,6 +224,11 @@ export function AdminMembers() {
 
     const validRows = csvRows.filter((r) => r.valid);
     if (validRows.length === 0) return;
+
+    if (!canInviteMembers) {
+      toast("error", `Member limit reached (${limits.maxUsers}). Upgrade your plan to invite more members.`);
+      return;
+    }
 
     setBulkInviting(true);
     setBulkProgress({ done: 0, total: validRows.length });
@@ -392,6 +407,16 @@ export function AdminMembers() {
             Bulk Import
           </Button>
         </form>
+        {!canInviteMembers && (
+          <div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <ExclamationTriangleIcon className="h-4 w-4 shrink-0" />
+            You've reached the {limits.maxUsers} member limit on your plan.{" "}
+            <a href="/admin/billing#change-plan" className="font-medium underline">
+              Upgrade
+            </a>{" "}
+            to invite more members.
+          </div>
+        )}
         {inviteError && (
           <p className="mt-2 text-sm text-red-600">{inviteError}</p>
         )}

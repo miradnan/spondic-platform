@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
+	"github.com/spondic/api/internal/middleware"
 	"github.com/spondic/api/internal/services"
 )
 
@@ -116,8 +117,13 @@ func (h *Handler) UploadRFP(c echo.Context) error {
 	// Auto-parse: update project status and trigger parsing in background
 	h.DB.Exec(`UPDATE projects SET status = 'parsing', updated_at = NOW() WHERE id = $1 AND organization_id = $2`, projectID, orgID)
 
-	go func(oID, uID, pID string) {
-		total, err := h.parseProjectRFP(context.Background(), oID, pID)
+	maxQuestions := 0
+	if limits := middleware.GetPlanLimits(c); limits != nil && limits.MaxQuestions != nil {
+		maxQuestions = *limits.MaxQuestions
+	}
+
+	go func(oID, uID, pID string, maxQ int) {
+		total, err := h.parseProjectRFP(context.Background(), oID, pID, maxQ)
 		if err != nil {
 			log.Printf("auto-parse error for project %s: %v", pID, err)
 			h.DB.Exec(`UPDATE projects SET status = 'draft', updated_at = NOW() WHERE id = $1 AND organization_id = $2`, pID, oID)
@@ -138,7 +144,7 @@ func (h *Handler) UploadRFP(c echo.Context) error {
 				"questions_found": total,
 			})
 		}
-	}(orgID, userID, projectID)
+	}(orgID, userID, projectID, maxQuestions)
 
 	return c.JSON(http.StatusCreated, map[string]interface{}{
 		"project_id": projectID,
@@ -147,7 +153,8 @@ func (h *Handler) UploadRFP(c echo.Context) error {
 }
 
 // parseProjectRFP is the shared parse logic used by both UploadRFP (auto) and ParseRFP (manual).
-func (h *Handler) parseProjectRFP(ctx context.Context, orgID, projectID string) (int, error) {
+// maxQuestions is the plan limit for questions per RFP (0 = unlimited).
+func (h *Handler) parseProjectRFP(ctx context.Context, orgID, projectID string, maxQuestions int) (int, error) {
 	rows, err := h.DB.Query(
 		`SELECT d.id, d.file_name
 		 FROM documents d
@@ -197,6 +204,11 @@ func (h *Handler) parseProjectRFP(ctx context.Context, orgID, projectID string) 
 		}
 
 		for i, q := range resp.Questions {
+			// Enforce questions-per-RFP plan limit
+			if maxQuestions > 0 && totalQuestions >= maxQuestions {
+				log.Printf("question limit reached (%d) for project %s, skipping remaining", maxQuestions, projectID)
+				break
+			}
 			_, err := h.DB.Exec(
 				`INSERT INTO rfp_questions (project_id, organization_id, question_text, section, question_number, is_mandatory, word_limit, status, sort_order)
 				 VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft', $8)`,
@@ -243,7 +255,12 @@ func (h *Handler) ParseRFP(c echo.Context) error {
 	orgID := getOrgID(c)
 	projectID := c.Param("id")
 
-	totalQuestions, err := h.parseProjectRFP(c.Request().Context(), orgID, projectID)
+	maxQ := 0
+	if limits := middleware.GetPlanLimits(c); limits != nil && limits.MaxQuestions != nil {
+		maxQ = *limits.MaxQuestions
+	}
+
+	totalQuestions, err := h.parseProjectRFP(c.Request().Context(), orgID, projectID, maxQ)
 	if err != nil {
 		log.Printf("parse error for project %s: %v", projectID, err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})

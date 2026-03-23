@@ -251,6 +251,11 @@ func (h *Handler) AddTeamMember(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "user_id is required"})
 	}
 
+	// Check team member limit
+	if err := h.checkUserLimit(c, orgID); err != nil {
+		return c.JSON(http.StatusForbidden, map[string]string{"error": err.Error()})
+	}
+
 	// Verify team belongs to org
 	var exists bool
 	err := h.DB.QueryRow(

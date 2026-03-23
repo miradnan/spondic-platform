@@ -7,6 +7,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/spondic/api/internal/middleware"
 	"github.com/spondic/api/internal/models"
 )
 
@@ -16,6 +17,13 @@ func (h *Handler) AnalyticsOverview(c echo.Context) error {
 	orgID := getOrgID(c)
 	if orgID == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "organization_id is required"})
+	}
+
+	// Check analytics feature flag
+	if limits := middleware.GetPlanLimits(c); limits != nil {
+		if err := checkFeatureEnabled("Analytics", limits.Analytics); err != nil {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": err.Error()})
+		}
 	}
 
 	userID := getUserID(c)
@@ -118,6 +126,13 @@ func (h *Handler) AnalyticsTimeline(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "organization_id is required"})
 	}
 
+	// Check analytics feature flag
+	if limits := middleware.GetPlanLimits(c); limits != nil {
+		if err := checkFeatureEnabled("Analytics", limits.Analytics); err != nil {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": err.Error()})
+		}
+	}
+
 	userID := getUserID(c)
 	admin := isAdmin(c)
 
@@ -195,6 +210,13 @@ func (h *Handler) AnalyticsUserPerformance(c echo.Context) error {
 	orgID := getOrgID(c)
 	if orgID == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "organization_id is required"})
+	}
+
+	// Check analytics feature flag
+	if limits := middleware.GetPlanLimits(c); limits != nil {
+		if err := checkFeatureEnabled("Analytics", limits.Analytics); err != nil {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": err.Error()})
+		}
 	}
 
 	userID := getUserID(c)

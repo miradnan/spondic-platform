@@ -269,6 +269,11 @@ button:disabled,
 }
 
 /* Citation highlight pulse when scrolled to */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
 @keyframes citation-pulse {
   0%   { box-shadow: 0 0 0 0 rgba(45, 95, 160, 0.4); }
   40%  { box-shadow: 0 0 0 6px rgba(45, 95, 160, 0.15); }

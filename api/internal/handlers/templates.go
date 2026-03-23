@@ -16,11 +16,23 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/spondic/api/internal/middleware"
 	"github.com/spondic/api/internal/models"
 )
 
+// checkTemplateAccess verifies the template_library feature is enabled for the current plan.
+func checkTemplateAccess(c echo.Context) error {
+	if limits := middleware.GetPlanLimits(c); limits != nil {
+		return checkFeatureEnabled("Template Library", limits.Templates)
+	}
+	return nil
+}
+
 // CreateTemplate handles POST /api/templates
 func (h *Handler) CreateTemplate(c echo.Context) error {
+	if err := checkTemplateAccess(c); err != nil {
+		return c.JSON(http.StatusForbidden, map[string]string{"error": err.Error()})
+	}
 	orgID := getOrgID(c)
 	if orgID == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "organization_id is required"})
@@ -63,6 +75,9 @@ func (h *Handler) CreateTemplate(c echo.Context) error {
 
 // ListTemplates handles GET /api/templates
 func (h *Handler) ListTemplates(c echo.Context) error {
+	if err := checkTemplateAccess(c); err != nil {
+		return c.JSON(http.StatusForbidden, map[string]string{"error": err.Error()})
+	}
 	orgID := getOrgID(c)
 	if orgID == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "organization_id is required"})
@@ -279,6 +294,9 @@ func (h *Handler) DeleteTemplate(c echo.Context) error {
 
 // SuggestTemplate handles POST /api/templates/suggest
 func (h *Handler) SuggestTemplate(c echo.Context) error {
+	if err := checkTemplateAccess(c); err != nil {
+		return c.JSON(http.StatusForbidden, map[string]string{"error": err.Error()})
+	}
 	orgID := getOrgID(c)
 	if orgID == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "organization_id is required"})

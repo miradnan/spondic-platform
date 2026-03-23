@@ -17,6 +17,7 @@ import {
   PencilIcon,
 } from "@heroicons/react/24/outline";
 import { marked } from "marked";
+import { Brain } from "lucide-react";
 import { Streamdown } from "streamdown";
 import "streamdown/styles.css";
 import { Tooltip } from "../components/ui/tooltip.tsx";
@@ -189,6 +190,16 @@ interface CitationPopover {
   msgId: string;
   index: number; // 1-based
   rect: DOMRect;
+}
+
+function ThinkingIndicator() {
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 text-muted">
+      <Brain className="h-4 w-4 animate-pulse" />
+      <span className="text-xs font-medium">Thinking</span>
+      <span className="inline-block w-[1px] h-3 bg-muted animate-[blink_1s_step-end_infinite] align-middle" />
+    </div>
+  );
 }
 
 function AutoResizeTextarea({
@@ -599,22 +610,7 @@ export function Chat() {
             {isStreaming && (
               <div className="flex flex-col items-start gap-1 mb-4">
                 {/* Thinking indicator — shown before streaming text arrives */}
-                {!streamingText && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 text-muted">
-                    <svg className="h-4 w-4 animate-[spin_3s_linear_infinite]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7Z" />
-                      <path d="M10 21h4" />
-                      <path d="M12 8v4" />
-                      <path d="M9.5 10h5" />
-                    </svg>
-                    <span className="text-xs font-medium animate-pulse">Thinking</span>
-                    <span className="flex gap-0.5">
-                      <span className="w-1 h-1 rounded-full bg-muted animate-bounce" style={{ animationDelay: "0ms" }} />
-                      <span className="w-1 h-1 rounded-full bg-muted animate-bounce" style={{ animationDelay: "150ms" }} />
-                      <span className="w-1 h-1 rounded-full bg-muted animate-bounce" style={{ animationDelay: "300ms" }} />
-                    </span>
-                  </div>
-                )}
+                {!streamingText && <ThinkingIndicator />}
 
                 {/* Streaming response bubble */}
                 {streamingText && (

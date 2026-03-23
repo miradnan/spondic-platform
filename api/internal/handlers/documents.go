@@ -44,6 +44,11 @@ func (h *Handler) UploadDocuments(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "S3 not configured"})
 	}
 
+	// Check document upload limit
+	if err := h.checkDocumentLimit(c, orgID); err != nil {
+		return c.JSON(http.StatusForbidden, map[string]string{"error": err.Error()})
+	}
+
 	documents := make([]models.Document, 0, len(uploadedFiles))
 	ctx := c.Request().Context()
 

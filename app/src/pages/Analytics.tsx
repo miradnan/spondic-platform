@@ -40,6 +40,8 @@ import {
 import { Button } from "../components/ui/button.tsx";
 import { DatePicker } from "../components/ui/date-picker.tsx";
 import { useOrganization } from "@clerk/react";
+import { usePlanLimits } from "../hooks/usePlanLimits.ts";
+import { LockClosedIcon } from "@heroicons/react/24/outline";
 
 // ── CSV Export Helper ──────────────────────────────────────────────────────
 
@@ -505,6 +507,7 @@ function UserAvatar({ name }: { name: string }) {
 
 export function Analytics() {
   const { t } = useTranslation();
+  const { analyticsEnabled } = usePlanLimits();
   const [datePreset, setDatePreset] = useState<DatePreset>("12m");
   const [customFrom, setCustomFrom] = useState<Date | undefined>();
   const [customTo, setCustomTo] = useState<Date | undefined>();
@@ -582,6 +585,32 @@ export function Analytics() {
     : data?.total_projects ?? 0;
   const pipelineWon = winLoss?.total_won ?? 0;
   const pipelineLost = winLoss?.total_lost ?? 0;
+
+  // Gate: analytics is a paid feature
+  if (!analyticsEnabled) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center px-4">
+        <div className="w-full max-w-md text-center">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-blue/10">
+            <LockClosedIcon className="h-8 w-8 text-brand-blue" />
+          </div>
+          <h1 className="font-display text-2xl font-bold text-heading mb-2">
+            Analytics Dashboard
+          </h1>
+          <p className="text-body mb-6 leading-relaxed">
+            Analytics is available on Starter plans and above. Upgrade to track
+            project performance, team productivity, and AI usage.
+          </p>
+          <a
+            href="/admin/billing#change-plan"
+            className="inline-flex items-center gap-2 rounded-xl bg-navy px-6 py-3 text-sm font-medium text-white hover:bg-navy/90 transition-colors"
+          >
+            View Plans &amp; Upgrade
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pb-12 max-w-7xl mx-auto w-full">

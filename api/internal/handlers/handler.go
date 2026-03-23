@@ -76,6 +76,101 @@ func totalPages(total int64, limit int) int {
 	return int(math.Ceil(float64(total) / float64(limit)))
 }
 
+// checkDocumentLimit checks if the org has reached their plan's max_documents limit.
+func (h *Handler) checkDocumentLimit(c echo.Context, orgID string) error {
+	limits := middleware.GetPlanLimits(c)
+	if limits == nil || limits.MaxDocuments == nil {
+		return nil // no limit or unlimited
+	}
+	var count int
+	err := h.DB.QueryRow(
+		`SELECT COUNT(*) FROM documents WHERE organization_id = $1 AND deleted_at IS NULL`,
+		orgID,
+	).Scan(&count)
+	if err != nil {
+		log.Printf("error counting documents for limit check: %v", err)
+		return nil // fail-open
+	}
+	if count >= *limits.MaxDocuments {
+		return fmt.Errorf("document limit reached (%d/%d). Upgrade your plan to upload more documents", count, *limits.MaxDocuments)
+	}
+	return nil
+}
+
+// checkRFPLimit checks if the org has reached their plan's max_rfps_per_month limit.
+func (h *Handler) checkRFPLimit(c echo.Context, orgID string) error {
+	limits := middleware.GetPlanLimits(c)
+	if limits == nil || limits.MaxRFPs == nil {
+		return nil
+	}
+	var count int
+	err := h.DB.QueryRow(
+		`SELECT COUNT(*) FROM projects WHERE organization_id = $1 AND deleted_at IS NULL
+		 AND created_at >= DATE_TRUNC('month', NOW())`,
+		orgID,
+	).Scan(&count)
+	if err != nil {
+		log.Printf("error counting RFPs for limit check: %v", err)
+		return nil
+	}
+	if count >= *limits.MaxRFPs {
+		return fmt.Errorf("monthly RFP limit reached (%d/%d). Upgrade your plan to create more RFPs", count, *limits.MaxRFPs)
+	}
+	return nil
+}
+
+// checkUserLimit checks if the org has reached their plan's max_users limit.
+func (h *Handler) checkUserLimit(c echo.Context, orgID string) error {
+	limits := middleware.GetPlanLimits(c)
+	if limits == nil || limits.MaxUsers == nil {
+		return nil
+	}
+	var count int
+	err := h.DB.QueryRow(
+		`SELECT COUNT(DISTINCT user_id) FROM team_members tm
+		 JOIN teams t ON t.id = tm.team_id
+		 WHERE t.organization_id = $1 AND t.deleted_at IS NULL`,
+		orgID,
+	).Scan(&count)
+	if err != nil {
+		log.Printf("error counting users for limit check: %v", err)
+		return nil
+	}
+	if count >= *limits.MaxUsers {
+		return fmt.Errorf("team member limit reached (%d/%d). Upgrade your plan to add more members", count, *limits.MaxUsers)
+	}
+	return nil
+}
+
+// checkQuestionLimit checks if a project has reached the plan's max_questions_per_rfp limit.
+func (h *Handler) checkQuestionLimit(c echo.Context, orgID, projectID string) (int, error) {
+	limits := middleware.GetPlanLimits(c)
+	var count int
+	err := h.DB.QueryRow(
+		`SELECT COUNT(*) FROM rfp_questions WHERE project_id = $1 AND organization_id = $2`,
+		projectID, orgID,
+	).Scan(&count)
+	if err != nil {
+		log.Printf("error counting questions for limit check: %v", err)
+		return 0, nil // fail-open
+	}
+	if limits == nil || limits.MaxQuestions == nil {
+		return count, nil
+	}
+	if count >= *limits.MaxQuestions {
+		return count, fmt.Errorf("questions per RFP limit reached (%d/%d). Upgrade your plan for more questions", count, *limits.MaxQuestions)
+	}
+	return count, nil
+}
+
+// checkFeatureEnabled checks if a feature flag is enabled for the current plan.
+func checkFeatureEnabled(featureName string, enabled bool) error {
+	if !enabled {
+		return fmt.Errorf("%s is not available on your current plan. Please upgrade to access this feature", featureName)
+	}
+	return nil
+}
+
 // recordTokenUsage records token usage, splitting between included allowance and overage.
 func (h *Handler) recordTokenUsage(orgID string, tokens int) {
 	if tokens <= 0 {
