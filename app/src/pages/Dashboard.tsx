@@ -264,9 +264,17 @@ export function Dashboard() {
 
   // Read filters from URL
   const search = searchParams.get("q") ?? "";
-  const statusFilter = searchParams.get("status") ?? "";
-  const deadlineFilter = (searchParams.get("deadline") ?? "") as DeadlineFilter;
+  const statusFromUrl = searchParams.get("status") ?? "";
+  const deadlineFromUrl = (searchParams.get("deadline") ?? "") as DeadlineFilter;
   const viewMode = (searchParams.get("view") as ViewMode) || "cards";
+
+  // Local state for Radix Select components
+  const [statusFilter, setStatusFilterLocal] = useState(statusFromUrl);
+  const [deadlineFilter, setDeadlineFilterLocal] = useState<DeadlineFilter>(deadlineFromUrl);
+
+  // Sync local state with URL (back/forward navigation)
+  useEffect(() => { setStatusFilterLocal(statusFromUrl); }, [statusFromUrl]);
+  useEffect(() => { setDeadlineFilterLocal(deadlineFromUrl); }, [deadlineFromUrl]);
 
   const [debouncedSearch, setDebouncedSearch] = useState(search);
 
@@ -277,19 +285,18 @@ export function Dashboard() {
   }, [search]);
 
   const setSearch = useCallback((val: string) => {
-    updateParams({ q: val || null });
-    resetPage();
-  }, [updateParams, resetPage]);
+    updateParams({ q: val || null, page: null });
+  }, [updateParams]);
 
   const setStatusFilter = useCallback((val: string) => {
-    updateParams({ status: val || null });
-    resetPage();
-  }, [updateParams, resetPage]);
+    setStatusFilterLocal(val);
+    updateParams({ status: val || null, page: null });
+  }, [updateParams]);
 
   const setDeadlineFilter = useCallback((val: string) => {
-    updateParams({ deadline: val || null });
-    resetPage();
-  }, [updateParams, resetPage]);
+    setDeadlineFilterLocal(val as DeadlineFilter);
+    updateParams({ deadline: val || null, page: null });
+  }, [updateParams]);
 
   const setViewMode = useCallback((val: ViewMode) => {
     updateParams({ view: val === "cards" ? null : val });
