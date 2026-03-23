@@ -773,3 +773,67 @@ export function createPortalSession(
     body: JSON.stringify(body),
   });
 }
+
+// ── User Profile ─────────────────────────────────────────────────────────────
+
+export interface UserProfile {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  image_url: string;
+  has_password: boolean;
+  two_factor_enabled: boolean;
+  totp_enabled: boolean;
+}
+
+export function getUserProfile(token: string | null): Promise<UserProfile> {
+  return request("/api/user/profile", token);
+}
+
+export function updateUserProfile(
+  token: string | null,
+  body: { first_name?: string; last_name?: string },
+): Promise<UserProfile> {
+  return request("/api/user/profile", token, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
+export function updateUserPassword(
+  token: string | null,
+  body: { current_password: string; new_password: string },
+): Promise<{ status: string }> {
+  return request("/api/user/password", token, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
+export function uploadUserAvatar(
+  token: string | null,
+  formData: FormData,
+): Promise<{ status: string; image_url: string }> {
+  return request("/api/user/avatar", token, {
+    method: "POST",
+    body: formData,
+  });
+}
+
+export function deleteUserAvatar(token: string | null): Promise<{ status: string }> {
+  return request("/api/user/avatar", token, { method: "DELETE" });
+}
+
+export interface TwoFactorStatus {
+  two_factor_enabled: boolean;
+  totp_enabled: boolean;
+}
+
+export function getUser2FAStatus(token: string | null): Promise<TwoFactorStatus> {
+  return request("/api/user/2fa", token);
+}
+
+export function disableUserMFA(token: string | null): Promise<{ status: string }> {
+  return request("/api/user/2fa", token, { method: "DELETE" });
+}

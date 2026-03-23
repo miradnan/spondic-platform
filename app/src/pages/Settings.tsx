@@ -1,13 +1,26 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Cog6ToothIcon,
   BellIcon,
   ComputerDesktopIcon,
   CommandLineIcon,
+  UserCircleIcon,
+  KeyIcon,
+  ShieldCheckIcon,
+  CameraIcon,
+  ClipboardDocumentIcon,
 } from "@heroicons/react/24/outline";
+import { useUser as useClerkUser } from "@clerk/react";
 import {
   useNotificationPreferences,
   useUpdateNotificationPreference,
+  useUserProfile,
+  useUpdateUserProfile,
+  useUpdateUserPassword,
+  useUploadUserAvatar,
+  useDeleteUserAvatar,
+  useUser2FAStatus,
+  useDisableUserMFA,
 } from "../hooks/useApi.ts";
 import { useToast } from "../components/Toast.tsx";
 import type { NotificationType } from "../lib/types.ts";
@@ -75,6 +88,515 @@ function Kbd({ children }: { children: React.ReactNode }) {
   );
 }
 
+/* ── Account Section ────────────────────────────────────────────────────── */
+
+function AccountSection() {
+  const { data: profile, isLoading } = useUserProfile();
+  const updateProfile = useUpdateUserProfile();
+  const uploadAvatar = useUploadUserAvatar();
+  const deleteAvatar = useDeleteUserAvatar();
+  const { toast } = useToast();
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [initialized, setInitialized] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Initialize form fields when profile loads
+  if (profile && !initialized) {
+    setFirstName(profile.first_name);
+    setLastName(profile.last_name);
+    setInitialized(true);
+  }
+
+  function handleSaveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    updateProfile.mutate(
+      { first_name: firstName, last_name: lastName },
+      {
+        onSuccess: () => toast("success", "Profile updated"),
+        onError: (err) => toast("error", err.message),
+      },
+    );
+  }
+
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    uploadAvatar.mutate(formData, {
+      onSuccess: () => toast("success", "Avatar updated"),
+      onError: (err) => toast("error", err.message),
+    });
+  }
+
+  function handleDeleteAvatar() {
+    deleteAvatar.mutate(undefined, {
+      onSuccess: () => toast("success", "Avatar removed"),
+      onError: (err) => toast("error", err.message),
+    });
+  }
+
+  if (isLoading) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-6 animate-pulse">
+        <div className="h-5 w-40 bg-surface-inset rounded mb-4" />
+        <div className="flex items-center gap-4 mb-6">
+          <div className="h-16 w-16 rounded-full bg-surface-inset" />
+          <div className="space-y-2">
+            <div className="h-4 w-32 bg-surface-inset rounded" />
+            <div className="h-3 w-48 bg-surface-inset rounded" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const initials = [profile?.first_name?.[0], profile?.last_name?.[0]]
+    .filter(Boolean)
+    .join("")
+    .toUpperCase() || "U";
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-6">
+      <div className="flex items-center gap-2 mb-1">
+        <UserCircleIcon className="h-5 w-5 text-brand-blue" />
+        <h2 className="text-base font-semibold text-heading">Account</h2>
+      </div>
+      <p className="text-sm text-muted mb-6">Manage your profile information and avatar.</p>
+
+      {/* Avatar */}
+      <div className="flex items-center gap-4 mb-6">
+        <div className="relative group">
+          {profile?.image_url ? (
+            <img
+              src={profile.image_url}
+              alt="Avatar"
+              className="h-16 w-16 rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-blue text-white text-lg font-semibold">
+              {initials}
+            </div>
+          )}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
+            aria-label="Change avatar"
+          >
+            <CameraIcon className="h-5 w-5 text-white" />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAvatarChange}
+          />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-heading">
+            {profile?.first_name} {profile?.last_name}
+          </p>
+          <p className="text-xs text-muted">{profile?.email}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadAvatar.isPending}
+              className="text-xs text-brand-blue hover:underline disabled:opacity-50"
+            >
+              {uploadAvatar.isPending ? "Uploading..." : "Change photo"}
+            </button>
+            {profile?.image_url && (
+              <>
+                <span className="text-xs text-muted">|</span>
+                <button
+                  onClick={handleDeleteAvatar}
+                  disabled={deleteAvatar.isPending}
+                  className="text-xs text-red-600 hover:underline disabled:opacity-50"
+                >
+                  Remove
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Name fields */}
+      <form onSubmit={handleSaveProfile} className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-heading mb-1">First name</label>
+            <input
+              type="text"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-heading focus:outline-none focus:ring-2 focus:ring-brand-blue focus:ring-offset-1"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-heading mb-1">Last name</label>
+            <input
+              type="text"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-heading focus:outline-none focus:ring-2 focus:ring-brand-blue focus:ring-offset-1"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-heading mb-1">Email</label>
+          <input
+            type="email"
+            value={profile?.email ?? ""}
+            disabled
+            className="w-full rounded-lg border border-border bg-surface-inset px-3 py-2 text-sm text-muted cursor-not-allowed"
+          />
+          <p className="text-xs text-muted mt-1">Email cannot be changed here. Contact support if needed.</p>
+        </div>
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            disabled={updateProfile.isPending}
+            className="rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue/90 transition-colors disabled:opacity-50"
+          >
+            {updateProfile.isPending ? "Saving..." : "Save changes"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+/* ── Password Section ───────────────────────────────────────────────────── */
+
+function PasswordSection() {
+  const { data: profile } = useUserProfile();
+  const updatePassword = useUpdateUserPassword();
+  const { toast } = useToast();
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      toast("error", "New passwords do not match");
+      return;
+    }
+    if (newPassword.length < 8) {
+      toast("error", "Password must be at least 8 characters");
+      return;
+    }
+
+    updatePassword.mutate(
+      { current_password: currentPassword, new_password: newPassword },
+      {
+        onSuccess: () => {
+          toast("success", "Password updated successfully");
+          setCurrentPassword("");
+          setNewPassword("");
+          setConfirmPassword("");
+        },
+        onError: (err) => toast("error", err.message),
+      },
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-6">
+      <div className="flex items-center gap-2 mb-1">
+        <KeyIcon className="h-5 w-5 text-brand-blue" />
+        <h2 className="text-base font-semibold text-heading">Password</h2>
+      </div>
+      <p className="text-sm text-muted mb-6">
+        {profile?.has_password
+          ? "Update your password to keep your account secure."
+          : "Set a password for your account."}
+      </p>
+
+      <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
+        {profile?.has_password && (
+          <div>
+            <label className="block text-sm font-medium text-heading mb-1">Current password</label>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              required
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-heading focus:outline-none focus:ring-2 focus:ring-brand-blue focus:ring-offset-1"
+            />
+          </div>
+        )}
+        <div>
+          <label className="block text-sm font-medium text-heading mb-1">New password</label>
+          <input
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            required
+            minLength={8}
+            className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-heading focus:outline-none focus:ring-2 focus:ring-brand-blue focus:ring-offset-1"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-heading mb-1">Confirm new password</label>
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            minLength={8}
+            className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-heading focus:outline-none focus:ring-2 focus:ring-brand-blue focus:ring-offset-1"
+          />
+        </div>
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            disabled={updatePassword.isPending}
+            className="rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue/90 transition-colors disabled:opacity-50"
+          >
+            {updatePassword.isPending ? "Updating..." : profile?.has_password ? "Update password" : "Set password"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+/* ── Two-Factor Authentication Section ──────────────────────────────────── */
+
+function TwoFactorSection() {
+  const { data: status, isLoading } = useUser2FAStatus();
+  const disableMFA = useDisableUserMFA();
+  const { user } = useClerkUser();
+  const { toast } = useToast();
+
+  const [setupStep, setSetupStep] = useState<"idle" | "qr" | "verify" | "done">("idle");
+  const [totpData, setTotpData] = useState<{ secret: string; uri: string } | null>(null);
+  const [verifyCode, setVerifyCode] = useState("");
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [enabling, setEnabling] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+
+  async function handleEnable() {
+    if (!user) return;
+    setEnabling(true);
+    try {
+      const totp = await user.createTOTP();
+      setTotpData({ secret: totp.secret ?? "", uri: totp.uri ?? "" });
+
+      if (totp.backupCodes?.length) setBackupCodes(totp.backupCodes);
+      setSetupStep("qr");
+    } catch (err) {
+      toast("error", err instanceof Error ? err.message : "Failed to create TOTP");
+    } finally {
+      setEnabling(false);
+    }
+  }
+
+  async function handleVerify(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user) return;
+    setVerifying(true);
+    try {
+      const result = await user.verifyTOTP({ code: verifyCode });
+      if (result.backupCodes?.length) setBackupCodes(result.backupCodes);
+      setSetupStep("done");
+      toast("success", "Two-factor authentication enabled");
+    } catch (err) {
+      toast("error", err instanceof Error ? err.message : "Invalid verification code");
+    } finally {
+      setVerifying(false);
+    }
+  }
+
+  function handleDisable() {
+    disableMFA.mutate(undefined, {
+      onSuccess: () => {
+        setSetupStep("idle");
+        setTotpData(null);
+
+        setVerifyCode("");
+        setBackupCodes([]);
+        toast("success", "Two-factor authentication disabled");
+      },
+      onError: (err) => toast("error", err.message),
+    });
+  }
+
+  function copyToClipboard(text: string) {
+    navigator.clipboard.writeText(text);
+    toast("success", "Copied to clipboard");
+  }
+
+  if (isLoading) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-6 animate-pulse">
+        <div className="h-5 w-56 bg-surface-inset rounded mb-4" />
+        <div className="h-4 w-72 bg-surface-inset rounded" />
+      </div>
+    );
+  }
+
+  const isEnabled = status?.totp_enabled;
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-6">
+      <div className="flex items-center gap-2 mb-1">
+        <ShieldCheckIcon className="h-5 w-5 text-brand-blue" />
+        <h2 className="text-base font-semibold text-heading">Two-Factor Authentication</h2>
+      </div>
+      <p className="text-sm text-muted mb-6">
+        Add an extra layer of security to your account using a TOTP authenticator app.
+      </p>
+
+      {/* Status + toggle */}
+      {setupStep === "idle" && (
+        <div className="flex items-center justify-between py-3">
+          <div className="flex items-center gap-3">
+            <div className={`h-2.5 w-2.5 rounded-full ${isEnabled ? "bg-green-500" : "bg-surface-inset"}`} />
+            <span className="text-sm font-medium text-heading">
+              {isEnabled ? "Enabled" : "Disabled"}
+            </span>
+          </div>
+          {isEnabled ? (
+            <button
+              onClick={handleDisable}
+              disabled={disableMFA.isPending}
+              className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors disabled:opacity-50"
+            >
+              {disableMFA.isPending ? "Disabling..." : "Disable 2FA"}
+            </button>
+          ) : (
+            <button
+              onClick={handleEnable}
+              disabled={enabling}
+              className="rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue/90 transition-colors disabled:opacity-50"
+            >
+              {enabling ? "Setting up..." : "Enable 2FA"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* QR Code step */}
+      {setupStep === "qr" && totpData && (
+        <div className="space-y-4">
+          <div className="rounded-lg border border-border bg-cream-lighter p-4">
+            <p className="text-sm font-medium text-heading mb-3">
+              Scan this QR code with your authenticator app
+            </p>
+            <div className="flex justify-center mb-3">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(totpData.uri)}`}
+                alt="TOTP QR Code"
+                className="h-48 w-48 rounded-lg"
+              />
+            </div>
+            <p className="text-xs text-muted text-center mb-2">Or enter this secret manually:</p>
+            <div className="flex items-center justify-center gap-2">
+              <code className="rounded bg-surface-inset px-2 py-1 text-xs font-mono text-heading">
+                {totpData.secret}
+              </code>
+              <button
+                onClick={() => copyToClipboard(totpData.secret)}
+                className="rounded p-1 hover:bg-surface-inset transition-colors"
+                aria-label="Copy secret"
+              >
+                <ClipboardDocumentIcon className="h-4 w-4 text-muted" />
+              </button>
+            </div>
+          </div>
+
+          <form onSubmit={handleVerify} className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-heading mb-1">
+                Enter the 6-digit code from your app
+              </label>
+              <input
+                type="text"
+                value={verifyCode}
+                onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="000000"
+                maxLength={6}
+                autoFocus
+                className="w-full max-w-[200px] rounded-lg border border-border bg-surface px-3 py-2 text-sm text-heading font-mono tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-brand-blue focus:ring-offset-1"
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="submit"
+                disabled={verifyCode.length !== 6 || verifying}
+                className="rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue/90 transition-colors disabled:opacity-50"
+              >
+                {verifying ? "Verifying..." : "Verify & Enable"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSetupStep("idle");
+                  setTotpData(null);
+                  setVerifyCode("");
+                }}
+                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-body hover:bg-cream-light transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Backup codes step */}
+      {setupStep === "done" && backupCodes.length > 0 && (
+        <div className="space-y-4">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-4">
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">
+              Save your backup codes
+            </p>
+            <p className="text-xs text-amber-700 dark:text-amber-300 mb-3">
+              Store these codes in a safe place. Each code can be used once to access your account if you lose your authenticator device.
+            </p>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              {backupCodes.map((code) => (
+                <code
+                  key={code}
+                  className="rounded bg-white dark:bg-amber-950/40 px-2 py-1.5 text-xs font-mono text-heading text-center border border-amber-200 dark:border-amber-800"
+                >
+                  {code}
+                </code>
+              ))}
+            </div>
+            <button
+              onClick={() => copyToClipboard(backupCodes.join("\n"))}
+              className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300 hover:underline"
+            >
+              <ClipboardDocumentIcon className="h-3.5 w-3.5" />
+              Copy all codes
+            </button>
+          </div>
+          <button
+            onClick={() => {
+              setSetupStep("idle");
+              setBackupCodes([]);
+            }}
+            className="rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue/90 transition-colors"
+          >
+            Done
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Main Settings Page ─────────────────────────────────────────────────── */
+
 export function Settings() {
   const { data: preferences, isLoading } = useNotificationPreferences();
   const updatePref = useUpdateNotificationPreference();
@@ -132,9 +654,18 @@ export function Settings() {
         </div>
         <div>
           <h1 className="text-xl font-semibold text-heading">Settings</h1>
-          <p className="text-sm text-muted">Manage your preferences and notifications</p>
+          <p className="text-sm text-muted">Manage your account, security, and preferences</p>
         </div>
       </div>
+
+      {/* Account Section */}
+      <AccountSection />
+
+      {/* Password Section */}
+      <PasswordSection />
+
+      {/* Two-Factor Authentication Section */}
+      <TwoFactorSection />
 
       {/* Display Preferences Section */}
       <div className="rounded-xl border border-border bg-surface p-6">

@@ -876,7 +876,7 @@ export function Dashboard() {
           </div>
 
           {/* Card Pagination */}
-          <div className="mt-6 rounded-xl border border-border bg-surface overflow-hidden">
+          <div className="sticky bottom-0 mt-6 rounded-xl border border-border bg-surface overflow-hidden z-10 shadow-sm [&>div]:border-t-0">
             <PaginationBar
               currentPage={pagination.pageIndex + 1}
               totalItems={total}

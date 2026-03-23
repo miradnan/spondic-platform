@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -68,17 +69,37 @@ func (h *Handler) ListProjects(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "organization_id is required"})
 	}
 
+	userID := getUserID(c)
 	page, limit, offset := paginationParams(c)
 	statusFilter := c.QueryParam("status")
 
+	// Role-based visibility: admins see all, members see their team's projects + own + assigned
+	isAdminUser := isAdmin(c)
+
+	// Build the member visibility filter (used for both count and fetch)
+	memberFilter := ""
+	if !isAdminUser {
+		memberFilter = ` AND (
+			p.created_by = $__USER__
+			OR p.team_id IN (SELECT team_id FROM team_members WHERE user_id = $__USER__)
+			OR EXISTS (SELECT 1 FROM rfp_questions rq2 WHERE rq2.project_id = p.id AND rq2.assigned_to = $__USER__)
+		)`
+	}
+
 	// Count total
 	var total int64
-	countQuery := `SELECT COUNT(*) FROM projects WHERE organization_id = $1 AND deleted_at IS NULL`
+	countQuery := `SELECT COUNT(*) FROM projects p WHERE p.organization_id = $1 AND p.deleted_at IS NULL`
 	args := []interface{}{orgID}
 	argIdx := 2
 
+	if !isAdminUser {
+		countQuery += strings.ReplaceAll(memberFilter, "$__USER__", "$"+itoa(argIdx))
+		args = append(args, userID)
+		argIdx++
+	}
+
 	if statusFilter != "" {
-		countQuery += ` AND status = $` + itoa(argIdx)
+		countQuery += ` AND p.status = $` + itoa(argIdx)
 		args = append(args, statusFilter)
 		argIdx++
 	}
@@ -118,6 +139,12 @@ func (h *Handler) ListProjects(c echo.Context) error {
 
 	fetchArgs := []interface{}{orgID}
 	fetchIdx := 2
+
+	if !isAdminUser {
+		query += strings.ReplaceAll(memberFilter, "$__USER__", "$"+itoa(fetchIdx))
+		fetchArgs = append(fetchArgs, userID)
+		fetchIdx++
+	}
 
 	if statusFilter != "" {
 		query += ` AND p.status = $` + itoa(fetchIdx)

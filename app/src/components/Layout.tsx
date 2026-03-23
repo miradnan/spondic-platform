@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
-  UserButton,
   useOrganization,
   useAuth,
 } from "@clerk/react";
@@ -33,6 +32,7 @@ import { useProject, useUnreadCount, useNotifications, useMarkNotificationRead, 
 import { useAppEvents } from "../hooks/useAppEvents.ts";
 import { useBrandingContext } from "../contexts/BrandingContext.tsx";
 import { useTranslation } from "react-i18next";
+import { UserAvatarDropdown } from "./UserAvatarDropdown.tsx";
 
 const navLink =
   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-navy-light hover:text-white transition-colors";
@@ -734,7 +734,7 @@ export function Layout() {
             {/* Notifications */}
             <NotificationBell />
 
-            <UserButton />
+            <UserAvatarDropdown />
           </div>
         </header>
 

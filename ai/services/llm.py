@@ -300,7 +300,6 @@ def chat_response_stream(
                 temperature=0.3,
                 max_tokens=4096,
                 stream=True,
-                stream_options={"include_usage": True} if usage is not None else None,
             )
             for chunk in stream:
                 if chunk.choices and chunk.choices[0].delta.content:

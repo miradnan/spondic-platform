@@ -84,10 +84,10 @@ export function ChatLayout() {
               return (
                 <li key={chat.id}>
                   <div
-                    className={`group flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
+                    className={`group flex items-center gap-2 rounded-lg px-3 py-2 text-sm border transition-colors ${
                       isActive
-                        ? "bg-brand-blue/10 text-brand-blue font-medium"
-                        : "text-body hover:bg-cream-light"
+                        ? "bg-brand-blue/10 text-brand-blue font-medium border-brand-blue/30"
+                        : "text-body hover:bg-cream-light border-transparent"
                     }`}
                   >
                     <Link
@@ -109,7 +109,7 @@ export function ChatLayout() {
                           }
                         }
                       }}
-                      className="hidden group-hover:block shrink-0 p-1 text-muted/40 hover:text-red-500 transition-colors rounded"
+                      className="opacity-0 group-hover:opacity-100 shrink-0 p-1 text-muted/40 hover:text-red-500 transition-all rounded"
                       title="Delete chat"
                     >
                       <TrashIcon className="h-3.5 w-3.5" />

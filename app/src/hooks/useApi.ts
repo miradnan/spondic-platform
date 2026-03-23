@@ -1086,3 +1086,94 @@ export function useCreatePortalSession() {
     },
   });
 }
+
+// ── User Profile ─────────────────────────────────────────────────────────────
+
+export function useUserProfile() {
+  const getToken = useToken();
+  return useQuery<api.UserProfile>({
+    queryKey: ["userProfile"],
+    queryFn: async () => {
+      const token = await getToken();
+      return api.getUserProfile(token);
+    },
+  });
+}
+
+export function useUpdateUserProfile() {
+  const getToken = useToken();
+  const qc = useQueryClient();
+  return useMutation<api.UserProfile, Error, { first_name?: string; last_name?: string }>({
+    mutationFn: async (body) => {
+      const token = await getToken();
+      return api.updateUserProfile(token, body);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["userProfile"] });
+    },
+  });
+}
+
+export function useUpdateUserPassword() {
+  const getToken = useToken();
+  return useMutation<{ status: string }, Error, { current_password: string; new_password: string }>({
+    mutationFn: async (body) => {
+      const token = await getToken();
+      return api.updateUserPassword(token, body);
+    },
+  });
+}
+
+export function useUploadUserAvatar() {
+  const getToken = useToken();
+  const qc = useQueryClient();
+  return useMutation<{ status: string; image_url: string }, Error, FormData>({
+    mutationFn: async (formData) => {
+      const token = await getToken();
+      return api.uploadUserAvatar(token, formData);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["userProfile"] });
+    },
+  });
+}
+
+export function useDeleteUserAvatar() {
+  const getToken = useToken();
+  const qc = useQueryClient();
+  return useMutation<{ status: string }, Error, void>({
+    mutationFn: async () => {
+      const token = await getToken();
+      return api.deleteUserAvatar(token);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["userProfile"] });
+    },
+  });
+}
+
+export function useUser2FAStatus() {
+  const getToken = useToken();
+  return useQuery<api.TwoFactorStatus>({
+    queryKey: ["user2fa"],
+    queryFn: async () => {
+      const token = await getToken();
+      return api.getUser2FAStatus(token);
+    },
+  });
+}
+
+export function useDisableUserMFA() {
+  const getToken = useToken();
+  const qc = useQueryClient();
+  return useMutation<{ status: string }, Error, void>({
+    mutationFn: async () => {
+      const token = await getToken();
+      return api.disableUserMFA(token);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["user2fa"] });
+      qc.invalidateQueries({ queryKey: ["userProfile"] });
+    },
+  });
+}

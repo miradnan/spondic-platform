@@ -197,7 +197,8 @@ function AutoResizeTextarea({
       placeholder={placeholder}
       disabled={disabled}
       rows={1}
-      className="flex-1 min-w-0 bg-transparent py-2 px-1 text-sm text-heading placeholder-muted focus:outline-none disabled:opacity-50 resize-none"
+      className="flex-1 min-w-0 bg-transparent py-2 px-1 text-sm text-heading placeholder-muted focus:outline-none disabled:opacity-50 resize-none shadow-none"
+      style={{ boxShadow: "none" }}
     />
   );
 }
@@ -447,10 +448,10 @@ export function Chat() {
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`group flex mb-4 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                className={`group mb-4 flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
               >
                 <div
-                  className={`relative max-w-[85%] rounded-xl px-4 py-3 text-sm leading-relaxed ${
+                  className={`max-w-[85%] rounded-xl px-4 py-3 text-sm leading-relaxed ${
                     msg.role === "user"
                       ? "bg-brand-blue text-white"
                       : "bg-cream-light text-heading border border-border"
@@ -462,28 +463,6 @@ export function Chat() {
                     </div>
                   ) : (
                     <div className="whitespace-pre-wrap">{msg.message}</div>
-                  )}
-
-                  {/* Action buttons for assistant messages */}
-                  {msg.role === "assistant" && (
-                    <div className="absolute -top-2 -right-2">
-                      <CopyButton text={msg.message} />
-                    </div>
-                  )}
-
-                  {/* Action buttons for user messages */}
-                  {msg.role === "user" && (
-                    <div className="absolute -top-2 -right-2 flex items-center gap-0.5">
-                      <Tooltip content="Edit & resubmit">
-                        <button
-                          onClick={() => handleEditMessage(msg.message)}
-                          className="rounded-lg p-1.5 text-white/70 hover:text-white hover:bg-white/20 transition-colors opacity-0 group-hover:opacity-100"
-                        >
-                          <PencilIcon className="h-4 w-4" />
-                        </button>
-                      </Tooltip>
-                      <CopyButton text={msg.message} className="!text-white/70 !hover:text-white !hover:bg-white/20" />
-                    </div>
                   )}
 
                   {/* Citations */}
@@ -514,11 +493,26 @@ export function Chat() {
                     </div>
                   )}
                 </div>
+
+                {/* Action buttons below the bubble */}
+                <div className={`flex items-center gap-1 mt-1 h-6 opacity-0 group-hover:opacity-100 transition-opacity ${msg.role === "user" ? "pr-1" : "pl-1"}`}>
+                  {msg.role === "user" && (
+                    <Tooltip content="Edit & resubmit">
+                      <button
+                        onClick={() => handleEditMessage(msg.message)}
+                        className="rounded p-1 text-muted hover:text-heading hover:bg-cream-light transition-colors"
+                      >
+                        <PencilIcon className="h-3.5 w-3.5" />
+                      </button>
+                    </Tooltip>
+                  )}
+                  <CopyButton text={msg.message} />
+                </div>
               </div>
             ))}
 
             {/* Pending user message (shown immediately before DB round-trip) */}
-            {pendingUserMessage && (
+            {pendingUserMessage && messages[messages.length - 1]?.message !== pendingUserMessage && (
               <div className="group flex mb-4 justify-end">
                 <div className="relative max-w-[85%] rounded-xl px-4 py-3 text-sm leading-relaxed bg-brand-blue text-white">
                   <div className="whitespace-pre-wrap">{pendingUserMessage}</div>

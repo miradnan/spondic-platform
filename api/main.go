@@ -167,6 +167,15 @@ func main() {
 	// Users (Clerk search)
 	api.GET("/users/search", h.SearchUsers)
 
+	// User profile (proxies to Clerk Backend API)
+	api.GET("/user/profile", h.GetUserProfile)
+	api.PUT("/user/profile", h.UpdateUserProfile)
+	api.PUT("/user/password", h.UpdateUserPassword)
+	api.POST("/user/avatar", h.UploadUserAvatar)
+	api.DELETE("/user/avatar", h.DeleteUserAvatar)
+	api.GET("/user/2fa", h.GetUser2FAStatus)
+	api.DELETE("/user/2fa", h.DisableUserMFA)
+
 	// Teams
 	api.GET("/teams", h.ListTeams)
 	api.POST("/teams", h.CreateTeam)

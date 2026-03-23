@@ -126,7 +126,7 @@ export function DataTable<TData>({
   return (
     <div>
       {/* Table wrapper */}
-      <div className="rounded-xl border border-border bg-surface shadow-sm overflow-x-auto">
+      <div className={`border border-border bg-surface shadow-sm overflow-x-auto ${!loading && totalRowCount > 25 ? "rounded-t-xl rounded-b-none border-b-0" : "rounded-xl"}`}>
         <table className="w-full text-sm">
           {/* Header */}
           <thead>
@@ -207,8 +207,11 @@ export function DataTable<TData>({
           </tbody>
         </table>
 
-        {/* Pagination Bar — inside the table wrapper, below rows */}
-        {!loading && totalRowCount > 25 && (
+      </div>
+
+      {/* Pagination Bar — sticky bottom */}
+      {!loading && totalRowCount > 25 && (
+        <div className="sticky bottom-0 rounded-b-xl rounded-t-none border border-border bg-surface overflow-hidden z-10 shadow-sm [&>div]:border-t-0">
           <PaginationBar
             currentPage={currentPage}
             totalItems={totalRowCount}
@@ -216,8 +219,8 @@ export function DataTable<TData>({
             onPageChange={handlePageChange}
             onPageSizeChange={handlePageSizeChange}
           />
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
