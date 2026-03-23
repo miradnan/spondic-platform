@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState, useEffect } from "react";
 import {
   ArrowPathIcon,
   XMarkIcon,
@@ -68,10 +68,19 @@ export function AuditLog() {
     sortDesc: true,
   });
 
-  // Read filters from URL
-  const actionFilter = searchParams.get("action") ?? "";
-  const userFilter = searchParams.get("user") ?? "";
-  const entityTypeFilter = searchParams.get("entity") ?? "";
+  // Read filters from URL — use local state to ensure Radix Select re-renders
+  const actionFromUrl = searchParams.get("action") ?? "";
+  const userFromUrl = searchParams.get("user") ?? "";
+  const entityFromUrl = searchParams.get("entity") ?? "";
+
+  const [actionFilter, setActionFilter] = useState(actionFromUrl);
+  const [userFilter, setUserFilter] = useState(userFromUrl);
+  const [entityTypeFilter, setEntityTypeFilter] = useState(entityFromUrl);
+
+  // Sync local state with URL (for back/forward navigation)
+  useEffect(() => { setActionFilter(actionFromUrl); }, [actionFromUrl]);
+  useEffect(() => { setUserFilter(userFromUrl); }, [userFromUrl]);
+  useEffect(() => { setEntityTypeFilter(entityFromUrl); }, [entityFromUrl]);
   const dateFromStr = searchParams.get("from") ?? "";
   const dateToStr = searchParams.get("to") ?? "";
   // Parse dates with local timezone (not UTC) so react-day-picker highlights correctly
@@ -81,6 +90,9 @@ export function AuditLog() {
   const hasFilters = actionFilter || userFilter || entityTypeFilter || dateFrom || dateTo;
 
   const clearFilters = useCallback(() => {
+    setActionFilter("");
+    setUserFilter("");
+    setEntityTypeFilter("");
     updateParams({ action: null, user: null, entity: null, from: null, to: null, page: null });
   }, [updateParams]);
 
@@ -172,9 +184,12 @@ export function AuditLog() {
           <div>
             <label className="block text-xs font-medium text-muted mb-1">Action</label>
             <Select
-              key={`action-${actionFilter}`}
               value={actionFilter || "all"}
-              onValueChange={(val) => { updateParams({ action: val === "all" ? null : val }); resetPage(); }}
+              onValueChange={(val) => {
+                const v = val === "all" ? "" : val;
+                setActionFilter(v);
+                updateParams({ action: v || null, page: null });
+              }}
             >
               <SelectTrigger className="min-w-[130px]">
                 <SelectValue placeholder="All actions" />
@@ -198,9 +213,12 @@ export function AuditLog() {
           <div>
             <label className="block text-xs font-medium text-muted mb-1">User</label>
             <Select
-              key={`user-${userFilter}`}
               value={userFilter || "all"}
-              onValueChange={(val) => { updateParams({ user: val === "all" ? null : val }); resetPage(); }}
+              onValueChange={(val) => {
+                const v = val === "all" ? "" : val;
+                setUserFilter(v);
+                updateParams({ user: v || null, page: null });
+              }}
             >
               <SelectTrigger className="min-w-[150px]">
                 <SelectValue placeholder="All users" />
@@ -220,9 +238,12 @@ export function AuditLog() {
           <div>
             <label className="block text-xs font-medium text-muted mb-1">Entity type</label>
             <Select
-              key={`entity-${entityTypeFilter}`}
               value={entityTypeFilter || "all"}
-              onValueChange={(val) => { updateParams({ entity: val === "all" ? null : val }); resetPage(); }}
+              onValueChange={(val) => {
+                const v = val === "all" ? "" : val;
+                setEntityTypeFilter(v);
+                updateParams({ entity: v || null, page: null });
+              }}
             >
               <SelectTrigger className="min-w-[130px]">
                 <SelectValue placeholder="All types" />
@@ -244,8 +265,7 @@ export function AuditLog() {
             <DatePicker
               value={dateFrom}
               onChange={(date) => {
-                updateParams({ from: date ? format(date, "yyyy-MM-dd") : null });
-                resetPage();
+                updateParams({ from: date ? format(date, "yyyy-MM-dd") : null, page: null });
               }}
               placeholder="Start date"
             />
@@ -257,8 +277,7 @@ export function AuditLog() {
             <DatePicker
               value={dateTo}
               onChange={(date) => {
-                updateParams({ to: date ? format(date, "yyyy-MM-dd") : null });
-                resetPage();
+                updateParams({ to: date ? format(date, "yyyy-MM-dd") : null, page: null });
               }}
               placeholder="End date"
             />
