@@ -9,7 +9,9 @@ export interface Project {
   status: "draft" | "parsing" | "parsed" | "in_progress" | "completed" | "submitted";
   question_count: number;
   draft_count: number;
+  in_review_count: number;
   approved_count: number;
+  rejected_count: number;
   document_count: number;
   created_by: string;
   created_at: string;

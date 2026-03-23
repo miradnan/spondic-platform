@@ -93,14 +93,22 @@ func (h *Handler) ListProjects(c echo.Context) error {
 		       p.created_by, p.created_at, p.updated_at,
 		       COALESCE(q.total, 0) AS question_count,
 		       COALESCE(q.draft_count, 0) AS draft_count,
+		       COALESCE(q.in_review_count, 0) AS in_review_count,
 		       COALESCE(q.approved_count, 0) AS approved_count,
+		       COALESCE(q.rejected_count, 0) AS rejected_count,
 		       COALESCE(pd.doc_count, 0) AS document_count
 		FROM projects p
 		LEFT JOIN LATERAL (
 			SELECT COUNT(*) AS total,
-			       COUNT(*) FILTER (WHERE rq.status = 'draft') AS draft_count,
-			       COUNT(*) FILTER (WHERE rq.status = 'approved') AS approved_count
-			FROM rfp_questions rq WHERE rq.project_id = p.id
+			       COUNT(*) FILTER (WHERE COALESCE(ra.status, rq.status) = 'draft') AS draft_count,
+			       COUNT(*) FILTER (WHERE COALESCE(ra.status, rq.status) = 'in_review') AS in_review_count,
+			       COUNT(*) FILTER (WHERE COALESCE(ra.status, rq.status) = 'approved') AS approved_count,
+			       COUNT(*) FILTER (WHERE COALESCE(ra.status, rq.status) = 'rejected') AS rejected_count
+			FROM rfp_questions rq
+			LEFT JOIN LATERAL (
+			    SELECT ra2.status FROM rfp_answers ra2 WHERE ra2.question_id = rq.id ORDER BY ra2.updated_at DESC LIMIT 1
+			) ra ON true
+			WHERE rq.project_id = p.id
 		) q ON true
 		LEFT JOIN LATERAL (
 			SELECT COUNT(*) AS doc_count FROM project_documents pd2 WHERE pd2.project_id = p.id
@@ -132,7 +140,7 @@ func (h *Handler) ListProjects(c echo.Context) error {
 		if err := rows.Scan(
 			&p.ID, &p.OrganizationID, &p.Name, &p.Description, &p.Deadline, &p.Status,
 			&p.CreatedBy, &p.CreatedAt, &p.UpdatedAt,
-			&p.QuestionCount, &p.DraftCount, &p.ApprovedCount, &p.DocumentCount,
+			&p.QuestionCount, &p.DraftCount, &p.InReviewCount, &p.ApprovedCount, &p.RejectedCount, &p.DocumentCount,
 		); err != nil {
 			log.Printf("error scanning project: %v", err)
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
@@ -160,14 +168,21 @@ func (h *Handler) GetProject(c echo.Context) error {
 	err := h.DB.QueryRow(
 		`SELECT p.id, p.organization_id, p.name, p.description, p.deadline, p.status,
 		        p.created_by, p.created_at, p.updated_at,
-		        COALESCE(q.total, 0), COALESCE(q.draft_count, 0), COALESCE(q.approved_count, 0),
+		        COALESCE(q.total, 0), COALESCE(q.draft_count, 0), COALESCE(q.in_review_count, 0),
+		        COALESCE(q.approved_count, 0), COALESCE(q.rejected_count, 0),
 		        COALESCE(pd.doc_count, 0)
 		 FROM projects p
 		 LEFT JOIN LATERAL (
 		     SELECT COUNT(*) AS total,
-		            COUNT(*) FILTER (WHERE rq.status = 'draft') AS draft_count,
-		            COUNT(*) FILTER (WHERE rq.status = 'approved') AS approved_count
-		     FROM rfp_questions rq WHERE rq.project_id = p.id
+		            COUNT(*) FILTER (WHERE COALESCE(ra.status, rq.status) = 'draft') AS draft_count,
+		            COUNT(*) FILTER (WHERE COALESCE(ra.status, rq.status) = 'in_review') AS in_review_count,
+		            COUNT(*) FILTER (WHERE COALESCE(ra.status, rq.status) = 'approved') AS approved_count,
+		            COUNT(*) FILTER (WHERE COALESCE(ra.status, rq.status) = 'rejected') AS rejected_count
+		     FROM rfp_questions rq
+		     LEFT JOIN LATERAL (
+		         SELECT ra2.status FROM rfp_answers ra2 WHERE ra2.question_id = rq.id ORDER BY ra2.updated_at DESC LIMIT 1
+		     ) ra ON true
+		     WHERE rq.project_id = p.id
 		 ) q ON true
 		 LEFT JOIN LATERAL (
 		     SELECT COUNT(*) AS doc_count FROM project_documents pd2 WHERE pd2.project_id = p.id
@@ -177,7 +192,7 @@ func (h *Handler) GetProject(c echo.Context) error {
 	).Scan(
 		&p.ID, &p.OrganizationID, &p.Name, &p.Description, &p.Deadline, &p.Status,
 		&p.CreatedBy, &p.CreatedAt, &p.UpdatedAt,
-		&p.QuestionCount, &p.DraftCount, &p.ApprovedCount, &p.DocumentCount,
+		&p.QuestionCount, &p.DraftCount, &p.InReviewCount, &p.ApprovedCount, &p.RejectedCount, &p.DocumentCount,
 	)
 	if err == sql.ErrNoRows {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "project not found"})

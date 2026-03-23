@@ -154,7 +154,7 @@ func (h *Handler) ListDocuments(c echo.Context) error {
 	               FROM documents d`
 
 	joins := ""
-	where := " WHERE d.organization_id = $1 AND d.deleted_at IS NULL"
+	where := " WHERE d.organization_id = $1 AND d.deleted_at IS NULL AND d.source_type != 'rfp'"
 	args := []interface{}{orgID}
 	argIdx := 2
 
@@ -319,8 +319,11 @@ func (h *Handler) DocumentPreviewURL(c echo.Context) error {
 	})
 }
 
-// DeleteDocument handles DELETE /api/documents/:id (soft delete)
+// DeleteDocument handles DELETE /api/documents/:id (soft delete, admin only)
 func (h *Handler) DeleteDocument(c echo.Context) error {
+	if !isAdmin(c) {
+		return c.JSON(http.StatusForbidden, map[string]string{"error": "only admins can delete documents"})
+	}
 	orgID := getOrgID(c)
 	docID := c.Param("id")
 

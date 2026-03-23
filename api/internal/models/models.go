@@ -45,7 +45,9 @@ type Project struct {
 	// Computed fields (not always populated)
 	QuestionCount  int `json:"question_count,omitempty"`
 	DraftCount     int `json:"draft_count,omitempty"`
+	InReviewCount  int `json:"in_review_count,omitempty"`
 	ApprovedCount  int `json:"approved_count,omitempty"`
+	RejectedCount  int `json:"rejected_count,omitempty"`
 	DocumentCount  int `json:"document_count,omitempty"`
 }
 

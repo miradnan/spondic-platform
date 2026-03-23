@@ -275,31 +275,30 @@ export function RfpView() {
           <span className="text-xs font-medium text-muted uppercase tracking-wide">{t("rfp.view.progressPipeline")}</span>
           <span className="text-xs text-muted">{t("rfp.view.questionsTotal", { count: totalQuestions })}</span>
         </div>
-        <div className="flex items-center gap-1 h-3 rounded-full overflow-hidden bg-surface-inset">
-          {approvedCount > 0 && (
-            <div
-              className="h-full bg-green-500 transition-all"
-              style={{ width: `${(approvedCount / Math.max(totalQuestions, 1)) * 100}%` }}
-              title={`${approvedCount} approved`}
-            />
-          )}
-          {inReviewCount > 0 && (
-            <div
-              className="h-full bg-yellow-400 transition-all"
-              style={{ width: `${(inReviewCount / Math.max(totalQuestions, 1)) * 100}%` }}
-              title={`${inReviewCount} in review`}
-            />
-          )}
-          {draftedCount - approvedCount - inReviewCount > 0 && (
-            <div
-              className="h-full bg-blue-400 transition-all"
-              style={{
-                width: `${(Math.max(0, draftedCount - approvedCount - inReviewCount) / Math.max(totalQuestions, 1)) * 100}%`,
-              }}
-              title={`${Math.max(0, draftedCount - approvedCount - inReviewCount)} drafted`}
-            />
-          )}
-        </div>
+        <Tooltip content={`${approvedCount} approved · ${inReviewCount} in review · ${Math.max(0, draftedCount - approvedCount - inReviewCount)} drafted · ${Math.max(0, totalQuestions - draftedCount)} pending`}>
+          <div className="flex items-center gap-1 h-3 rounded-full overflow-hidden bg-surface-inset">
+            {approvedCount > 0 && (
+              <div
+                className="h-full bg-green-500 transition-all"
+                style={{ width: `${(approvedCount / Math.max(totalQuestions, 1)) * 100}%` }}
+              />
+            )}
+            {inReviewCount > 0 && (
+              <div
+                className="h-full bg-yellow-400 transition-all"
+                style={{ width: `${(inReviewCount / Math.max(totalQuestions, 1)) * 100}%` }}
+              />
+            )}
+            {draftedCount - approvedCount - inReviewCount > 0 && (
+              <div
+                className="h-full bg-blue-400 transition-all"
+                style={{
+                  width: `${(Math.max(0, draftedCount - approvedCount - inReviewCount) / Math.max(totalQuestions, 1)) * 100}%`,
+                }}
+              />
+            )}
+          </div>
+        </Tooltip>
         <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-muted">
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-green-500" /> {approvedCount} {t("rfp.view.approved")}

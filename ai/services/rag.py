@@ -256,7 +256,8 @@ async def index_approved_answer(
     content = f"Q: {question_text}\n\nA: {clean_answer}"
     embedding = embedder.embed_single(content)
 
-    # Semantic dedup: skip if a near-identical entry already exists
+    # Semantic dedup: if a near-identical entry exists from a different answer,
+    # replace it with the newer one (which may have updated facts like employee count).
     existing = vectorstore.find_near_duplicate(
         organization_id=organization_id,
         embedding=embedding,
@@ -264,10 +265,10 @@ async def index_approved_answer(
     )
     if existing and existing["document_id"] != answer_id:
         logger.info(
-            "Skipping approved answer %s — near duplicate of %s (%.1f%% similar)",
-            answer_id, existing["document_id"], existing["score"] * 100,
+            "Replacing older duplicate %s with newer answer %s (%.1f%% similar)",
+            existing["document_id"], answer_id, existing["score"] * 100,
         )
-        return ""
+        vectorstore.delete_by_uuid(existing["uuid"])
 
     # Build a descriptive title
     q_snippet = question_text[:60].rstrip() + ("..." if len(question_text) > 60 else "")

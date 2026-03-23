@@ -514,16 +514,30 @@ export function Dashboard() {
           const project = info.row.original;
           const total = project.question_count ?? 0;
           const approved = project.approved_count ?? 0;
-          const pct = total > 0 ? Math.round((approved / total) * 100) : 0;
+          const inReview = project.in_review_count ?? 0;
+          const rejected = project.rejected_count ?? 0;
+          const drafted = project.draft_count ?? 0;
+          const approvedPct = total > 0 ? (approved / total) * 100 : 0;
+          const inReviewPct = total > 0 ? (inReview / total) * 100 : 0;
+          const rejectedPct = total > 0 ? (rejected / total) * 100 : 0;
+          const draftedPct = total > 0 ? (drafted / total) * 100 : 0;
           return (
-            <div className="flex items-center gap-2 min-w-[100px]">
-              <div className="flex-1 h-1.5 rounded-full bg-surface-inset overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-green-500 transition-all"
-                  style={{ width: `${pct}%` }}
-                />
+            <div className="flex items-center gap-2 min-w-[140px]">
+              <div className="flex-1 h-1.5 rounded-full bg-surface-inset overflow-hidden flex">
+                {approvedPct > 0 && (
+                  <div className="h-full bg-green-500 transition-all" style={{ width: `${approvedPct}%` }} />
+                )}
+                {inReviewPct > 0 && (
+                  <div className="h-full bg-amber-400 transition-all" style={{ width: `${inReviewPct}%` }} />
+                )}
+                {draftedPct > 0 && (
+                  <div className="h-full bg-brand-blue transition-all" style={{ width: `${draftedPct}%` }} />
+                )}
+                {rejectedPct > 0 && (
+                  <div className="h-full bg-red-400 transition-all" style={{ width: `${rejectedPct}%` }} />
+                )}
               </div>
-              <span className="text-xs text-muted shrink-0">{approved}/{total} ({pct}%)</span>
+              <span className="text-xs text-muted shrink-0">{approved}/{total} ({Math.round(approvedPct)}%)</span>
             </div>
           );
         },
@@ -743,12 +757,15 @@ export function Dashboard() {
         <>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {sortedProjects.map((project) => {
-              const progress =
-                (project.question_count ?? 0) > 0
-                  ? Math.round(
-                      ((project.approved_count ?? 0) / project.question_count) * 100
-                    )
-                  : 0;
+              const total = project.question_count ?? 0;
+              const approved = project.approved_count ?? 0;
+              const inReview = project.in_review_count ?? 0;
+              const rejected = project.rejected_count ?? 0;
+              const drafted = project.draft_count ?? 0;
+              const approvedPct = total > 0 ? (approved / total) * 100 : 0;
+              const inReviewPct = total > 0 ? (inReview / total) * 100 : 0;
+              const rejectedPct = total > 0 ? (rejected / total) * 100 : 0;
+              const draftedPct = total > 0 ? (drafted / total) * 100 : 0;
               const isSelected = selectedIds.has(project.id);
 
               return (
@@ -791,15 +808,53 @@ export function Dashboard() {
                     {/* Progress bar */}
                     <div className="mt-3">
                       <div className="flex items-center justify-between text-xs text-muted mb-1">
-                        <span>{project.approved_count ?? 0}/{project.question_count ?? 0} approved</span>
-                        <span>{progress}%</span>
+                        <span>{approved}/{total} approved</span>
+                        <span>{Math.round(approvedPct)}%</span>
                       </div>
-                      <div className="h-1.5 rounded-full bg-surface-inset overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-green-500 transition-all"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
+                      <Tooltip content={`${approved} approved · ${inReview} in review · ${drafted} draft · ${rejected} rejected`}>
+                        <div className="h-1.5 rounded-full bg-surface-inset overflow-hidden flex">
+                          {approvedPct > 0 && (
+                            <div
+                              className="h-full bg-green-500 transition-all"
+                              style={{ width: `${approvedPct}%` }}
+                            />
+                          )}
+                          {inReviewPct > 0 && (
+                            <div
+                              className="h-full bg-amber-400 transition-all"
+                              style={{ width: `${inReviewPct}%` }}
+                            />
+                          )}
+                          {draftedPct > 0 && (
+                            <div
+                              className="h-full bg-brand-blue transition-all"
+                              style={{ width: `${draftedPct}%` }}
+                            />
+                          )}
+                          {rejectedPct > 0 && (
+                            <div
+                              className="h-full bg-red-400 transition-all"
+                              style={{ width: `${rejectedPct}%` }}
+                            />
+                          )}
+                        </div>
+                      </Tooltip>
+                      {(inReview > 0 || rejected > 0) && (
+                        <div className="flex items-center gap-3 mt-1.5 text-[10px] text-muted">
+                          {inReview > 0 && (
+                            <span className="flex items-center gap-1">
+                              <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400" />
+                              {inReview} in review
+                            </span>
+                          )}
+                          {rejected > 0 && (
+                            <span className="flex items-center gap-1">
+                              <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-400" />
+                              {rejected} rejected
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="mt-3 flex items-center gap-4 text-xs text-muted">

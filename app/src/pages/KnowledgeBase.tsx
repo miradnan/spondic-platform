@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo, useCallback } from "react";
+import { useOrganization } from "@clerk/react";
 import { useTranslation } from "react-i18next";
 import {
   MagnifyingGlassIcon,
@@ -212,6 +213,8 @@ const columnHelper = createColumnHelper<DocType>();
 export function KnowledgeBase() {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { membership } = useOrganization();
+  const isAdmin = membership?.role === "org:admin";
   const fileInputRef = useRef<HTMLInputElement>(null);
   useWalkthrough({ key: "knowledge-base", steps: KNOWLEDGE_BASE_STEPS });
 
@@ -589,24 +592,26 @@ export function KnowledgeBase() {
                   <ArrowPathIcon className="h-4 w-4" />
                 </button>
               </Tooltip>
-              <Tooltip content="Delete document">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(doc);
-                  }}
-                  disabled={deleteDoc.isPending}
-                  className="rounded p-1.5 text-muted hover:text-red-600 hover:bg-red-50 transition-colors"
-                >
-                  <TrashIcon className="h-4 w-4" />
-                </button>
-              </Tooltip>
+              {isAdmin && (
+                <Tooltip content="Delete document">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(doc);
+                    }}
+                    disabled={deleteDoc.isPending}
+                    className="rounded p-1.5 text-muted hover:text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </button>
+                </Tooltip>
+              )}
             </div>
           );
         },
       }),
     ] as ColumnDef<DocType>[],
-    [tags, tagDocId, reindexDoc.isPending, deleteDoc.isPending, documents, selectedIds, toggleSelectAll, toggleSelect],
+    [tags, tagDocId, reindexDoc.isPending, deleteDoc.isPending, documents, selectedIds, toggleSelectAll, toggleSelect, isAdmin],
   );
 
   return (
@@ -907,14 +912,16 @@ export function KnowledgeBase() {
             )}
           </div>
 
-          {/* Bulk delete */}
-          <button
-            onClick={handleBulkDelete}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 transition-colors"
-          >
-            <TrashIcon className="h-4 w-4" />
-            Delete selected
-          </button>
+          {/* Bulk delete (admin only) */}
+          {isAdmin && (
+            <button
+              onClick={handleBulkDelete}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 transition-colors"
+            >
+              <TrashIcon className="h-4 w-4" />
+              Delete selected
+            </button>
+          )}
 
           {/* Clear selection */}
           <button

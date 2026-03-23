@@ -209,6 +209,13 @@ def find_near_duplicate(
     return None
 
 
+def delete_by_uuid(uuid_str: str) -> None:
+    """Delete a single object by its UUID."""
+    collection = _get_collection()
+    collection.data.delete_by_id(UUID(uuid_str))
+    logger.info("Deleted Weaviate object %s", uuid_str)
+
+
 def delete_by_document_id(organization_id: str, document_id: str) -> int:
     """Delete all objects with a specific document_id within an org.
     Used to remove approved answers from Weaviate when un-approved."""
