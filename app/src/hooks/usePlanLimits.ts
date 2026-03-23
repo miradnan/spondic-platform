@@ -39,6 +39,7 @@ export function usePlanLimits() {
     complianceEnabled: limits.complianceEnabled,
     crmEnabled: limits.crmEnabled,
     brandingEnabled: limits.brandingEnabled,
+    teamsEnabled: limits.teamsEnabled,
   };
 }
 

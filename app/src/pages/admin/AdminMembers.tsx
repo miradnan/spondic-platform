@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { useOrganization } from "@clerk/react";
+import { useOrganization, useUser } from "@clerk/react";
 import {
   EnvelopeIcon,
   ExclamationTriangleIcon,
@@ -100,9 +100,10 @@ export function AdminMembers() {
     invitations: { pageSize: 50 },
   });
 
+  const { user: currentUser } = useUser();
   const { data: teamsData } = useTeams();
   const { toast } = useToast();
-  const { canInviteMembers, limits } = usePlanLimits();
+  const { canInviteMembers, limits, teamsEnabled } = usePlanLimits();
 
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<RoleOption>("org:member");
@@ -544,7 +545,7 @@ export function AdminMembers() {
           <div className="w-10" />
           <div className="flex-1">Member</div>
           <div className="w-20 text-center">Role</div>
-          <div className="w-32 text-center">Team</div>
+          {teamsEnabled && <div className="w-32 text-center">Team</div>}
           <div className="w-48 text-center">Actions</div>
         </div>
 
@@ -560,6 +561,7 @@ export function AdminMembers() {
             const initial = (firstName || email || "?").charAt(0).toUpperCase();
             const isCurrentAction = actionLoading === member.publicUserData?.userId;
             const userId = member.publicUserData?.userId ?? "";
+            const isSelf = userId === currentUser?.id;
 
             return (
               <div
@@ -596,21 +598,27 @@ export function AdminMembers() {
                   {ROLE_LABELS[member.role] ?? member.role}
                 </Badge>
 
-                {/* Team select */}
-                <div className="w-32">
-                  <select
-                    value={teamAssignments[userId] ?? ""}
-                    onChange={(e) => handleTeamChange(userId, e.target.value)}
-                    className="w-full rounded-md border border-border bg-surface px-2 py-1 text-xs text-heading focus:outline-none focus:ring-2 focus:ring-brand-blue focus:ring-offset-1"
-                  >
-                    <option value="">No team</option>
-                    {teamNames.map((team) => (
-                      <option key={team} value={team}>
-                        {team}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {/* Team select — only shown on paid plans */}
+                {teamsEnabled && (
+                  <div className="w-32">
+                    <Select
+                      value={teamAssignments[userId] || "__none__"}
+                      onValueChange={(val) => handleTeamChange(userId, val === "__none__" ? "" : val)}
+                    >
+                      <SelectTrigger className="h-7 text-xs w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">No team</SelectItem>
+                        {teamNames.map((team) => (
+                          <SelectItem key={team} value={team}>
+                            {team}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 {/* Actions */}
                 <div className="flex items-center gap-2">
@@ -622,7 +630,7 @@ export function AdminMembers() {
                         val as RoleOption,
                       )
                     }
-                    disabled={isCurrentAction}
+                    disabled={isCurrentAction || isSelf}
                   >
                     <SelectTrigger className="h-7 text-xs min-w-[90px]">
                       <SelectValue />
@@ -633,7 +641,9 @@ export function AdminMembers() {
                     </SelectContent>
                   </Select>
 
-                  {confirmRemove === member.publicUserData?.userId ? (
+                  {isSelf ? (
+                    <span className="text-xs text-muted px-1.5">You</span>
+                  ) : confirmRemove === member.publicUserData?.userId ? (
                     <div className="flex items-center gap-1.5">
                       <Button
                         variant="destructive"

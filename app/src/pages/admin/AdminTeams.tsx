@@ -23,9 +23,11 @@ import {
   useRemoveTeamMember,
   useSearchUsers,
 } from "@/hooks/useApi";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
 import type { Team } from "@/lib/types";
 
 export function AdminTeams() {
+  const { teamsEnabled } = usePlanLimits();
   const [newTeamName, setNewTeamName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -155,6 +157,39 @@ export function AdminTeams() {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Plan gate ──────────────────────────────────────────────────────────────
+
+  if (!teamsEnabled) {
+    return (
+      <div className="w-full max-w-7xl mx-auto">
+        <div className="mb-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-blue/10">
+              <UserGroupIcon className="h-5 w-5 text-brand-blue" />
+            </div>
+            <div>
+              <h1 className="font-display text-2xl font-bold text-heading">Teams</h1>
+              <p className="text-sm text-body">Organize members into teams for better collaboration.</p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-border bg-surface p-8 text-center">
+          <UserGroupIcon className="mx-auto h-12 w-12 text-muted/30" />
+          <h3 className="mt-4 text-lg font-semibold text-heading">Teams is a paid feature</h3>
+          <p className="mt-2 text-sm text-muted max-w-md mx-auto">
+            Organize your members into teams, assign proposals to specific teams, and track performance per team. Available on the Starter plan and above.
+          </p>
+          <a
+            href="/admin/billing#change-plan"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue-hover transition-colors"
+          >
+            Upgrade Plan
+          </a>
         </div>
       </div>
     );
