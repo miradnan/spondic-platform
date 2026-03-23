@@ -8,6 +8,7 @@ import (
 
 	"github.com/spondic/api/internal/config"
 	"github.com/spondic/api/internal/database"
+	"github.com/spondic/api/internal/events"
 	"github.com/spondic/api/internal/handlers"
 	"github.com/spondic/api/internal/middleware"
 	"github.com/spondic/api/internal/services"
@@ -73,9 +74,14 @@ func main() {
 	log.Println("Webhook notification service initialized")
 
 	// Initialize handler with all dependencies
+	eventBus := events.NewBus(cfg.DatabaseURL)
+	go eventBus.StartListener()
+	log.Println("document event bus started (pg LISTEN/NOTIFY)")
+
 	h := handlers.NewHandler(db, s3Client, aiClient, cfg.AWSS3Bucket)
 	h.Notifier = notifier
 	h.Webhooks = webhookSvc
+	h.Events = eventBus
 
 	// Setup Echo
 	e := echo.New()
@@ -136,6 +142,7 @@ func main() {
 	api.POST("/documents", h.UploadDocuments)
 	api.GET("/documents", h.ListDocuments)
 	api.GET("/documents/search", h.SearchDocuments)
+	api.GET("/documents/events", h.DocumentEvents)
 	api.GET("/documents/:id", h.GetDocument)
 	api.DELETE("/documents/:id", h.DeleteDocument)
 	api.POST("/documents/:id/reindex", h.ReindexDocument)

@@ -59,6 +59,9 @@ importers:
       '@tiptap/starter-kit':
         specifier: ^3.20.4
         version: 3.20.4
+      '@types/marked':
+        specifier: ^6.0.0
+        version: 6.0.0
       autoprefixer:
         specifier: ^10.4.24
         version: 10.4.27(postcss@8.5.8)
@@ -83,6 +86,9 @@ importers:
       lucide-react:
         specifier: ^0.577.0
         version: 0.577.0(react@19.2.4)
+      marked:
+        specifier: ^17.0.5
+        version: 17.0.5
       postcss:
         specifier: ^8.5.6
         version: 8.5.8
@@ -1880,6 +1886,10 @@ packages:
 
   '@types/markdown-it@14.1.2':
     resolution: {integrity: sha512-promo4eFwuiW+TfGxhi+0x3czqTYJkG8qB17ZUJiVF10Xm7NLVRSLUsfRTU/6h1e24VvRnXCx+hG7li58lkzog==}
+
+  '@types/marked@6.0.0':
+    resolution: {integrity: sha512-jmjpa4BwUsmhxcfsgUit/7A9KbrC48Q0q8KvnY107ogcjGgTFDlIL3RpihNpx2Mu1hM4mdFQjoVc4O6JoGKHsA==}
+    deprecated: This is a stub types definition. marked provides its own type definitions, so you do not need this installed.
 
   '@types/mdast@4.0.4':
     resolution: {integrity: sha512-kGaNbPh1k7AFzgpud/gMdvIm5xuECykRR+JnWKQno9TAXVa6WIVCGTPvYGekIDL4uwCZQSYbUxNBSb1aUo79oA==}
@@ -5337,6 +5347,10 @@ snapshots:
     dependencies:
       '@types/linkify-it': 5.0.0
       '@types/mdurl': 2.0.0
+
+  '@types/marked@6.0.0':
+    dependencies:
+      marked: 17.0.5
 
   '@types/mdast@4.0.4':
     dependencies:

@@ -41,6 +41,9 @@ import type {
   WebhookIntegration,
   CreateWebhookRequest,
   UpdateWebhookRequest,
+  Notification,
+  NotificationPreference,
+  UpdateNotificationPreferenceRequest,
 } from "./types.ts";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "";
@@ -652,4 +655,24 @@ export function deleteWebhook(token: string | null, id: string): Promise<void> {
 
 export function testWebhook(token: string | null, id: string): Promise<{ status: string }> {
   return request(`/api/integrations/webhooks/${id}/test`, token, { method: "POST" });
+}
+
+// ── Notifications ─────────────────────────────────────────────────────────
+export function listNotifications(token: string | null, params?: { unread_only?: boolean; page?: number; limit?: number }): Promise<PaginatedResponse<Notification>> {
+  return request(`/api/notifications${qs(params ?? {})}`, token);
+}
+export function getUnreadCount(token: string | null): Promise<{ count: number }> {
+  return request("/api/notifications/unread-count", token);
+}
+export function markNotificationRead(token: string | null, id: string): Promise<Notification> {
+  return request(`/api/notifications/${id}/read`, token, { method: "PUT" });
+}
+export function markAllNotificationsRead(token: string | null): Promise<{ updated: number }> {
+  return request("/api/notifications/read-all", token, { method: "PUT" });
+}
+export function getNotificationPreferences(token: string | null): Promise<NotificationPreference[]> {
+  return request("/api/notifications/preferences", token);
+}
+export function updateNotificationPreference(token: string | null, body: UpdateNotificationPreferenceRequest): Promise<NotificationPreference> {
+  return request("/api/notifications/preferences", token, { method: "PUT", body: JSON.stringify(body) });
 }

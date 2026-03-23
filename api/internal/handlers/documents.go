@@ -3,6 +3,8 @@ package handlers
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -10,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/lib/pq"
 
 	"github.com/spondic/api/internal/models"
 )
@@ -89,21 +92,41 @@ func (h *Handler) UploadDocuments(c echo.Context) error {
 		documents = append(documents, doc)
 
 		// Trigger AI indexing asynchronously
-		go func(oID, dID, key string) {
+		go func(oID, uID, dID, key string) {
 			aiCtx := context.Background()
 			resp, err := h.AI.IndexDocument(aiCtx, oID, dID, key)
 			if err != nil {
 				log.Printf("AI indexing error for document %s: %v", dID, err)
 				h.DB.Exec(`UPDATE documents SET status = 'failed', updated_at = NOW() WHERE id = $1 AND organization_id = $2`, dID, oID)
+				if h.Events != nil {
+					h.Events.PublishToUser(h.DB, oID, uID, "document.status", map[string]string{"document_id": dID, "status": "failed"})
+				}
 				return
 			}
 			if resp.Error != "" {
 				log.Printf("AI indexing returned error for document %s: %s", dID, resp.Error)
 				h.DB.Exec(`UPDATE documents SET status = 'failed', updated_at = NOW() WHERE id = $1 AND organization_id = $2`, dID, oID)
+				if h.Events != nil {
+					h.Events.PublishToUser(h.DB, oID, uID, "document.status", map[string]string{"document_id": dID, "status": "failed"})
+				}
 				return
 			}
 			h.DB.Exec(`UPDATE documents SET status = 'indexed', updated_at = NOW() WHERE id = $1 AND organization_id = $2`, dID, oID)
-		}(orgID, docID, s3Key)
+			if h.Events != nil {
+				h.Events.PublishToUser(h.DB, oID, uID, "document.status", map[string]string{"document_id": dID, "status": "indexed"})
+			}
+			if h.Notifier != nil {
+				var docTitle string
+				_ = h.DB.QueryRow(`SELECT title FROM documents WHERE id = $1 AND organization_id = $2`, dID, oID).Scan(&docTitle)
+				if docTitle == "" {
+					docTitle = "Document"
+				}
+				_ = h.Notifier.Create(oID, uID, "document_indexed", "Document Indexed: "+docTitle, docTitle+" has been indexed and is ready for use.", "document", dID)
+				if h.Events != nil {
+					h.Events.PublishToUser(h.DB, oID, uID, "notification.new", map[string]string{"type": "document_indexed"})
+				}
+			}
+		}(orgID, userID, docID, s3Key)
 	}
 
 	return c.JSON(http.StatusCreated, map[string]interface{}{
@@ -165,6 +188,7 @@ func (h *Handler) ListDocuments(c echo.Context) error {
 	defer rows.Close()
 
 	docs := make([]models.Document, 0)
+	docIDs := make([]string, 0)
 	for rows.Next() {
 		var d models.Document
 		if err := rows.Scan(
@@ -175,7 +199,36 @@ func (h *Handler) ListDocuments(c echo.Context) error {
 			log.Printf("error scanning document: %v", err)
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
 		}
+		d.Tags = []models.Tag{} // initialize to empty slice (not null in JSON)
 		docs = append(docs, d)
+		docIDs = append(docIDs, d.ID)
+	}
+
+	// Batch-fetch tags for all documents
+	if len(docIDs) > 0 {
+		tagRows, tagErr := h.DB.Query(
+			`SELECT dt.document_id, t.id, t.organization_id, t.name, t.created_at
+			 FROM document_tags dt
+			 JOIN tags t ON t.id = dt.tag_id
+			 WHERE dt.organization_id = $1 AND dt.document_id = ANY($2)`,
+			orgID, pq.Array(docIDs),
+		)
+		if tagErr == nil {
+			defer tagRows.Close()
+			tagMap := make(map[string][]models.Tag)
+			for tagRows.Next() {
+				var docID string
+				var t models.Tag
+				if tagRows.Scan(&docID, &t.ID, &t.OrganizationID, &t.Name, &t.CreatedAt) == nil {
+					tagMap[docID] = append(tagMap[docID], t)
+				}
+			}
+			for i := range docs {
+				if tags, ok := tagMap[docs[i].ID]; ok {
+					docs[i].Tags = tags
+				}
+			}
+		}
 	}
 
 	return c.JSON(http.StatusOK, models.PaginatedResponse{
@@ -250,6 +303,7 @@ func (h *Handler) DeleteDocument(c echo.Context) error {
 // ReindexDocument handles POST /api/documents/:id/reindex
 func (h *Handler) ReindexDocument(c echo.Context) error {
 	orgID := getOrgID(c)
+	userID := getUserID(c)
 	docID := c.Param("id")
 
 	// Get document to find the S3 key
@@ -284,9 +338,15 @@ func (h *Handler) ReindexDocument(c echo.Context) error {
 		if err != nil || (resp != nil && resp.Error != "") {
 			log.Printf("reindex error for document %s: %v", docID, err)
 			h.DB.Exec(`UPDATE documents SET status = 'failed', updated_at = NOW() WHERE id = $1 AND organization_id = $2`, docID, orgID)
+			if h.Events != nil {
+				h.Events.PublishToUser(h.DB, orgID, userID, "document.status", map[string]string{"document_id": docID, "status": "failed"})
+			}
 			return
 		}
 		h.DB.Exec(`UPDATE documents SET status = 'indexed', updated_at = NOW() WHERE id = $1 AND organization_id = $2`, docID, orgID)
+		if h.Events != nil {
+			h.Events.PublishToUser(h.DB, orgID, userID, "document.status", map[string]string{"document_id": docID, "status": "indexed"})
+		}
 	}()
 
 	return c.JSON(http.StatusOK, map[string]string{"status": "reindexing"})
@@ -309,6 +369,58 @@ func (h *Handler) SearchDocuments(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"results": resp.Results,
 	})
+}
+
+// DocumentEvents handles GET /api/documents/events (SSE)
+// Delivers scoped events: user-level (upload status), team-level, and org-level.
+func (h *Handler) DocumentEvents(c echo.Context) error {
+	orgID := getOrgID(c)
+	userID := getUserID(c)
+	if orgID == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "organization_id is required"})
+	}
+
+	// Look up user's team memberships for team-scoped events
+	var teamIDs []string
+	rows, err := h.DB.Query(`SELECT team_id FROM team_members WHERE user_id = $1`, userID)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var tid string
+			if rows.Scan(&tid) == nil {
+				teamIDs = append(teamIDs, tid)
+			}
+		}
+	}
+
+	c.Response().Header().Set("Content-Type", "text/event-stream")
+	c.Response().Header().Set("Cache-Control", "no-cache")
+	c.Response().Header().Set("Connection", "keep-alive")
+	c.Response().Header().Set("X-Accel-Buffering", "no")
+	c.Response().WriteHeader(http.StatusOK)
+
+	flusher, ok := c.Response().Writer.(http.Flusher)
+	if !ok {
+		return fmt.Errorf("streaming not supported")
+	}
+
+	sub := h.Events.Subscribe(orgID, userID, teamIDs)
+	defer h.Events.Unsubscribe(orgID, sub)
+
+	ctx := c.Request().Context()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case evt, ok := <-sub.Ch:
+			if !ok {
+				return nil
+			}
+			payload, _ := json.Marshal(evt)
+			fmt.Fprintf(c.Response().Writer, "data: %s\n\n", payload)
+			flusher.Flush()
+		}
+	}
 }
 
 func nullStr(s string) *string {

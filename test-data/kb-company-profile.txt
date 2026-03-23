@@ -1,0 +1,34 @@
+COMPANY PROFILE — Acme Enterprise Solutions
+
+Founded: 2015
+Headquarters: Mumbai, India
+Employees: 850+
+Revenue: $45M ARR (FY2025)
+
+Acme Enterprise Solutions is a leading provider of enterprise IT infrastructure, cybersecurity, and cloud migration services. We serve Fortune 500 clients across Manufacturing, BFSI, Healthcare, and Logistics sectors.
+
+KEY AREAS OF EXPERTISE:
+- Enterprise Security Architecture & Implementation
+- Cloud Migration (AWS, Azure, GCP)
+- Network Infrastructure Design & Management
+- Compliance & Regulatory Advisory (GDPR, HIPAA, SOC 2, ISO 27001)
+- Managed Security Operations Center (SOC)
+- Data Loss Prevention (DLP) & Endpoint Security
+
+CERTIFICATIONS:
+- ISO 27001:2022 Certified
+- SOC 2 Type II Compliant
+- AWS Advanced Consulting Partner
+- Microsoft Gold Partner
+- CMMI Level 5
+
+NOTABLE CLIENTS:
+- Tata Steel (Manufacturing)
+- HDFC Bank (BFSI)
+- Apollo Hospitals (Healthcare)
+- Delhivery (Logistics)
+- Larsen & Toubro (Infrastructure)
+
+OFFICES:
+- Mumbai (HQ), Bangalore, Hyderabad, Delhi NCR
+- Singapore, Dubai, London

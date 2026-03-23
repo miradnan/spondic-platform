@@ -11,6 +11,8 @@ class Settings(BaseSettings):
 
     # Groq (LLM generation)
     groq_api_key: str = ""
+    chat_model: str = "llama-3.3-70b-versatile"
+    rfp_draft_model: str = "llama-3.3-70b-versatile"
 
     # Weaviate (vector store)
     weaviate_url: str = "http://localhost:8080"

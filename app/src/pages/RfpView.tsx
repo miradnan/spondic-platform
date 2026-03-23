@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { marked } from "marked";
 import {
   ArrowLeftIcon,
   DocumentTextIcon,
@@ -57,6 +58,29 @@ function stripHtmlWordCount(html: string): number {
   return text ? text.split(" ").length : 0;
 }
 
+/** Detect if text is raw markdown (not already HTML) and convert to HTML */
+function toHtml(text: string): string {
+  if (!text) return "";
+  // If it already contains HTML tags, return as-is
+  if (/<[a-z][\s\S]*>/i.test(text)) return text;
+  // Convert markdown to HTML
+  return marked.parse(text, { async: false, breaks: true }) as string;
+}
+
+/** Convert [Source N] markers into clickable citation badges */
+function linkifyCitations(html: string): string {
+  return html.replace(
+    /\[Source\s*(\d+)(?:,\s*Source\s*(\d+))?\]/gi,
+    (_match, n1: string, n2?: string) => {
+      let badges = `<button type="button" class="citation-badge" data-citation="${n1}" onclick="document.getElementById('citation-${n1}')?.scrollIntoView({behavior:'smooth',block:'center'})">[${n1}]</button>`;
+      if (n2) {
+        badges += `<button type="button" class="citation-badge" data-citation="${n2}" onclick="document.getElementById('citation-${n2}')?.scrollIntoView({behavior:'smooth',block:'center'})">[${n2}]</button>`;
+      }
+      return badges;
+    },
+  );
+}
+
 const STATUS_DOTS: Record<string, string> = {
   draft: "bg-gray-400",
   in_review: "bg-yellow-500",
@@ -89,6 +113,7 @@ export function RfpView() {
 
   const parseRfp = useParseRfp();
   const draftAll = useDraftAnswers();
+  const isAutoParsing = project?.status === "parsing";
 
   // Map answers by question_id
   const answerMap = useMemo(() => {
@@ -246,7 +271,7 @@ export function RfpView() {
             questions={questions ?? []}
             answerMap={answerMap}
             isLoading={questionsLoading}
-            isParsing={parseRfp.isPending}
+            isParsing={parseRfp.isPending || isAutoParsing}
             isDrafting={draftAll.isPending}
             onParse={handleParse}
             onDraftAll={handleDraftAll}
@@ -381,26 +406,30 @@ function QuestionsTab({
   if (questions.length === 0) {
     return (
       <div className="rounded-xl border border-border bg-cream-light p-8 text-center">
-        <DocumentTextIcon className="mx-auto h-10 w-10 text-muted" />
-        <p className="mt-4 text-body font-medium">{t("rfp.view.noQuestions")}</p>
-        <p className="mt-1 text-sm text-muted">
-          {t("rfp.view.noQuestionsDesc")}
-        </p>
-        <button
-          data-tour="rfp-parse"
-          onClick={onParse}
-          disabled={isParsing}
-          className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue-hover transition-colors disabled:opacity-50"
-        >
-          {isParsing ? (
-            <>
-              <ArrowPathIcon className="h-4 w-4 animate-spin" />
-              {t("rfp.view.parsing")}
-            </>
-          ) : (
-            t("rfp.view.parseRfp")
-          )}
-        </button>
+        {isParsing ? (
+          <>
+            <ArrowPathIcon className="mx-auto h-10 w-10 text-brand-blue animate-spin" />
+            <p className="mt-4 text-heading font-medium">{t("rfp.view.parsing")}</p>
+            <p className="mt-1 text-sm text-muted">
+              Extracting questions from your RFP documents...
+            </p>
+          </>
+        ) : (
+          <>
+            <DocumentTextIcon className="mx-auto h-10 w-10 text-muted" />
+            <p className="mt-4 text-body font-medium">{t("rfp.view.noQuestions")}</p>
+            <p className="mt-1 text-sm text-muted">
+              {t("rfp.view.noQuestionsDesc")}
+            </p>
+            <button
+              data-tour="rfp-parse"
+              onClick={onParse}
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue-hover transition-colors"
+            >
+              {t("rfp.view.parseRfp")}
+            </button>
+          </>
+        )}
       </div>
     );
   }
@@ -513,7 +542,7 @@ function ReviewTab({
 
   const handleStartEdit = useCallback(() => {
     if (!answer) return;
-    setEditText(answer.edited_text || answer.draft_text || "");
+    setEditText(toHtml(answer.edited_text || answer.draft_text || ""));
     setIsEditing(true);
   }, [answer]);
 
@@ -634,7 +663,9 @@ function ReviewTab({
     );
   }
 
-  const answerText = answer?.edited_text || answer?.draft_text || "";
+  const rawAnswerText = answer?.edited_text || answer?.draft_text || "";
+  // Convert markdown to HTML if needed, then linkify [Source N] markers
+  const answerText = useMemo(() => linkifyCitations(toHtml(rawAnswerText)), [rawAnswerText]);
   const wordCount = isEditing ? stripHtmlWordCount(editText) : stripHtmlWordCount(answerText);
   const confidenceScore = answer?.confidence_score ?? null;
   const confidenceColor =
@@ -827,39 +858,31 @@ function ReviewTab({
                   {redraft.isPending ? t("rfp.view.generating") : t("rfp.view.generateAnswer")}
                 </button>
               </div>
-            ) : isEditing ? (
-              <div>
-                <RichTextEditor
-                  content={editText}
-                  onChange={setEditText}
-                  placeholder="Write your answer..."
-                  editable
-                />
-                <div className="mt-3 flex gap-2">
-                  <button
-                    onClick={handleSaveEdit}
-                    disabled={updateAnswer.isPending}
-                    className="rounded-lg bg-brand-blue px-3 py-2 text-sm font-medium text-white hover:bg-brand-blue-hover transition-colors disabled:opacity-50"
-                  >
-                    {updateAnswer.isPending ? t("rfp.view.saving") : t("common.save")}
-                  </button>
-                  <button
-                    onClick={() => setIsEditing(false)}
-                    className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-body hover:bg-cream-light transition-colors"
-                  >
-                    {t("common.cancel")}
-                  </button>
-                </div>
-              </div>
             ) : (
               <div>
-                <div className="text-sm text-heading leading-relaxed min-h-[120px]">
-                  {answerText ? (
-                    <div className="ProseMirror" dangerouslySetInnerHTML={{ __html: answerText }} />
-                  ) : (
-                    <span className="text-muted italic">{t("rfp.view.noContent")}</span>
-                  )}
-                </div>
+                <RichTextEditor
+                  content={isEditing ? editText : answerText}
+                  onChange={isEditing ? setEditText : () => {}}
+                  placeholder={isEditing ? "Write your answer..." : ""}
+                  editable={isEditing}
+                />
+                {isEditing && (
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      onClick={handleSaveEdit}
+                      disabled={updateAnswer.isPending}
+                      className="rounded-lg bg-brand-blue px-3 py-2 text-sm font-medium text-white hover:bg-brand-blue-hover transition-colors disabled:opacity-50"
+                    >
+                      {updateAnswer.isPending ? t("rfp.view.saving") : t("common.save")}
+                    </button>
+                    <button
+                      onClick={() => setIsEditing(false)}
+                      className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-body hover:bg-cream-light transition-colors"
+                    >
+                      {t("common.cancel")}
+                    </button>
+                  </div>
+                )}
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Tooltip content="Edit answer (e)">
                     <button
@@ -934,13 +957,13 @@ function ReviewTab({
                     ))}
                   </ul>
                 )}
-                <div className="flex gap-2">
+                <div className="rounded-lg border border-border bg-white focus-within:border-brand-blue focus-within:ring-1 focus-within:ring-brand-blue transition-colors">
                   <textarea
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
                     placeholder={t("rfp.view.addComment")}
                     rows={2}
-                    className="flex-1 rounded-lg border border-border bg-cream-light px-3 py-2 text-sm text-heading placeholder-muted focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue resize-none"
+                    className="w-full rounded-t-lg bg-transparent px-3 py-2.5 text-sm text-heading placeholder-muted focus:outline-none resize-none"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                         e.preventDefault();
@@ -948,13 +971,23 @@ function ReviewTab({
                       }
                     }}
                   />
-                  <button
-                    onClick={handleAddComment}
-                    disabled={!commentText.trim() || addComment.isPending}
-                    className="self-end rounded-lg bg-brand-blue px-3 py-2 text-white hover:bg-brand-blue-hover transition-colors disabled:opacity-50"
-                  >
-                    <PaperAirplaneIcon className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center justify-between border-t border-border/50 px-3 py-2">
+                    <span className="text-[11px] text-muted">
+                      {commentText.trim() ? "⌘ + Enter to send" : ""}
+                    </span>
+                    <button
+                      onClick={handleAddComment}
+                      disabled={!commentText.trim() || addComment.isPending}
+                      className="rounded-md bg-brand-blue px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-blue-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+                    >
+                      {addComment.isPending ? (
+                        <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      ) : (
+                        <PaperAirplaneIcon className="h-3.5 w-3.5" />
+                      )}
+                      Send
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -965,12 +998,21 @@ function ReviewTab({
             <h3 className="text-xs font-medium text-muted uppercase tracking-wide mb-3">{t("rfp.view.sourceCitations")}</h3>
             {answer?.citations && answer.citations.length > 0 ? (
               <ul className="space-y-3">
-                {answer.citations.map((c) => (
-                  <li key={c.id} className="rounded-lg border border-border bg-cream-light p-3">
+                {answer.citations.map((c, idx) => (
+                  <li
+                    key={c.id}
+                    id={`citation-${idx + 1}`}
+                    className="rounded-lg border border-border bg-cream-light p-3 scroll-mt-4 transition-colors target:ring-2 target:ring-brand-blue/30"
+                  >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-medium text-brand-blue truncate">
-                        {c.document_title}
-                      </span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-brand-blue text-[10px] font-semibold text-white">
+                          {idx + 1}
+                        </span>
+                        <span className="text-xs font-medium text-brand-blue truncate">
+                          {c.document_title}
+                        </span>
+                      </div>
                       <span className="text-xs text-muted shrink-0 ml-2">
                         {(c.relevance_score * 100).toFixed(0)}%
                       </span>

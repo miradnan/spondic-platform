@@ -1,0 +1,45 @@
+SECURITY CAPABILITIES DOCUMENT — Acme Enterprise Solutions
+
+1. NETWORK SECURITY MONITORING & INCIDENT RESPONSE
+
+Our approach to network security is built on a defense-in-depth strategy with 24/7 monitoring:
+
+- Security Operations Center (SOC): Our Bangalore-based SOC operates 24/7/365 with 45+ certified analysts (CISSP, CEH, OSCP). Average incident response time: 15 minutes for critical alerts.
+- SIEM Platform: We deploy Splunk Enterprise with custom correlation rules and ML-based anomaly detection. Over 500 pre-built detection rules covering MITRE ATT&CK framework.
+- Network Detection: Darktrace AI-powered NDR for real-time traffic analysis, supplemented by Zeek/Suricata for deep packet inspection.
+- Incident Response: We follow NIST SP 800-61 framework. Our IR team maintains playbooks for 50+ attack scenarios. Average containment time: 4 hours for critical incidents.
+- Threat Intelligence: Integration with MISP, AlienVault OTX, and proprietary threat feeds from our research team.
+
+2. VULNERABILITY ASSESSMENT TOOLS & TECHNOLOGIES
+
+We employ a multi-layered vulnerability management program:
+
+- Scanning: Qualys VMDR for continuous vulnerability scanning across infrastructure, Nessus for targeted assessments, and Burp Suite Enterprise for web application testing.
+- Penetration Testing: Manual pen testing using Metasploit, Cobalt Strike (licensed), and custom tooling. We conduct quarterly pen tests for all clients.
+- Code Review: Checkmarx SAST and SonarQube for static analysis, Snyk for dependency scanning.
+- Cloud Security: Prisma Cloud for CSPM, AWS Inspector, and Azure Defender.
+- Reporting: Custom dashboards with risk scoring (CVSS 3.1), SLA tracking, and remediation workflows.
+
+3. DATA ENCRYPTION
+
+Our encryption strategy ensures data protection at every layer:
+
+- At Rest: AES-256 encryption for all stored data. We use AWS KMS for key management with automatic key rotation every 90 days. Database-level encryption with TDE for PostgreSQL and Oracle.
+- In Transit: TLS 1.3 for all communications. Certificate management via HashiCorp Vault. mTLS for service-to-service communication in microservices architectures.
+- Application Layer: Field-level encryption for PII data using envelope encryption. Tokenization for payment card data (PCI DSS compliant).
+- Key Management: Centralized KMS with HSM backing. FIPS 140-2 Level 3 compliant hardware security modules. Dual-person key custody procedures.
+
+4. COMPLIANCE EXPERIENCE
+
+GDPR Implementation:
+- Completed 25+ GDPR implementation projects across EU and India
+- Data Protection Impact Assessments (DPIA)
+- Privacy by Design consultation
+- Data Subject Access Request (DSAR) automation
+- Cookie consent management and privacy policy frameworks
+- Data residency solutions in EU (Frankfurt, Ireland), India (Mumbai), and US (Virginia, Oregon)
+
+Data Residency:
+- We maintain data centers and cloud regions in India (Mumbai, Hyderabad), EU (Frankfurt, Dublin, London), and US (Virginia, Oregon, California).
+- Our architecture supports geo-fenced data storage with automated compliance checks.
+- Cross-border data transfer mechanisms: Standard Contractual Clauses (SCCs), Binding Corporate Rules (BCRs).

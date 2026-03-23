@@ -264,20 +264,24 @@ export function KnowledgeBase() {
                     }}
                     open
                     onOpenChange={(open) => {
-                      if (!open) setTagDocId(null);
+                      if (!open) setTimeout(() => setTagDocId(null), 100);
                     }}
                   >
                     <SelectTrigger className="h-7 text-xs min-w-[100px]">
                       <SelectValue placeholder="Select tag..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {(tags ?? [])
-                        .filter((t) => !docTags.some((dt: Tag) => dt.id === t.id))
-                        .map((t) => (
-                          <SelectItem key={t.id} value={t.id}>
-                            {t.name}
-                          </SelectItem>
-                        ))}
+                      {(tags ?? []).filter((t) => !docTags.some((dt: Tag) => dt.id === t.id)).length === 0 ? (
+                        <div className="py-2 px-3 text-sm text-muted text-center">No tags</div>
+                      ) : (
+                        (tags ?? [])
+                          .filter((t) => !docTags.some((dt: Tag) => dt.id === t.id))
+                          .map((t) => (
+                            <SelectItem key={t.id} value={t.id}>
+                              {t.name}
+                            </SelectItem>
+                          ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>

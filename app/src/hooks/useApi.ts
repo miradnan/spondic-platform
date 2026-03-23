@@ -46,6 +46,9 @@ import type {
   WebhookIntegration,
   CreateWebhookRequest,
   UpdateWebhookRequest,
+  Notification,
+  NotificationPreference,
+  UpdateNotificationPreferenceRequest,
 } from "../lib/types.ts";
 
 // ── Helper: get token from Clerk ─────────────────────────────────────────────
@@ -939,5 +942,52 @@ export function useTestWebhook() {
       const token = await getToken();
       return api.testWebhook(token, id);
     },
+  });
+}
+
+// ── Notifications ─────────────────────────────────────────────────────────
+export function useNotifications(params?: { unread_only?: boolean; page?: number; limit?: number }) {
+  const getToken = useToken();
+  return useQuery<PaginatedResponse<Notification>>({
+    queryKey: ["notifications", params],
+    queryFn: async () => { const token = await getToken(); return api.listNotifications(token, params); },
+  });
+}
+export function useUnreadCount() {
+  const getToken = useToken();
+  return useQuery<{ count: number }>({
+    queryKey: ["unreadCount"],
+    queryFn: async () => { const token = await getToken(); return api.getUnreadCount(token); },
+  });
+}
+export function useMarkNotificationRead() {
+  const getToken = useToken();
+  const qc = useQueryClient();
+  return useMutation<Notification, Error, string>({
+    mutationFn: async (id) => { const token = await getToken(); return api.markNotificationRead(token, id); },
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ["notifications"] }); void qc.invalidateQueries({ queryKey: ["unreadCount"] }); },
+  });
+}
+export function useMarkAllRead() {
+  const getToken = useToken();
+  const qc = useQueryClient();
+  return useMutation<{ updated: number }, Error, void>({
+    mutationFn: async () => { const token = await getToken(); return api.markAllNotificationsRead(token); },
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ["notifications"] }); void qc.invalidateQueries({ queryKey: ["unreadCount"] }); },
+  });
+}
+export function useNotificationPreferences() {
+  const getToken = useToken();
+  return useQuery<NotificationPreference[]>({
+    queryKey: ["notificationPreferences"],
+    queryFn: async () => { const token = await getToken(); return api.getNotificationPreferences(token); },
+  });
+}
+export function useUpdateNotificationPreference() {
+  const getToken = useToken();
+  const qc = useQueryClient();
+  return useMutation<NotificationPreference, Error, UpdateNotificationPreferenceRequest>({
+    mutationFn: async (body) => { const token = await getToken(); return api.updateNotificationPreference(token, body); },
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ["notificationPreferences"] }); },
   });
 }

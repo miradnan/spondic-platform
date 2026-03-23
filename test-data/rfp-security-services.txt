@@ -1,0 +1,22 @@
+REQUEST FOR PROPOSAL - IT Security Services
+Issued by: Global Manufacturing Corp.
+RFP Reference: GMP-SEC-2026-001
+Submission Deadline: April 15, 2026
+
+Section 1: Company Overview
+Q1: Please provide a brief overview of your company, including founding year, number of employees, and key areas of expertise.
+Q2: Describe your company's experience with enterprise security implementations in the manufacturing sector.
+Q3: List any relevant certifications held by your organization (ISO 27001, SOC 2, etc.).
+
+Section 2: Technical Capabilities
+Q4: Describe your approach to network security monitoring and incident response.
+Q5: What tools and technologies do you use for vulnerability assessment?
+Q6: How do you ensure data encryption at rest and in transit?
+
+Section 3: Compliance
+Q7: Describe your experience with GDPR compliance implementations.
+Q8: How do you handle data residency requirements across multiple regions?
+
+Section 4: Pricing
+Q9: Provide a detailed pricing breakdown for the proposed solution.
+Q10: What are your payment terms and conditions?

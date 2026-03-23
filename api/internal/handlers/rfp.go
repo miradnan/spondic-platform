@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -112,19 +113,41 @@ func (h *Handler) UploadRFP(c echo.Context) error {
 		})
 	}
 
+	// Auto-parse: update project status and trigger parsing in background
+	h.DB.Exec(`UPDATE projects SET status = 'parsing', updated_at = NOW() WHERE id = $1 AND organization_id = $2`, projectID, orgID)
+
+	go func(oID, uID, pID string) {
+		total, err := h.parseProjectRFP(context.Background(), oID, pID)
+		if err != nil {
+			log.Printf("auto-parse error for project %s: %v", pID, err)
+			h.DB.Exec(`UPDATE projects SET status = 'draft', updated_at = NOW() WHERE id = $1 AND organization_id = $2`, pID, oID)
+			if h.Events != nil {
+				h.Events.PublishToUser(h.DB, oID, uID, "project.parsed", map[string]interface{}{
+					"project_id":     pID,
+					"status":         "failed",
+					"error":          err.Error(),
+				})
+			}
+			return
+		}
+		h.DB.Exec(`UPDATE projects SET status = 'parsed', updated_at = NOW() WHERE id = $1 AND organization_id = $2`, pID, oID)
+		if h.Events != nil {
+			h.Events.PublishToUser(h.DB, oID, uID, "project.parsed", map[string]interface{}{
+				"project_id":      pID,
+				"status":          "parsed",
+				"questions_found": total,
+			})
+		}
+	}(orgID, userID, projectID)
+
 	return c.JSON(http.StatusCreated, map[string]interface{}{
 		"project_id": projectID,
 		"documents":  docs,
 	})
 }
 
-// ParseRFP handles POST /api/rfp/:id/parse
-// Calls the AI service to extract questions from the RFP documents in the project.
-func (h *Handler) ParseRFP(c echo.Context) error {
-	orgID := getOrgID(c)
-	projectID := c.Param("id")
-
-	// Get project documents
+// parseProjectRFP is the shared parse logic used by both UploadRFP (auto) and ParseRFP (manual).
+func (h *Handler) parseProjectRFP(ctx context.Context, orgID, projectID string) (int, error) {
 	rows, err := h.DB.Query(
 		`SELECT d.id, d.file_name
 		 FROM documents d
@@ -133,8 +156,7 @@ func (h *Handler) ParseRFP(c echo.Context) error {
 		projectID, orgID,
 	)
 	if err != nil {
-		log.Printf("error querying project documents: %v", err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+		return 0, fmt.Errorf("query project documents: %w", err)
 	}
 	defer rows.Close()
 
@@ -153,12 +175,10 @@ func (h *Handler) ParseRFP(c echo.Context) error {
 	}
 
 	if len(projectDocs) == 0 {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "no documents found for this project"})
+		return 0, fmt.Errorf("no documents found for this project")
 	}
 
 	totalQuestions := 0
-	ctx := c.Request().Context()
-
 	for _, doc := range projectDocs {
 		ext := strings.ToLower(filepath.Ext(doc.FileName))
 		if ext == "" {
@@ -176,7 +196,6 @@ func (h *Handler) ParseRFP(c echo.Context) error {
 			continue
 		}
 
-		// Insert extracted questions
 		for i, q := range resp.Questions {
 			_, err := h.DB.Exec(
 				`INSERT INTO rfp_questions (project_id, organization_id, question_text, section, question_number, is_mandatory, word_limit, status, sort_order)
@@ -192,16 +211,42 @@ func (h *Handler) ParseRFP(c echo.Context) error {
 		}
 	}
 
-	// Send webhook notifications
-	if h.Webhooks != nil && totalQuestions > 0 {
-		var projectName string
-		_ = h.DB.QueryRow(`SELECT name FROM projects WHERE id = $1 AND organization_id = $2`, projectID, orgID).Scan(&projectName)
+	// Send webhook and in-app notifications
+	if totalQuestions > 0 {
+		var projectName, createdBy string
+		_ = h.DB.QueryRow(`SELECT name, created_by FROM projects WHERE id = $1 AND organization_id = $2`, projectID, orgID).Scan(&projectName, &createdBy)
 		if projectName == "" {
 			projectName = projectID
 		}
 		title := "RFP Parsed: " + projectName
 		msg := fmt.Sprintf("*%s* has been parsed — *%d* questions extracted.", projectName, totalQuestions)
-		h.Webhooks.NotifyWebhooks(orgID, "rfp_parsed", title, msg)
+
+		if h.Webhooks != nil {
+			h.Webhooks.NotifyWebhooks(orgID, "rfp_parsed", title, msg)
+		}
+
+		if h.Notifier != nil && createdBy != "" {
+			nBody := fmt.Sprintf("%s has been parsed — %d questions extracted.", projectName, totalQuestions)
+			_ = h.Notifier.Create(orgID, createdBy, "rfp_parsed", title, nBody, "project", projectID)
+			if h.Events != nil {
+				h.Events.PublishToUser(h.DB, orgID, createdBy, "notification.new", map[string]string{"type": "rfp_parsed"})
+			}
+		}
+	}
+
+	return totalQuestions, nil
+}
+
+// ParseRFP handles POST /api/rfp/:id/parse
+// Calls the AI service to extract questions from the RFP documents in the project.
+func (h *Handler) ParseRFP(c echo.Context) error {
+	orgID := getOrgID(c)
+	projectID := c.Param("id")
+
+	totalQuestions, err := h.parseProjectRFP(c.Request().Context(), orgID, projectID)
+	if err != nil {
+		log.Printf("parse error for project %s: %v", projectID, err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
@@ -319,16 +364,28 @@ func (h *Handler) DraftRFP(c echo.Context) error {
 		projectID, orgID,
 	)
 
-	// Send webhook notifications
-	if h.Webhooks != nil && answersCreated > 0 {
-		var projectName string
-		_ = h.DB.QueryRow(`SELECT name FROM projects WHERE id = $1 AND organization_id = $2`, projectID, orgID).Scan(&projectName)
+	// Send webhook and in-app notifications
+	if answersCreated > 0 {
+		var projectName, createdBy string
+		_ = h.DB.QueryRow(`SELECT name, created_by FROM projects WHERE id = $1 AND organization_id = $2`, projectID, orgID).Scan(&projectName, &createdBy)
 		if projectName == "" {
 			projectName = projectID
 		}
 		title := "Answers Drafted: " + projectName
 		msg := fmt.Sprintf("*%s* — *%d* answers have been generated.", projectName, answersCreated)
-		h.Webhooks.NotifyWebhooks(orgID, "rfp_drafted", title, msg)
+
+		if h.Webhooks != nil {
+			h.Webhooks.NotifyWebhooks(orgID, "rfp_drafted", title, msg)
+		}
+
+		userID := getUserID(c)
+		if h.Notifier != nil && createdBy != "" && createdBy != userID {
+			nBody := fmt.Sprintf("%s — %d answers have been generated.", projectName, answersCreated)
+			_ = h.Notifier.Create(orgID, createdBy, "rfp_drafted", title, nBody, "project", projectID)
+			if h.Events != nil {
+				h.Events.PublishToUser(h.DB, orgID, createdBy, "notification.new", map[string]string{"type": "rfp_drafted"})
+			}
+		}
 	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{

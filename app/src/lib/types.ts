@@ -6,7 +6,7 @@ export interface Project {
   name: string;
   description: string;
   deadline: string | null;
-  status: "draft" | "in_progress" | "completed" | "submitted";
+  status: "draft" | "parsing" | "parsed" | "in_progress" | "completed" | "submitted";
   question_count: number;
   draft_count: number;
   approved_count: number;
@@ -395,4 +395,44 @@ export interface UpdateWebhookRequest {
   channel_name?: string;
   is_active?: boolean;
   notify_on?: WebhookEventType[];
+}
+
+// ── Notification Types ────────────────────────────────────────────────────────
+
+export type NotificationType =
+  | "answer_approved"
+  | "comment_added"
+  | "document_indexed"
+  | "rfp_parsed"
+  | "rfp_drafted"
+  | "deadline_approaching"
+  | "team_assignment"
+  | "question_assigned";
+
+export interface Notification {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  type: NotificationType;
+  title: string;
+  body?: string;
+  entity_type?: string;
+  entity_id?: string;
+  is_read: boolean;
+  email_sent: boolean;
+  created_at: string;
+}
+
+export interface NotificationPreference {
+  organization_id: string;
+  user_id: string;
+  type: NotificationType;
+  in_app_enabled: boolean;
+  email_enabled: boolean;
+}
+
+export interface UpdateNotificationPreferenceRequest {
+  type: NotificationType;
+  in_app_enabled: boolean;
+  email_enabled: boolean;
 }

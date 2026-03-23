@@ -4,7 +4,7 @@ import {
   useOrganization,
   useAuth,
 } from "@clerk/react";
-import { Outlet, Link, useLocation, useParams } from "react-router-dom";
+import { Outlet, Link, useLocation, useParams, useNavigate } from "react-router-dom";
 import {
   Squares2X2Icon,
   BookOpenIcon,
@@ -26,7 +26,8 @@ import {
   GlobeAltIcon,
 } from "@heroicons/react/24/outline";
 import { Popover, PopoverTrigger, PopoverContent } from "./ui/popover.tsx";
-import { useProject } from "../hooks/useApi.ts";
+import { useProject, useUnreadCount, useNotifications, useMarkNotificationRead, useMarkAllRead } from "../hooks/useApi.ts";
+import { useAppEvents } from "../hooks/useAppEvents.ts";
 import { useBrandingContext } from "../contexts/BrandingContext.tsx";
 import { useTranslation } from "react-i18next";
 
@@ -99,33 +100,111 @@ function Breadcrumbs() {
   );
 }
 
+function relativeTime(dateStr: string): string {
+  const now = Date.now();
+  const diff = now - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+
 function NotificationBell() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const { data: unreadData } = useUnreadCount();
+  const { data: notifData } = useNotifications({ limit: 8 });
+  const markRead = useMarkNotificationRead();
+  const markAllRead = useMarkAllRead();
+
+  const unreadCount = unreadData?.count ?? 0;
+  const notifications = notifData?.data ?? [];
+
+  function handleClick(n: { id: string; is_read: boolean; entity_type?: string; entity_id?: string }) {
+    if (!n.is_read) markRead.mutate(n.id);
+    setOpen(false);
+    if (n.entity_type === "project" && n.entity_id) {
+      navigate(`/rfp/${n.entity_id}`);
+    } else if (n.entity_type === "document") {
+      navigate("/knowledge-base");
+    }
+  }
+
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           className="relative rounded-lg p-1.5 text-muted hover:text-body hover:bg-cream-light transition-colors"
           aria-label={t("notifications.title")}
         >
           <BellIcon className="h-5 w-5" />
-          {/* Activity dot */}
-          <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-brand-blue ring-2 ring-cream" />
+          {unreadCount > 0 && (
+            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-brand-blue ring-2 ring-cream" />
+          )}
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-0">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h3 className="text-sm font-semibold text-heading">{t("notifications.title")}</h3>
-          <span className="rounded-full bg-brand-blue/10 px-2 py-0.5 text-xs font-medium text-brand-blue">
-            {t("notifications.new", { count: 0 })}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-brand-blue/10 px-2 py-0.5 text-xs font-medium text-brand-blue">
+              {unreadCount}
+            </span>
+            {unreadCount > 0 && (
+              <button
+                onClick={() => markAllRead.mutate()}
+                className="text-xs text-brand-blue hover:underline"
+              >
+                Mark all read
+              </button>
+            )}
+          </div>
         </div>
-        <div className="px-4 py-8 text-center">
-          <BellIcon className="mx-auto h-8 w-8 text-muted/40" />
-          <p className="mt-2 text-sm text-muted">{t("notifications.empty")}</p>
-          <p className="mt-1 text-xs text-muted/70">
-            {t("notifications.emptyDesc")}
-          </p>
+        {notifications.length === 0 ? (
+          <div className="px-4 py-8 text-center">
+            <BellIcon className="mx-auto h-8 w-8 text-muted/40" />
+            <p className="mt-2 text-sm text-muted">{t("notifications.empty")}</p>
+            <p className="mt-1 text-xs text-muted/70">
+              {t("notifications.emptyDesc")}
+            </p>
+          </div>
+        ) : (
+          <div className="max-h-[360px] overflow-y-auto">
+            {notifications.map((n) => (
+              <button
+                key={n.id}
+                onClick={() => handleClick(n)}
+                className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-cream-light transition-colors border-b border-border last:border-b-0"
+              >
+                {!n.is_read && (
+                  <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-blue" />
+                )}
+                {n.is_read && <span className="mt-1.5 h-2 w-2 shrink-0" />}
+                <div className="min-w-0 flex-1">
+                  <p className={`text-sm truncate ${n.is_read ? "text-muted" : "text-heading font-medium"}`}>
+                    {n.title}
+                  </p>
+                  {n.body && (
+                    <p className="text-xs text-muted truncate mt-0.5">{n.body}</p>
+                  )}
+                  <p className="text-xs text-muted/60 mt-1">{relativeTime(n.created_at)}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="border-t border-border px-4 py-2">
+          <button
+            onClick={() => { setOpen(false); navigate("/settings"); }}
+            className="flex w-full items-center justify-center gap-1.5 rounded-md py-1.5 text-xs text-muted hover:text-brand-blue transition-colors"
+          >
+            <Cog6ToothIcon className="h-3.5 w-3.5" />
+            Settings
+          </button>
         </div>
       </PopoverContent>
     </Popover>
@@ -270,6 +349,7 @@ function SidebarContent({
     { to: "/chat", label: t("nav.chat"), icon: ChatBubbleLeftEllipsisIcon, match: (p: string) => p.startsWith("/chat") },
     { to: "/analytics", label: t("nav.analytics"), icon: ChartBarIcon, match: (p: string) => p === "/analytics" },
     { to: "/admin/audit", label: t("nav.auditLog"), icon: ClipboardDocumentListIcon, match: (p: string) => p === "/admin/audit" },
+    { to: "/settings", label: "Settings", icon: Cog6ToothIcon, match: (p: string) => p === "/settings" },
   ];
 
   return (
@@ -323,6 +403,7 @@ function SidebarContent({
 
 export function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  useAppEvents();
 
   return (
     <div className="flex min-h-screen bg-cream text-heading font-sans">

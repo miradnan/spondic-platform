@@ -64,6 +64,7 @@ type Document struct {
 	ContentHash      *string    `json:"content_hash,omitempty"`
 	Version          int        `json:"version"`
 	Status           string     `json:"status"`
+	Tags             []Tag      `json:"tags"`
 	CreatedAt        time.Time  `json:"created_at"`
 	UpdatedAt        time.Time  `json:"updated_at"`
 	DeletedAt        *time.Time `json:"deleted_at,omitempty"`

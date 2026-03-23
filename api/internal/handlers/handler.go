@@ -7,6 +7,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/spondic/api/internal/events"
 	"github.com/spondic/api/internal/middleware"
 	"github.com/spondic/api/internal/services"
 )
@@ -19,6 +20,7 @@ type Handler struct {
 	S3Bucket string
 	Notifier *services.NotificationService
 	Webhooks *services.WebhookService
+	Events   *events.Bus
 }
 
 // NewHandler constructs a Handler with the given dependencies.

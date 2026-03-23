@@ -1,0 +1,41 @@
+PRICING FRAMEWORK — Acme Enterprise Solutions (Confidential)
+
+STANDARD PRICING TIERS:
+
+Tier 1 — Essential Security Package
+- Network monitoring (8x5)
+- Monthly vulnerability scans
+- Quarterly security reports
+- Email support
+- Price: $8,000/month (up to 500 endpoints)
+
+Tier 2 — Professional Security Package
+- 24/7 SOC monitoring
+- Continuous vulnerability scanning
+- Weekly security reports
+- Dedicated account manager
+- Incident response (4-hour SLA)
+- Price: $18,000/month (up to 2,000 endpoints)
+
+Tier 3 — Enterprise Security Package
+- 24/7 SOC with dedicated analyst team
+- Real-time threat hunting
+- Daily security briefings
+- Executive-level reporting
+- Incident response (1-hour SLA)
+- Compliance management (GDPR, HIPAA, SOC 2)
+- Price: $35,000/month (up to 10,000 endpoints)
+
+PAYMENT TERMS:
+- Net 30 payment terms for enterprise clients
+- Annual contracts with 10% discount for upfront payment
+- Quarterly billing available
+- Volume discounts: 15% for 3-year commitments
+- Implementation fees: one-time setup fee of 2x monthly rate
+
+ADDITIONAL SERVICES (a la carte):
+- Penetration testing: $15,000 per engagement
+- Compliance audit: $25,000 per audit
+- Security architecture review: $10,000
+- Incident response retainer: $5,000/month
+- Security awareness training: $50/user/year

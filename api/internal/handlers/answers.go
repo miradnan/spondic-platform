@@ -269,6 +269,19 @@ func (h *Handler) ApproveAnswer(c echo.Context) error {
 		h.Webhooks.NotifyWebhooks(orgID, "answer_approved", title, msg)
 	}
 
+	// Notify the project creator (not the approver)
+	if h.Notifier != nil {
+		projectID := c.Param("id")
+		var createdBy string
+		_ = h.DB.QueryRow(`SELECT created_by FROM projects WHERE id = $1 AND organization_id = $2`, projectID, orgID).Scan(&createdBy)
+		if createdBy != "" && createdBy != userID {
+			_ = h.Notifier.Create(orgID, createdBy, "answer_approved", "Answer Approved", "An answer has been approved in your project.", "project", projectID)
+			if h.Events != nil {
+				h.Events.PublishToUser(h.DB, orgID, createdBy, "notification.new", map[string]string{"type": "answer_approved"})
+			}
+		}
+	}
+
 	return c.JSON(http.StatusOK, a)
 }
 
@@ -311,6 +324,26 @@ func (h *Handler) CommentOnAnswer(c echo.Context) error {
 	if err != nil {
 		log.Printf("error inserting comment: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+	}
+
+	// Notify other commenters on this answer
+	if h.Notifier != nil {
+		commenterRows, err := h.DB.Query(
+			`SELECT DISTINCT user_id FROM rfp_answer_comments WHERE answer_id = $1 AND organization_id = $2 AND user_id != $3`,
+			answerID, orgID, userID,
+		)
+		if err == nil {
+			defer commenterRows.Close()
+			for commenterRows.Next() {
+				var targetUserID string
+				if commenterRows.Scan(&targetUserID) == nil {
+					_ = h.Notifier.Create(orgID, targetUserID, "comment_added", "New Comment", "A new comment was added on an answer you commented on.", "answer", answerID)
+					if h.Events != nil {
+						h.Events.PublishToUser(h.DB, orgID, targetUserID, "notification.new", map[string]string{"type": "comment_added"})
+					}
+				}
+			}
+		}
 	}
 
 	return c.JSON(http.StatusCreated, comment)

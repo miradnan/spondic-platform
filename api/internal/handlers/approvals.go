@@ -274,7 +274,7 @@ func (h *Handler) ListAnswerApprovals(c echo.Context) error {
 	// Get all stages for the project with their approval status for this answer
 	rows, err := h.DB.Query(
 		`SELECT s.id, s.name, s.sort_order,
-		        COALESCE(aa.id, '') AS approval_id,
+		        COALESCE(aa.id::text, '') AS approval_id,
 		        COALESCE(aa.status, 'pending') AS status,
 		        aa.approved_by, aa.comment, aa.approved_at,
 		        COALESCE(aa.created_at, s.created_at) AS created_at
