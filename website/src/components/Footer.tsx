@@ -89,6 +89,7 @@ export default function Footer() {
                 alt="Canadian flag"
                 width={20}
                 height={10}
+                unoptimized
                 className="rounded-sm"
               />
             </span>
