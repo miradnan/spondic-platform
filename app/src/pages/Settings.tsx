@@ -84,8 +84,10 @@ export function Settings() {
   const [compactMode, setCompactMode] = useState(() => {
     return localStorage.getItem("spondic_compact_mode") === "true";
   });
-  const [defaultView, setDefaultView] = useState<"card" | "table">(() => {
-    return (localStorage.getItem("spondic_default_view") as "card" | "table") || "card";
+  const [defaultView, setDefaultView] = useState<"cards" | "table">(() => {
+    const stored = localStorage.getItem("spondic_default_view");
+    if (stored === "table") return "table";
+    return "cards";
   });
 
   function getPref(type: NotificationType) {
@@ -115,7 +117,7 @@ export function Settings() {
     toast("success", "Preference saved");
   }
 
-  function handleDefaultViewChange(val: "card" | "table") {
+  function handleDefaultViewChange(val: "cards" | "table") {
     setDefaultView(val);
     localStorage.setItem("spondic_default_view", val);
     toast("success", "Preference saved");
@@ -160,10 +162,10 @@ export function Settings() {
             </div>
             <select
               value={defaultView}
-              onChange={(e) => handleDefaultViewChange(e.target.value as "card" | "table")}
+              onChange={(e) => handleDefaultViewChange(e.target.value as "cards" | "table")}
               className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-heading focus:outline-none focus:ring-2 focus:ring-brand-blue focus:ring-offset-1"
             >
-              <option value="card">Card view</option>
+              <option value="cards">Card view</option>
               <option value="table">Table view</option>
             </select>
           </div>

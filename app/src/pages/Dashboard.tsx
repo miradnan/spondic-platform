@@ -327,7 +327,12 @@ export function Dashboard() {
   const search = searchParams.get("q") ?? "";
   const statusFromUrl = searchParams.get("status") ?? "";
   const deadlineFromUrl = (searchParams.get("deadline") ?? "") as DeadlineFilter;
-  const viewMode = (searchParams.get("view") as ViewMode) || "cards";
+  const viewMode: ViewMode = (searchParams.get("view") as ViewMode) || (() => {
+    const stored = localStorage.getItem("spondic_default_view");
+    if (stored === "table") return "table" as ViewMode;
+    if (stored === "cards" || stored === "card") return "cards" as ViewMode;
+    return "cards" as ViewMode;
+  })();
 
   // Local state for Radix Select components
   const [statusFilter, setStatusFilterLocal] = useState(statusFromUrl);
@@ -378,7 +383,7 @@ export function Dashboard() {
   }, [updateParams]);
 
   const setViewMode = useCallback((val: ViewMode) => {
-    updateParams({ view: val === "cards" ? null : val });
+    updateParams({ view: val });
   }, [updateParams]);
 
   const { data, isLoading, isError, refetch } = useProjects({
