@@ -250,7 +250,7 @@ button:disabled,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.65rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--blue, #2d5fa0);
   background: rgba(45, 95, 160, 0.1);
@@ -266,6 +266,45 @@ button:disabled,
 .citation-badge:hover {
   background: var(--blue, #2d5fa0);
   color: #fff;
+}
+
+/* Citation highlight pulse when scrolled to */
+@keyframes citation-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(45, 95, 160, 0.4); }
+  40%  { box-shadow: 0 0 0 6px rgba(45, 95, 160, 0.15); }
+  100% { box-shadow: 0 0 0 0 rgba(45, 95, 160, 0); }
+}
+
+.citation-highlight {
+  ring: 2px solid var(--color-brand-blue, #2d5fa0);
+  outline: 2px solid var(--color-brand-blue, #2d5fa0);
+  outline-offset: 2px;
+  animation: citation-pulse 1.5s ease-out;
+}
+
+/* Editable placeholder highlights for [ENTER: ...] markers */
+.enter-placeholder {
+  display: inline;
+  background: rgba(196, 154, 60, 0.15);
+  border: 1px dashed var(--color-brand-gold, #c49a3c);
+  border-radius: 4px;
+  padding: 1px 6px;
+  color: var(--color-brand-gold, #c49a3c);
+  font-weight: 600;
+  font-size: 0.875em;
+  cursor: help;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.enter-placeholder:hover {
+  background: rgba(196, 154, 60, 0.25);
+  border-color: var(--color-brand-gold, #c49a3c);
+}
+
+/* Dark mode */
+.dark .enter-placeholder {
+  background: rgba(196, 154, 60, 0.2);
+  color: #d4aa4c;
 }
 
 /* Dark mode overrides for driver.js popover */

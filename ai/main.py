@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
-from routes import agents, chat, compliance, documents, draft, health, index, knowledge, parse, scoring, search
+from routes import agents, chat, compliance, documents, draft, health, index, index_answer, knowledge, parse, scoring, search
 from services import vectorstore
 
 # Configure logging
@@ -55,6 +55,7 @@ app.add_middleware(
 # Register route modules
 app.include_router(health.router)
 app.include_router(index.router)
+app.include_router(index_answer.router)
 app.include_router(parse.router)
 app.include_router(draft.router)
 app.include_router(chat.router)

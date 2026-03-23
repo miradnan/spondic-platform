@@ -355,11 +355,13 @@ func (h *Handler) DraftRFP(c echo.Context) error {
 		}
 
 		// Insert citations
+		// Note: chunk_id from Weaviate is a Weaviate UUID, not a document_chunks PK,
+		// so we store it as NULL to avoid FK constraint violations.
 		for _, cit := range a.Citations {
 			_, err := h.DB.Exec(
-				`INSERT INTO rfp_answer_citations (answer_id, document_id, chunk_id, citation_text, relevance_score)
+				`INSERT INTO rfp_answer_citations (answer_id, document_id, citation_text, document_title, relevance_score)
 				 VALUES ($1, $2, $3, $4, $5)`,
-				answerID, nullStr(cit.DocumentID), nullStr(cit.ChunkID), cit.CitationText, cit.RelevanceScore,
+				answerID, nullStr(cit.DocumentID), cit.CitationText, cit.DocumentTitle, cit.RelevanceScore,
 			)
 			if err != nil {
 				log.Printf("error inserting citation: %v", err)
@@ -511,9 +513,9 @@ func (h *Handler) RedraftQuestion(c echo.Context) error {
 	// Insert new citations
 	for _, cit := range a.Citations {
 		h.DB.Exec(
-			`INSERT INTO rfp_answer_citations (answer_id, document_id, chunk_id, citation_text, relevance_score)
+			`INSERT INTO rfp_answer_citations (answer_id, document_id, citation_text, document_title, relevance_score)
 			 VALUES ($1, $2, $3, $4, $5)`,
-			answerID, nullStr(cit.DocumentID), nullStr(cit.ChunkID), cit.CitationText, cit.RelevanceScore,
+			answerID, nullStr(cit.DocumentID), cit.CitationText, cit.DocumentTitle, cit.RelevanceScore,
 		)
 	}
 

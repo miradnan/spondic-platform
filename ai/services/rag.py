@@ -8,8 +8,31 @@ as well as search, drafting, and chat workflows.
 import logging
 import os
 
+import re
+
 from services import chunker, embedder, llm, parser, s3, vectorstore
 from services.llm import TokenUsage
+
+
+def _extract_excerpt(content: str, max_len: int = 400) -> str:
+    """Extract a meaningful excerpt from chunk content.
+    Skips leading section numbers, headers, and boilerplate to show the actual substance."""
+    text = content.strip()
+    # Strip leading section markers like "1.", "1.1", "Section 3:", "CHAPTER 2 —", "- 1."
+    text = re.sub(r"^[-–—\s]*\d+[\.\)]\s*", "", text)
+    text = re.sub(r"^(?:section|chapter|part)\s+\d+[\s:—-]*", "", text, flags=re.IGNORECASE)
+    # Strip leading ALL-CAPS headers (e.g., "NETWORK SECURITY MONITORING & INCIDENT RESPONSE")
+    lines = text.split("\n")
+    while lines and (lines[0].strip() == "" or lines[0].strip().isupper()):
+        lines.pop(0)
+    text = "\n".join(lines).strip() if lines else text.strip()
+    # If still empty after stripping, fall back to original
+    if not text:
+        text = content.strip()
+    # Truncate to max_len at a word boundary
+    if len(text) > max_len:
+        text = text[:max_len].rsplit(" ", 1)[0] + "..."
+    return text
 
 logger = logging.getLogger(__name__)
 
@@ -166,12 +189,13 @@ async def draft_answers(
             else:
                 confidence = 0.0
 
-            # 5. Build citations
+            # 5. Build citations — store the exact chunk text retrieved from the vector store
             citations = [
                 {
                     "document_id": r["document_id"],
                     "chunk_id": r["chunk_id"],
-                    "citation_text": r["content"][:300],
+                    "citation_text": r["content"].strip(),
+                    "document_title": r.get("document_title", ""),
                     "relevance_score": r["score"],
                 }
                 for r in search_results
@@ -194,6 +218,79 @@ async def draft_answers(
             })
 
     return answers
+
+
+# --------------------------------------------------------------------------- #
+# Index Approved Answer
+# --------------------------------------------------------------------------- #
+
+async def index_approved_answer(
+    organization_id: str,
+    answer_id: str,
+    question_text: str,
+    answer_text: str,
+    project_name: str = "",
+    section: str = "",
+) -> str:
+    """
+    Embed an approved Q&A pair and store it in Weaviate so future RAG
+    searches can retrieve proven answers for similar questions.
+
+    Deduplication:
+      1. Deterministic UUID from answer_id — re-approving the same answer upserts.
+      2. Semantic check — if an existing object is ≥95% similar, skip the insert
+         to avoid near-duplicate clutter from similar questions across RFPs.
+
+    Returns the Weaviate object UUID, or empty string if skipped as duplicate.
+    """
+    logger.info("Indexing approved answer %s (org=%s)", answer_id, organization_id)
+
+    # Clean the answer text: strip HTML tags, citation markers [Source N] / [N],
+    # and [ENTER: ...] placeholders so only the real content gets embedded.
+    clean_answer = re.sub(r"<[^>]+>", "", answer_text)            # strip HTML
+    clean_answer = re.sub(r"\[Source\s*\d+\]", "", clean_answer)  # [Source 1]
+    clean_answer = re.sub(r"\[\d+\]", "", clean_answer)           # [1]
+    clean_answer = re.sub(r"\[ENTER:\s*[^\]]+\]", "", clean_answer)  # [ENTER: ...]
+    clean_answer = re.sub(r"\s{2,}", " ", clean_answer).strip()   # collapse whitespace
+
+    content = f"Q: {question_text}\n\nA: {clean_answer}"
+    embedding = embedder.embed_single(content)
+
+    # Semantic dedup: skip if a near-identical entry already exists
+    existing = vectorstore.find_near_duplicate(
+        organization_id=organization_id,
+        embedding=embedding,
+        similarity_threshold=0.95,
+    )
+    if existing and existing["document_id"] != answer_id:
+        logger.info(
+            "Skipping approved answer %s — near duplicate of %s (%.1f%% similar)",
+            answer_id, existing["document_id"], existing["score"] * 100,
+        )
+        return ""
+
+    # Build a descriptive title
+    q_snippet = question_text[:60].rstrip() + ("..." if len(question_text) > 60 else "")
+    title = f"Approved: {project_name} — {q_snippet}" if project_name else f"Approved Answer — {q_snippet}"
+
+    # Upsert with deterministic UUID (same answer_id → same Weaviate object)
+    object_id = vectorstore.upsert_approved_answer(
+        organization_id=organization_id,
+        answer_id=answer_id,
+        document_title=title,
+        content=content,
+        section=section,
+        embedding=embedding,
+    )
+
+    logger.info("Indexed approved answer %s → Weaviate %s", answer_id, object_id)
+    return object_id
+
+
+async def remove_approved_answer(organization_id: str, answer_id: str) -> None:
+    """Remove an approved answer from Weaviate when it's un-approved."""
+    deleted = vectorstore.delete_by_document_id(organization_id, answer_id)
+    logger.info("Removed approved answer %s from Weaviate (%d objects deleted)", answer_id, deleted)
 
 
 # --------------------------------------------------------------------------- #
@@ -232,11 +329,11 @@ async def chat(
         usage=usage,
     )
 
-    # 4. Build citations
+    # 4. Build citations — store the exact chunk text retrieved
     citations = [
         {
             "document_title": r["document_title"],
-            "citation_text": r["content"][:300],
+            "citation_text": r["content"].strip(),
             "relevance_score": r["score"],
         }
         for r in search_results

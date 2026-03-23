@@ -142,6 +142,7 @@ type RFPAnswerCitation struct {
 	ID             string   `json:"id"`
 	AnswerID       string   `json:"answer_id"`
 	DocumentID     *string  `json:"document_id,omitempty"`
+	DocumentTitle  string   `json:"document_title"`
 	ChunkID        *string  `json:"chunk_id,omitempty"`
 	CitationText   string   `json:"citation_text"`
 	RelevanceScore *float64 `json:"relevance_score,omitempty"`

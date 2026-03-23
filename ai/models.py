@@ -141,6 +141,29 @@ class SearchResponse(BaseModel):
 
 
 # --------------------------------------------------------------------------- #
+# Index Approved Answer
+# --------------------------------------------------------------------------- #
+
+class IndexAnswerRequest(BaseModel):
+    organization_id: str
+    answer_id: str
+    question_text: str
+    answer_text: str
+    project_name: str = ""
+    section: str = ""
+
+class IndexAnswerResponse(BaseModel):
+    status: str = "ok"
+    weaviate_object_id: str = ""
+    skipped_as_duplicate: bool = False
+    error: str = ""
+
+class RemoveAnswerRequest(BaseModel):
+    organization_id: str
+    answer_id: str
+
+
+# --------------------------------------------------------------------------- #
 # Delete
 # --------------------------------------------------------------------------- #
 

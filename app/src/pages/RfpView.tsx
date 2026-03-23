@@ -1,6 +1,7 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 import { marked } from "marked";
 import {
   ArrowLeftIcon,
@@ -85,18 +86,51 @@ function toHtml(text: string): string {
   return marked.parse(text, { async: false, breaks: true }) as string;
 }
 
-/** Convert [Source N] markers into clickable citation badges */
-function linkifyCitations(html: string): string {
+/** Convert [ENTER: ...] placeholders into highlighted editable markers */
+function highlightPlaceholders(html: string): string {
   return html.replace(
-    /\[Source\s*(\d+)(?:,\s*Source\s*(\d+))?\]/gi,
-    (_match, n1: string, n2?: string) => {
-      let badges = `<button type="button" class="citation-badge" data-citation="${n1}" onclick="document.getElementById('citation-${n1}')?.scrollIntoView({behavior:'smooth',block:'center'})">[${n1}]</button>`;
-      if (n2) {
-        badges += `<button type="button" class="citation-badge" data-citation="${n2}" onclick="document.getElementById('citation-${n2}')?.scrollIntoView({behavior:'smooth',block:'center'})">[${n2}]</button>`;
-      }
-      return badges;
-    },
+    /\[ENTER:\s*([^\]]+)\]/gi,
+    (_match, desc: string) =>
+      `<mark class="enter-placeholder" title="Click Edit to fill in this field">${desc.trim()}</mark>`,
   );
+}
+
+/** Convert citation markers into styled spans for TipTap editor (no onclick, just visual) */
+function spanifyCitations(html: string): string {
+  const span = (n: string) =>
+    `<span class="citation-badge" data-citation="${n}">[${n}]</span>`;
+
+  let result = html.replace(
+    /\[Source\s*(\d+)(?:,\s*Source\s*(\d+))?\]/gi,
+    (_match, n1: string, n2?: string) => span(n1) + (n2 ? span(n2) : ""),
+  );
+
+  result = result.replace(
+    /(?<!data-citation=")(?<!">)\[(\d+)\]/g,
+    (_match, n: string) => span(n),
+  );
+
+  return result;
+}
+
+/** Convert citation markers into clickable badges. Supports: [Source 1], [1], [1][2], [Source 1, Source 2] */
+function linkifyCitations(html: string): string {
+  const btn = (n: string) =>
+    `<button type="button" class="citation-badge" data-citation="${n}" onclick="(function(el){document.querySelectorAll('.citation-highlight').forEach(function(e){e.classList.remove('citation-highlight')});if(el){el.scrollIntoView({behavior:'smooth',block:'center'});void el.offsetWidth;el.classList.add('citation-highlight')}})(document.getElementById('citation-${n}'))">[${n}]</button>`;
+
+  // Match [Source 1], [Source 1, Source 2]
+  let result = html.replace(
+    /\[Source\s*(\d+)(?:,\s*Source\s*(\d+))?\]/gi,
+    (_match, n1: string, n2?: string) => btn(n1) + (n2 ? btn(n2) : ""),
+  );
+
+  // Match bare [1], [2], etc. (not already inside a button)
+  result = result.replace(
+    /(?<!data-citation=")(?<!">)\[(\d+)\]/g,
+    (_match, n: string) => btn(n),
+  );
+
+  return result;
 }
 
 const STATUS_DOTS: Record<string, string> = {
@@ -130,9 +164,23 @@ export function RfpView() {
   const questions = questionsData?.data;
   const answers = answersData?.answers;
 
+  const queryClient = useQueryClient();
   const parseRfp = useParseRfp();
   const draftAll = useDraftAnswers();
-  const isAutoParsing = project?.status === "parsing";
+  // Treat as parsing while project data is still loading to avoid flashing the Parse button
+  const isAutoParsing = projectLoading || project?.status === "parsing";
+
+  // When project transitions out of "parsing", refetch questions and answers
+  const wasParsing = useRef(false);
+  useEffect(() => {
+    if (isAutoParsing) {
+      wasParsing.current = true;
+    } else if (wasParsing.current) {
+      wasParsing.current = false;
+      void queryClient.invalidateQueries({ queryKey: ["questions", id] });
+      void queryClient.invalidateQueries({ queryKey: ["answers", id] });
+    }
+  }, [isAutoParsing, queryClient, id]);
 
   // Map answers by question_id
   const answerMap = useMemo(() => {
@@ -706,7 +754,8 @@ function ReviewTab({
 
   const handleStartEdit = useCallback(() => {
     if (!answer) return;
-    setEditText(toHtml(answer.edited_text || answer.draft_text || ""));
+    const html = highlightPlaceholders(spanifyCitations(toHtml(answer.edited_text || answer.draft_text || "")));
+    setEditText(html);
     setIsEditing(true);
   }, [answer]);
 
@@ -818,19 +867,19 @@ function ReviewTab({
           goToQuestion(currentIndex - 1);
           break;
         case "a":
-          if (answer && !isEditing) {
+          if (answer && !isEditing && !isApproved) {
             e.preventDefault();
             handleApprove("approved");
           }
           break;
         case "e":
-          if (answer && !isEditing) {
+          if (answer && !isEditing && !isApproved) {
             e.preventDefault();
             handleStartEdit();
           }
           break;
         case "r":
-          if (answer && !isEditing) {
+          if (answer && !isEditing && !isApproved) {
             e.preventDefault();
             handleApprove("rejected");
           }
@@ -862,9 +911,10 @@ function ReviewTab({
     );
   }
 
+  const isApproved = answer?.status === "approved";
   const rawAnswerText = answer?.edited_text || answer?.draft_text || "";
   // Convert markdown to HTML if needed, then linkify [Source N] markers
-  const answerText = useMemo(() => linkifyCitations(toHtml(rawAnswerText)), [rawAnswerText]);
+  const answerText = useMemo(() => highlightPlaceholders(linkifyCitations(toHtml(rawAnswerText))), [rawAnswerText]);
   const wordCount = isEditing ? stripHtmlWordCount(editText) : stripHtmlWordCount(answerText);
   const confidenceScore = answer?.confidence_score ?? null;
   const confidenceColor =
@@ -1094,12 +1144,19 @@ function ReviewTab({
               </div>
             ) : (
               <div>
-                <RichTextEditor
-                  content={isEditing ? editText : answerText}
-                  onChange={isEditing ? setEditText : () => {}}
-                  placeholder={isEditing ? "Write your answer..." : ""}
-                  editable={isEditing}
-                />
+                {isEditing ? (
+                  <RichTextEditor
+                    content={editText}
+                    onChange={setEditText}
+                    placeholder="Write your answer..."
+                    editable
+                  />
+                ) : (
+                  <div
+                    className="prose prose-sm max-w-none p-4 min-h-[200px] text-heading border border-border rounded-lg bg-surface"
+                    dangerouslySetInnerHTML={{ __html: answerText }}
+                  />
+                )}
                 {isEditing ? (
                   <div className="mt-3 flex gap-2">
                     <button
@@ -1118,6 +1175,26 @@ function ReviewTab({
                   </div>
                 ) : (
                   <div className="mt-4 space-y-3">
+                    {isApproved ? (
+                      <>
+                        {/* Approved lock banner */}
+                        <div className="flex items-center gap-2 rounded-lg border border-green-300 bg-green-50 px-4 py-2.5">
+                          <CheckCircleIcon className="h-4 w-4 text-green-600 shrink-0" />
+                          <span className="text-sm font-medium text-green-800">Approved — editing is locked</span>
+                        </div>
+                        {/* Unapprove to unlock */}
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={() => handleApprove("draft")}
+                            disabled={approveAnswer.isPending}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-body hover:bg-cream-light transition-colors disabled:opacity-50"
+                          >
+                            Unapprove & Unlock
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
                     {/* Primary: status actions */}
                     <div className="flex flex-wrap gap-2">
                       <Tooltip content="Approve (a)">
@@ -1169,6 +1246,8 @@ function ReviewTab({
                         </button>
                       </Tooltip>
                     </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -1236,55 +1315,115 @@ function ReviewTab({
             )}
           </div>
 
-          {/* RIGHT: Citations + History */}
-          <div className="space-y-4">
-            <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
-              <h3 className="text-xs font-medium text-muted uppercase tracking-wide mb-3">{t("rfp.view.sourceCitations")}</h3>
-              {answer?.citations && answer.citations.length > 0 ? (
-                <ul className="space-y-3">
-                  {answer.citations.map((c, idx) => (
-                    <li
-                      key={c.id}
-                      id={`citation-${idx + 1}`}
-                      className="rounded-lg border border-border bg-cream-light p-3 scroll-mt-4 transition-colors target:ring-2 target:ring-brand-blue/30"
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-brand-blue text-[10px] font-semibold text-white">
-                            {idx + 1}
-                          </span>
-                          <span className="text-xs font-medium text-brand-blue truncate">
-                            {c.document_title}
-                          </span>
-                        </div>
-                        <span className={`text-xs font-medium shrink-0 ml-2 ${c.relevance_score >= 0.8 ? "text-green-600" : c.relevance_score >= 0.5 ? "text-yellow-600" : "text-red-500"}`}>
-                          {(c.relevance_score * 100).toFixed(0)}%
-                        </span>
-                      </div>
-                      <div className="h-1 rounded-full bg-surface-inset overflow-hidden mb-2">
-                        <div
-                          className={`h-full rounded-full transition-all ${c.relevance_score >= 0.8 ? "bg-green-500" : c.relevance_score >= 0.5 ? "bg-yellow-400" : "bg-red-400"}`}
-                          style={{ width: `${(c.relevance_score * 100).toFixed(0)}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-body leading-relaxed line-clamp-4">
-                        {c.citation_text}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-xs text-muted">{t("rfp.view.noCitations")}</p>
-              )}
-            </div>
+          {/* RIGHT: Citations + History (collapsible) */}
+          <RightPanel
+            answer={answer}
+            projectId={projectId}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 
-            {/* History */}
-            {answer && (
-              <AnswerHistoryPanel projectId={projectId} answerId={answer.id} />
+// ── Right Panel: Collapsible Citations + History ─────────────────────────────
+
+function CollapsibleSection({
+  title,
+  badge,
+  defaultOpen = true,
+  children,
+}: {
+  title: string;
+  badge?: React.ReactNode;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="rounded-xl border border-border bg-surface shadow-sm overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-cream-light/50 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <h3 className="text-xs font-medium text-muted uppercase tracking-wide">{title}</h3>
+          {badge}
+        </div>
+        <ChevronRightIcon className={`h-4 w-4 text-muted transition-transform ${open ? "rotate-90" : ""}`} />
+      </button>
+      {open && <div className="px-5 pb-5">{children}</div>}
+    </div>
+  );
+}
+
+function RightPanel({ answer, projectId }: { answer: RFPAnswer | null | undefined; projectId: string }) {
+  const { t } = useTranslation();
+  const citationCount = answer?.citations?.length ?? 0;
+
+  return (
+    <div className="flex flex-col gap-3">
+      {/* Source Citations — always open, no scroll */}
+      <div className="rounded-xl border border-border bg-surface shadow-sm overflow-hidden">
+        <div className="px-5 py-3.5">
+          <div className="flex items-center gap-2">
+            <h3 className="text-xs font-medium text-muted uppercase tracking-wide">{t("rfp.view.sourceCitations")}</h3>
+            {citationCount > 0 && (
+              <span className="text-[10px] font-semibold text-brand-blue bg-brand-blue/10 rounded-full px-1.5 py-0.5">{citationCount}</span>
             )}
           </div>
         </div>
+        <div className="px-5 pb-5">
+          {answer?.citations && answer.citations.length > 0 ? (
+            <ul className="space-y-3">
+              {answer.citations.map((c, idx) => (
+                <li
+                  key={c.id}
+                  id={`citation-${idx + 1}`}
+                  className="rounded-lg border border-border bg-cream-light p-3 scroll-mt-4 transition-colors"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-brand-blue text-[10px] font-semibold text-white">
+                        {idx + 1}
+                      </span>
+                      <span className="text-xs font-medium text-brand-blue truncate">
+                        {c.document_title}
+                      </span>
+                    </div>
+                    <span className={`text-xs font-medium shrink-0 ml-2 ${c.relevance_score >= 0.8 ? "text-green-600" : c.relevance_score >= 0.5 ? "text-yellow-600" : "text-red-500"}`}>
+                      {(c.relevance_score * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="h-1 rounded-full bg-surface-inset overflow-hidden mb-2">
+                    <div
+                      className={`h-full rounded-full transition-all ${c.relevance_score >= 0.8 ? "bg-green-500" : c.relevance_score >= 0.5 ? "bg-yellow-400" : "bg-red-400"}`}
+                      style={{ width: `${(c.relevance_score * 100).toFixed(0)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-body leading-relaxed line-clamp-4">
+                    {c.citation_text}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-muted">{t("rfp.view.noCitations")}</p>
+          )}
+        </div>
       </div>
+
+      {/* History — always open */}
+      {answer && (
+        <div className="rounded-xl border border-border bg-surface shadow-sm overflow-hidden">
+          <div className="px-5 py-3.5">
+            <h3 className="text-xs font-medium text-muted uppercase tracking-wide">History</h3>
+          </div>
+          <div className="px-5 pb-5">
+            <AnswerHistoryContent projectId={projectId} answerId={answer.id} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1301,7 +1440,7 @@ const ACTION_CONFIG: Record<string, { label: string; color: string; icon: typeof
   redrafted:  { label: "Re-generated answer",  color: "text-purple-600",  icon: ArrowPathIcon },
 };
 
-function AnswerHistoryPanel({
+function AnswerHistoryContent({
   projectId,
   answerId,
 }: {
@@ -1311,60 +1450,54 @@ function AnswerHistoryPanel({
   const { data, isLoading } = useAnswerHistory(projectId, answerId);
   const history = data?.history ?? [];
 
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <SkeletonBlock key={i} className="h-8" />
+        ))}
+      </div>
+    );
+  }
+
+  if (history.length === 0) {
+    return <p className="text-xs text-muted">No activity yet.</p>;
+  }
+
   return (
-    <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
-      <h3 className="text-xs font-medium text-muted uppercase tracking-wide mb-3">
-        History
-      </h3>
+    <div className="relative max-h-[300px] overflow-y-auto">
+      <div className="absolute left-[9px] top-2 bottom-2 w-px bg-border" />
+      <ul className="space-y-3">
+        {history.map((entry) => {
+          const config = ACTION_CONFIG[entry.action] ?? {
+            label: entry.action,
+            color: "text-muted",
+            icon: ClockIcon,
+          };
+          const Icon = config.icon;
 
-      {isLoading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <SkeletonBlock key={i} className="h-8" />
-          ))}
-        </div>
-      ) : history.length === 0 ? (
-        <p className="text-xs text-muted">No activity yet.</p>
-      ) : (
-        <div className="relative">
-          {/* Timeline line */}
-          <div className="absolute left-[9px] top-2 bottom-2 w-px bg-border" />
-
-          <ul className="space-y-3">
-            {history.map((entry) => {
-              const config = ACTION_CONFIG[entry.action] ?? {
-                label: entry.action,
-                color: "text-muted",
-                icon: ClockIcon,
-              };
-              const Icon = config.icon;
-
-              return (
-                <li key={entry.id} className="relative flex items-start gap-3 pl-6">
-                  {/* Dot */}
-                  <div className={`absolute left-0 top-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-surface border border-border`}>
-                    <Icon className={`h-3 w-3 ${config.color}`} />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-medium text-heading">
-                        {entry.edited_by_name}
-                      </span>
-                      <span className={`text-xs ${config.color}`}>
-                        {config.label}
-                      </span>
-                    </div>
-                    <span className="text-[10px] text-muted">
-                      {relativeTime(entry.edited_at)}
-                    </span>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
+          return (
+            <li key={entry.id} className="relative flex items-start gap-3 pl-6">
+              <div className="absolute left-0 top-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-surface border border-border">
+                <Icon className={`h-3 w-3 ${config.color}`} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-medium text-heading">
+                    {entry.edited_by_name}
+                  </span>
+                  <span className={`text-xs ${config.color}`}>
+                    {config.label}
+                  </span>
+                </div>
+                <span className="text-[10px] text-muted">
+                  {relativeTime(entry.edited_at)}
+                </span>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

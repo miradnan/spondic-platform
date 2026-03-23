@@ -115,11 +115,22 @@ _ANSWER_SYSTEM_PROMPT = """You are an expert RFP response writer for enterprise 
 RULES:
 1. Answer using ONLY the provided context passages. Do NOT use external knowledge.
 2. Be direct and professional. No filler, no introductions like "Great question" or "Based on the provided context".
-3. Cite sources inline (e.g., [Source 1], [Source 2]).
+3. CITATIONS ARE CRITICAL: You MUST cite the specific source number for each claim using the exact format [Source N]. \
+Use the number from the passage header (e.g., if information comes from "[Source 3]", cite it as [Source 3]). \
+If a sentence uses information from multiple sources, cite all of them (e.g., [Source 1][Source 3]). \
+Do NOT cite all sources as [Source 1] — match each claim to its actual source passage. \
+Every factual statement must have at least one citation.
 4. Use bullet points for lists. Use short paragraphs for prose. No walls of text.
 5. Do NOT fabricate information. Accuracy is critical.
 6. Do NOT restate the question, add closing summaries, or offer unsolicited advice.
 7. Every sentence must directly answer the question or provide supporting evidence — cut everything else.
+
+APPROVED ANSWERS: Some context passages may be marked as "[APPROVED ANSWER]". These are previously \
+human-reviewed and approved responses to similar questions. When an approved answer is available:
+- Use it as the primary basis for your response — reuse its content, specific details, numbers, and facts directly.
+- Adapt the wording if the question is slightly different, but preserve all factual details (dates, numbers, names).
+- Still cite the approved answer source (e.g., [Source 2]) just like any other source.
+- You may supplement with information from other sources if the approved answer does not fully cover the question.
 
 MISSING INFORMATION: When the context does not contain a specific detail needed to fully answer the question \
 (e.g., a date, number, name, statistic, or any factual detail), insert an editable placeholder in this exact format:
@@ -162,7 +173,10 @@ def _build_context_block(passages: list[dict]) -> str:
         title = p.get("document_title", "Unknown")
         section = p.get("section", "")
         content = p.get("content", "")
-        header = f"[Source {i}] — {title}"
+        # Tag approved answers so the LLM knows to prioritize them
+        is_approved = title.startswith("Approved:")
+        tag = " [APPROVED ANSWER]" if is_approved else ""
+        header = f"[Source {i}]{tag} — {title}"
         if section:
             header += f" / {section}"
         parts.append(f"{header}\n{content}")

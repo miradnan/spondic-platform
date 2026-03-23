@@ -127,6 +127,7 @@ type DraftCitation struct {
 	DocumentID     string  `json:"document_id"`
 	ChunkID        string  `json:"chunk_id,omitempty"`
 	CitationText   string  `json:"citation_text"`
+	DocumentTitle  string  `json:"document_title,omitempty"`
 	RelevanceScore float64 `json:"relevance_score"`
 }
 
@@ -227,6 +228,63 @@ func (a *AIClient) ChatStream(ctx context.Context, orgID, message string, histor
 	}
 
 	return resp, nil
+}
+
+// IndexAnswerRequest is the payload for indexing an approved answer into Weaviate.
+type IndexAnswerRequest struct {
+	OrganizationID string `json:"organization_id"`
+	AnswerID       string `json:"answer_id"`
+	QuestionText   string `json:"question_text"`
+	AnswerText     string `json:"answer_text"`
+	ProjectName    string `json:"project_name,omitempty"`
+	Section        string `json:"section,omitempty"`
+}
+
+// IndexAnswerResponse is the response from the AI /index-answer endpoint.
+type IndexAnswerResponse struct {
+	Status          string `json:"status"`
+	WeaviateObjectID string `json:"weaviate_object_id,omitempty"`
+	Error           string `json:"error,omitempty"`
+}
+
+// IndexAnswer embeds an approved Q&A pair into Weaviate for future RAG retrieval.
+func (a *AIClient) IndexAnswer(ctx context.Context, req IndexAnswerRequest) (*IndexAnswerResponse, error) {
+	var resp IndexAnswerResponse
+	if err := a.post(ctx, "/index-answer", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// RemoveAnswer deletes an approved answer from Weaviate when it's un-approved.
+func (a *AIClient) RemoveAnswer(ctx context.Context, orgID, answerID string) error {
+	payload := struct {
+		OrganizationID string `json:"organization_id"`
+		AnswerID       string `json:"answer_id"`
+	}{orgID, answerID}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal remove answer request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, a.baseURL+"/index-answer", bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("failed to create remove answer request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := a.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to call AI remove answer endpoint: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("AI remove answer returned status %d: %s", resp.StatusCode, string(respBody))
+	}
+	return nil
 }
 
 // SearchRequest is the payload for the AI /search endpoint.

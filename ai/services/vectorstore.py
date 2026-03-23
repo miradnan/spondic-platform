@@ -10,6 +10,7 @@ Uses weaviate-client v4 API.
 
 import logging
 from typing import Any
+from uuid import UUID, uuid5, NAMESPACE_URL
 
 import weaviate
 from weaviate.classes.config import Configure, DataType, Property
@@ -133,6 +134,85 @@ def store_chunks(
         len(object_ids), document_id, organization_id,
     )
     return object_ids
+
+
+def upsert_approved_answer(
+    organization_id: str,
+    answer_id: str,
+    document_title: str,
+    content: str,
+    section: str,
+    embedding: list[float],
+) -> str:
+    """
+    Store an approved answer with a deterministic UUID (derived from answer_id)
+    so re-approving the same answer overwrites rather than duplicates.
+
+    Returns the Weaviate object UUID as a string.
+    """
+    collection = _get_collection()
+
+    # Deterministic UUID: same answer_id always maps to the same Weaviate object
+    obj_uuid = uuid5(NAMESPACE_URL, f"approved-answer:{answer_id}")
+
+    collection.data.insert(
+        uuid=obj_uuid,
+        properties={
+            "content": content,
+            "organization_id": organization_id,
+            "document_id": answer_id,
+            "chunk_index": 0,
+            "section": section,
+            "document_title": document_title,
+        },
+        vector=embedding,
+    )
+
+    logger.info("Upserted approved answer %s → %s (org=%s)", answer_id, obj_uuid, organization_id)
+    return str(obj_uuid)
+
+
+def find_near_duplicate(
+    organization_id: str,
+    embedding: list[float],
+    similarity_threshold: float = 0.95,
+) -> dict | None:
+    """
+    Search for an existing object with very high similarity (≥ threshold).
+    Returns the best match dict if above threshold, else None.
+    """
+    collection = _get_collection()
+
+    results = collection.query.near_vector(
+        near_vector=embedding,
+        limit=1,
+        filters=Filter.by_property("organization_id").equal(organization_id),
+        return_metadata=MetadataQuery(distance=True),
+    )
+
+    if not results.objects:
+        return None
+
+    obj = results.objects[0]
+    distance = getattr(obj.metadata, "distance", None) or 0.0
+    score = max(0.0, 1.0 - distance)
+
+    if score >= similarity_threshold:
+        return {
+            "uuid": str(obj.uuid),
+            "content": obj.properties.get("content", ""),
+            "document_id": obj.properties.get("document_id", ""),
+            "document_title": obj.properties.get("document_title", ""),
+            "score": round(score, 4),
+        }
+
+    return None
+
+
+def delete_by_document_id(organization_id: str, document_id: str) -> int:
+    """Delete all objects with a specific document_id within an org.
+    Used to remove approved answers from Weaviate when un-approved."""
+    return delete_document(organization_id, document_id)
 
 
 # --------------------------------------------------------------------------- #

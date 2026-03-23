@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -11,6 +12,7 @@ import (
 	"github.com/lib/pq"
 
 	"github.com/spondic/api/internal/models"
+	"github.com/spondic/api/internal/services"
 )
 
 // ListAnswers handles GET /api/rfp/:id/answers
@@ -56,9 +58,10 @@ func (h *Handler) ListAnswers(c echo.Context) error {
 	// Fetch citations for all answers
 	if len(answerIDs) > 0 {
 		citRows, err := h.DB.Query(
-			`SELECT id, answer_id, document_id, chunk_id, citation_text, relevance_score, created_at
-			 FROM rfp_answer_citations
-			 WHERE answer_id = ANY($1)`,
+			`SELECT c.id, c.answer_id, c.document_id, COALESCE(d.title, NULLIF(c.document_title, ''), 'Unknown'), c.chunk_id, c.citation_text, c.relevance_score, c.created_at
+			 FROM rfp_answer_citations c
+			 LEFT JOIN documents d ON d.id = c.document_id
+			 WHERE c.answer_id = ANY($1)`,
 			pq.Array(answerIDs),
 		)
 		if err != nil {
@@ -69,7 +72,7 @@ func (h *Handler) ListAnswers(c echo.Context) error {
 			for citRows.Next() {
 				var cit models.RFPAnswerCitation
 				if err := citRows.Scan(
-					&cit.ID, &cit.AnswerID, &cit.DocumentID, &cit.ChunkID,
+					&cit.ID, &cit.AnswerID, &cit.DocumentID, &cit.DocumentTitle, &cit.ChunkID,
 					&cit.CitationText, &cit.RelevanceScore, &cit.CreatedAt,
 				); err != nil {
 					log.Printf("error scanning citation: %v", err)
@@ -224,74 +227,160 @@ func (h *Handler) UpdateAnswer(c echo.Context) error {
 }
 
 // ApproveAnswer handles POST /api/rfp/:id/answers/:aid/approve
+// Accepts { "status": "approved" | "rejected" | "in_review" } in the request body.
 func (h *Handler) ApproveAnswer(c echo.Context) error {
 	orgID := getOrgID(c)
 	userID := getUserID(c)
 	answerID := c.Param("aid")
 
+	var body struct {
+		Status string `json:"status"`
+	}
+	if err := c.Bind(&body); err != nil || body.Status == "" {
+		body.Status = "approved"
+	}
+	validStatuses := map[string]bool{"approved": true, "rejected": true, "in_review": true, "draft": true}
+	if !validStatuses[body.Status] {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "status must be approved, rejected, or in_review"})
+	}
+
 	now := time.Now()
 	var a models.RFPAnswer
-	err := h.DB.QueryRow(
-		`UPDATE rfp_answers
-		 SET status = 'approved', approved_by = $1, approved_at = $2, updated_at = NOW()
-		 WHERE id = $3 AND organization_id = $4
-		 RETURNING id, question_id, organization_id, draft_text, edited_text, final_text,
-		           confidence_score, status, approved_by, approved_at, created_at, updated_at`,
-		userID, now, answerID, orgID,
-	).Scan(
-		&a.ID, &a.QuestionID, &a.OrganizationID, &a.DraftText, &a.EditedText, &a.FinalText,
-		&a.ConfidenceScore, &a.Status, &a.ApprovedBy, &a.ApprovedAt,
-		&a.CreatedAt, &a.UpdatedAt,
-	)
+
+	// Only set approved_by/approved_at when actually approving
+	var err error
+	if body.Status == "approved" {
+		err = h.DB.QueryRow(
+			`UPDATE rfp_answers
+			 SET status = $1, approved_by = $2, approved_at = $3, updated_at = NOW()
+			 WHERE id = $4 AND organization_id = $5
+			 RETURNING id, question_id, organization_id, draft_text, edited_text, final_text,
+			           confidence_score, status, approved_by, approved_at, created_at, updated_at`,
+			body.Status, userID, now, answerID, orgID,
+		).Scan(
+			&a.ID, &a.QuestionID, &a.OrganizationID, &a.DraftText, &a.EditedText, &a.FinalText,
+			&a.ConfidenceScore, &a.Status, &a.ApprovedBy, &a.ApprovedAt,
+			&a.CreatedAt, &a.UpdatedAt,
+		)
+	} else {
+		err = h.DB.QueryRow(
+			`UPDATE rfp_answers
+			 SET status = $1, updated_at = NOW()
+			 WHERE id = $2 AND organization_id = $3
+			 RETURNING id, question_id, organization_id, draft_text, edited_text, final_text,
+			           confidence_score, status, approved_by, approved_at, created_at, updated_at`,
+			body.Status, answerID, orgID,
+		).Scan(
+			&a.ID, &a.QuestionID, &a.OrganizationID, &a.DraftText, &a.EditedText, &a.FinalText,
+			&a.ConfidenceScore, &a.Status, &a.ApprovedBy, &a.ApprovedAt,
+			&a.CreatedAt, &a.UpdatedAt,
+		)
+	}
 	if err == sql.ErrNoRows {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "answer not found"})
 	}
 	if err != nil {
-		log.Printf("error approving answer: %v", err)
+		log.Printf("error updating answer status: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
 	}
 
-	// Log approval activity
+	// Log activity
 	_, _ = h.DB.Exec(
 		`INSERT INTO rfp_answer_history (answer_id, action, edited_by)
-		 VALUES ($1, 'approved', $2)`,
-		answerID, userID,
+		 VALUES ($1, $2, $3)`,
+		answerID, body.Status, userID,
 	)
 
-	// Also update the question status to approved
-	h.DB.Exec(
-		`UPDATE rfp_questions SET status = 'approved', updated_at = NOW() WHERE id = $1 AND organization_id = $2`,
-		a.QuestionID, orgID,
-	)
-
-	// Send webhook notifications
-	if h.Webhooks != nil {
-		projectID := c.Param("id")
-		var projectName string
-		var qNumber *int
-		_ = h.DB.QueryRow(`SELECT name FROM projects WHERE id = $1 AND organization_id = $2`, projectID, orgID).Scan(&projectName)
-		_ = h.DB.QueryRow(`SELECT question_number FROM rfp_questions WHERE id = $1 AND organization_id = $2`, a.QuestionID, orgID).Scan(&qNumber)
-		if projectName == "" {
-			projectName = projectID
-		}
-		qLabel := "Answer"
-		if qNumber != nil {
-			qLabel = fmt.Sprintf("Q%d", *qNumber)
-		}
-		title := fmt.Sprintf("Answer Approved: %s in %s", qLabel, projectName)
-		msg := fmt.Sprintf("*%s* in *%s* has been approved.", qLabel, projectName)
-		h.Webhooks.NotifyWebhooks(orgID, "answer_approved", title, msg)
+	// Update question status to match (only for approved)
+	if body.Status == "approved" {
+		h.DB.Exec(
+			`UPDATE rfp_questions SET status = 'approved', updated_at = NOW() WHERE id = $1 AND organization_id = $2`,
+			a.QuestionID, orgID,
+		)
+	} else if body.Status == "in_review" {
+		h.DB.Exec(
+			`UPDATE rfp_questions SET status = 'in_review', updated_at = NOW() WHERE id = $1 AND organization_id = $2`,
+			a.QuestionID, orgID,
+		)
 	}
 
-	// Notify the project creator (not the approver)
-	if h.Notifier != nil {
-		projectID := c.Param("id")
-		var createdBy string
-		_ = h.DB.QueryRow(`SELECT created_by FROM projects WHERE id = $1 AND organization_id = $2`, projectID, orgID).Scan(&createdBy)
-		if createdBy != "" && createdBy != userID {
-			_ = h.Notifier.Create(orgID, createdBy, "answer_approved", "Answer Approved", "An answer has been approved in your project.", "project", projectID)
-			if h.Events != nil {
-				h.Events.PublishToUser(h.DB, orgID, createdBy, "notification.new", map[string]string{"type": "answer_approved"})
+	// Index approved answer into Weaviate for future RAG retrieval
+	if body.Status == "approved" && h.AI != nil {
+		var questionText, projectName, section string
+		_ = h.DB.QueryRow(
+			`SELECT q.question_text, COALESCE(p.name, ''), COALESCE(q.section, '')
+			 FROM rfp_questions q
+			 JOIN projects p ON p.id = q.project_id
+			 WHERE q.id = $1 AND q.organization_id = $2`,
+			a.QuestionID, orgID,
+		).Scan(&questionText, &projectName, &section)
+
+		answerText := ""
+		if a.EditedText != nil {
+			answerText = *a.EditedText
+		} else if a.DraftText != nil {
+			answerText = *a.DraftText
+		}
+
+		if questionText != "" && answerText != "" {
+			go func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				defer cancel()
+				_, err := h.AI.IndexAnswer(ctx, services.IndexAnswerRequest{
+					OrganizationID: orgID,
+					AnswerID:       answerID,
+					QuestionText:   questionText,
+					AnswerText:     answerText,
+					ProjectName:    projectName,
+					Section:        section,
+				})
+				if err != nil {
+					log.Printf("error indexing approved answer %s in Weaviate: %v", answerID, err)
+				}
+			}()
+		}
+	}
+
+	// Remove from Weaviate when un-approving (rejected, draft, in_review)
+	if body.Status != "approved" && h.AI != nil {
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+			if err := h.AI.RemoveAnswer(ctx, orgID, answerID); err != nil {
+				log.Printf("error removing un-approved answer %s from Weaviate: %v", answerID, err)
+			}
+		}()
+	}
+
+	// Send webhook and in-app notifications only for approvals
+	if body.Status == "approved" {
+		if h.Webhooks != nil {
+			projectID := c.Param("id")
+			var projectName string
+			var qNumber *int
+			_ = h.DB.QueryRow(`SELECT name FROM projects WHERE id = $1 AND organization_id = $2`, projectID, orgID).Scan(&projectName)
+			_ = h.DB.QueryRow(`SELECT question_number FROM rfp_questions WHERE id = $1 AND organization_id = $2`, a.QuestionID, orgID).Scan(&qNumber)
+			if projectName == "" {
+				projectName = projectID
+			}
+			qLabel := "Answer"
+			if qNumber != nil {
+				qLabel = fmt.Sprintf("Q%d", *qNumber)
+			}
+			title := fmt.Sprintf("Answer Approved: %s in %s", qLabel, projectName)
+			msg := fmt.Sprintf("*%s* in *%s* has been approved.", qLabel, projectName)
+			h.Webhooks.NotifyWebhooks(orgID, "answer_approved", title, msg)
+		}
+
+		if h.Notifier != nil {
+			projectID := c.Param("id")
+			var createdBy string
+			_ = h.DB.QueryRow(`SELECT created_by FROM projects WHERE id = $1 AND organization_id = $2`, projectID, orgID).Scan(&createdBy)
+			if createdBy != "" && createdBy != userID {
+				_ = h.Notifier.Create(orgID, createdBy, "answer_approved", "Answer Approved", "An answer has been approved in your project.", "project", projectID)
+				if h.Events != nil {
+					h.Events.PublishToUser(h.DB, orgID, createdBy, "notification.new", map[string]string{"type": "answer_approved"})
+				}
 			}
 		}
 	}

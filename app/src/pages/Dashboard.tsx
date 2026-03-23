@@ -789,20 +789,18 @@ export function Dashboard() {
                     </div>
 
                     {/* Progress bar */}
-                    {project.question_count > 0 && (
-                      <div className="mt-3">
-                        <div className="flex items-center justify-between text-xs text-muted mb-1">
-                          <span>{project.approved_count ?? 0}/{project.question_count ?? 0} approved</span>
-                          <span>{progress}%</span>
-                        </div>
-                        <div className="h-1.5 rounded-full bg-surface-inset overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-green-500 transition-all"
-                            style={{ width: `${progress}%` }}
-                          />
-                        </div>
+                    <div className="mt-3">
+                      <div className="flex items-center justify-between text-xs text-muted mb-1">
+                        <span>{project.approved_count ?? 0}/{project.question_count ?? 0} approved</span>
+                        <span>{progress}%</span>
                       </div>
-                    )}
+                      <div className="h-1.5 rounded-full bg-surface-inset overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-green-500 transition-all"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    </div>
 
                     <div className="mt-3 flex items-center gap-4 text-xs text-muted">
                       <span>{t("dashboard.questions", { count: project.question_count })}</span>

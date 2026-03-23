@@ -1,8 +1,102 @@
-import { useEditor, EditorContent } from "@tiptap/react";
+import {
+  useEditor, EditorContent, NodeViewWrapper, ReactNodeViewRenderer,
+  Mark, Node, mergeAttributes,
+} from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
+
+// ── Custom TipTap marks for citations & placeholders ────────────────────────
+
+const CitationBadge = Mark.create({
+  name: "citationBadge",
+  priority: 1000,
+  addAttributes() {
+    return {
+      "data-citation": { default: null },
+    };
+  },
+  parseHTML() {
+    return [{ tag: "span.citation-badge" }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ["span", mergeAttributes({ class: "citation-badge" }, HTMLAttributes), 0];
+  },
+});
+
+function EnterPlaceholderView({ node, editor, getPos }: { node: any; editor: any; getPos: () => number }) {
+  const handleClick = useCallback(() => {
+    if (!editor.isEditable) return;
+    const pos = getPos();
+    const end = pos + node.nodeSize;
+    // Replace the placeholder atom with a highlighted empty space,
+    // then place the cursor inside so the user can start typing immediately.
+    editor
+      .chain()
+      .focus()
+      .command(({ tr }: { tr: any }) => {
+        const mark = editor.schema.marks.enterPlaceholderMark.create();
+        // Insert a single space with the placeholder mark applied
+        const space = editor.schema.text(" ", [mark]);
+        tr.replaceWith(pos, end, space);
+        // Place cursor right before the space (inside the mark)
+        tr.setSelection(tr.selection.constructor.near(tr.doc.resolve(pos + 1)));
+        return true;
+      })
+      .run();
+  }, [editor, getPos, node.nodeSize]);
+
+  return (
+    <NodeViewWrapper as="span" className="enter-placeholder" onClick={handleClick} title="Click to fill in">
+      {node.attrs.label}
+    </NodeViewWrapper>
+  );
+}
+
+/**
+ * Mark applied to the empty space that replaces a clicked placeholder.
+ * Keeps the gold highlight visible so the user sees where to type.
+ */
+const EnterPlaceholderMark = Mark.create({
+  name: "enterPlaceholderMark",
+  parseHTML() {
+    return [{ tag: "mark.enter-placeholder-active" }];
+  },
+  renderHTML() {
+    return ["mark", { class: "enter-placeholder" }, 0];
+  },
+});
+
+/**
+ * Atom node for [ENTER: ...] placeholders. Displays the label text with
+ * gold highlight. Clicking replaces it with a highlighted empty space.
+ */
+const EnterPlaceholder = Node.create({
+  name: "enterPlaceholder",
+  group: "inline",
+  inline: true,
+  atom: true,
+  addAttributes() {
+    return {
+      label: { default: "" },
+    };
+  },
+  parseHTML() {
+    return [{
+      tag: "mark.enter-placeholder",
+      getAttrs: (el: HTMLElement) => ({ label: el.textContent || "" }),
+    }];
+  },
+  renderHTML({ node }) {
+    return ["mark", { class: "enter-placeholder" }, node.attrs.label];
+  },
+  addNodeView() {
+    return ReactNodeViewRenderer(EnterPlaceholderView);
+  },
+});
+
+// ── Component ───────────────────────────────────────────────────────────────
 
 interface RichTextEditorProps {
   content: string;
@@ -57,9 +151,17 @@ export function RichTextEditor({
         heading: { levels: [2, 3] },
       }),
       Placeholder.configure({ placeholder }),
+      CitationBadge,
+      EnterPlaceholderMark,
+      EnterPlaceholder,
     ],
     content,
     editable,
+    editorProps: {
+      attributes: {
+        spellcheck: "true",
+      },
+    },
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
