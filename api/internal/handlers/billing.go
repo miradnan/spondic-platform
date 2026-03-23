@@ -2,16 +2,20 @@ package handlers
 
 // Routes to register in main.go:
 // api.GET("/plan", h.GetPlan)
-// api.POST("/billing/checkout", h.CreateCheckout)         // DEPRECATED: use Clerk billing
-// api.POST("/billing/portal", h.CreatePortalSession)      // DEPRECATED: use Clerk billing
+// api.POST("/billing/checkout", h.CreateCheckout)
+// api.PUT("/billing/subscription", h.UpdateSubscription)
+// api.POST("/billing/portal", h.CreatePortalSession)
 // api.GET("/billing/subscription", h.GetSubscription)
 // api.GET("/billing/usage", h.GetUsage)
+// api.GET("/billing/token-usage", h.GetTokenUsage)
+// api.GET("/billing/invoices", h.GetInvoices)
 // e.POST("/billing/webhook", h.HandleWebhook)  // NO auth middleware
 
 import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -53,9 +57,7 @@ func (h *Handler) GetPlan(c echo.Context) error {
 	})
 }
 
-// CreateCheckout handles POST /api/billing/checkout
-// DEPRECATED: Stripe checkout is now managed by Clerk billing. This endpoint
-// remains for backward compatibility.
+// CreateCheckout handles POST /api/billing/checkout — creates a Stripe checkout session for new subscriptions.
 func (h *Handler) CreateCheckout(c echo.Context) error {
 	orgID := getOrgID(c)
 	if orgID == "" {
@@ -86,14 +88,15 @@ func (h *Handler) CreateCheckout(c echo.Context) error {
 	// Check if org already has a subscription
 	var sub models.Subscription
 	err := h.DB.QueryRowContext(ctx,
-		`SELECT id, organization_id, stripe_customer_id, stripe_subscription_id, plan, status,
+		`SELECT id, organization_id, stripe_customer_id, stripe_subscription_id,
+		        stripe_subscription_item_id, plan, status,
 		        current_period_start, current_period_end, cancel_at, canceled_at, created_at, updated_at
 		 FROM subscriptions WHERE organization_id = $1`,
 		orgID,
 	).Scan(
 		&sub.ID, &sub.OrganizationID, &sub.StripeCustomerID, &sub.StripeSubscriptionID,
-		&sub.Plan, &sub.Status, &sub.CurrentPeriodStart, &sub.CurrentPeriodEnd,
-		&sub.CancelAt, &sub.CanceledAt, &sub.CreatedAt, &sub.UpdatedAt,
+		&sub.StripeSubscriptionItemID, &sub.Plan, &sub.Status, &sub.CurrentPeriodStart,
+		&sub.CurrentPeriodEnd, &sub.CancelAt, &sub.CanceledAt, &sub.CreatedAt, &sub.UpdatedAt,
 	)
 
 	var customerID string
@@ -133,6 +136,77 @@ func (h *Handler) CreateCheckout(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{"checkout_url": checkoutURL})
+}
+
+// UpdateSubscription handles PUT /api/billing/subscription — change plan for existing subscribers.
+func (h *Handler) UpdateSubscription(c echo.Context) error {
+	orgID := getOrgID(c)
+	if orgID == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "organization_id is required"})
+	}
+
+	var body struct {
+		Plan string `json:"plan"`
+	}
+	if err := c.Bind(&body); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+	}
+	if !validPlans[body.Plan] {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid plan, must be one of: starter, growth, enterprise"})
+	}
+
+	if stripeClient == nil {
+		return c.JSON(http.StatusServiceUnavailable, map[string]string{"error": "billing service not configured"})
+	}
+
+	ctx := context.Background()
+
+	// Look up current subscription
+	var sub models.Subscription
+	err := h.DB.QueryRowContext(ctx,
+		`SELECT id, organization_id, stripe_customer_id, stripe_subscription_id,
+		        stripe_subscription_item_id, plan, status,
+		        current_period_start, current_period_end, cancel_at, canceled_at, created_at, updated_at
+		 FROM subscriptions WHERE organization_id = $1`,
+		orgID,
+	).Scan(
+		&sub.ID, &sub.OrganizationID, &sub.StripeCustomerID, &sub.StripeSubscriptionID,
+		&sub.StripeSubscriptionItemID, &sub.Plan, &sub.Status, &sub.CurrentPeriodStart,
+		&sub.CurrentPeriodEnd, &sub.CancelAt, &sub.CanceledAt, &sub.CreatedAt, &sub.UpdatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "no subscription found, please use checkout to subscribe first"})
+	}
+	if err != nil {
+		log.Printf("error querying subscription: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+	}
+
+	if sub.StripeSubscriptionID == nil || *sub.StripeSubscriptionID == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "no active Stripe subscription, please use checkout to subscribe first"})
+	}
+
+	if sub.Plan == body.Plan {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "already on this plan"})
+	}
+
+	// Update the subscription in Stripe
+	if err := stripeClient.UpdateSubscription(*sub.StripeSubscriptionID, body.Plan); err != nil {
+		log.Printf("error updating Stripe subscription for org=%s: %v", orgID, err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to update subscription"})
+	}
+
+	// Update local DB
+	_, err = h.DB.ExecContext(ctx,
+		`UPDATE subscriptions SET plan = $1, updated_at = NOW() WHERE organization_id = $2`,
+		body.Plan, orgID,
+	)
+	if err != nil {
+		log.Printf("error updating subscription plan in DB for org=%s: %v", orgID, err)
+		// Stripe was updated successfully, so don't fail the request — the webhook will sync
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok", "plan": body.Plan})
 }
 
 // CreatePortalSession handles POST /api/billing/portal
@@ -220,35 +294,32 @@ func (h *Handler) HandleWebhook(c echo.Context) error {
 
 	ctx := context.Background()
 
+	// Always return 200 after signature verification to prevent Stripe retry storms.
+	// Errors are logged but don't cause retries for permanently-failing events.
 	switch event.Type {
 	case "checkout.session.completed":
 		if err := h.handleCheckoutCompleted(ctx, event); err != nil {
 			log.Printf("error handling checkout.session.completed: %v", err)
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
 		}
 
 	case "invoice.paid":
 		if err := h.handleInvoicePaid(ctx, event); err != nil {
 			log.Printf("error handling invoice.paid: %v", err)
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
 		}
 
 	case "invoice.payment_failed":
 		if err := h.handleInvoicePaymentFailed(ctx, event); err != nil {
 			log.Printf("error handling invoice.payment_failed: %v", err)
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
 		}
 
 	case "customer.subscription.updated":
 		if err := h.handleSubscriptionUpdated(ctx, event); err != nil {
 			log.Printf("error handling customer.subscription.updated: %v", err)
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
 		}
 
 	case "customer.subscription.deleted":
 		if err := h.handleSubscriptionDeleted(ctx, event); err != nil {
 			log.Printf("error handling customer.subscription.deleted: %v", err)
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
 		}
 	}
 
@@ -256,6 +327,9 @@ func (h *Handler) HandleWebhook(c echo.Context) error {
 }
 
 // handleCheckoutCompleted processes a completed checkout session.
+// Note: the checkout session does not contain subscription items directly.
+// The stripe_subscription_item_id will be set by the subsequent
+// customer.subscription.updated webhook that Stripe fires after checkout.
 func (h *Handler) handleCheckoutCompleted(ctx context.Context, event stripe.Event) error {
 	var session struct {
 		Customer     string `json:"customer"`
@@ -271,7 +345,26 @@ func (h *Handler) handleCheckoutCompleted(ctx context.Context, event stripe.Even
 		 WHERE stripe_customer_id = $2`,
 		session.Subscription, session.Customer,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Audit log (non-fatal)
+	var orgID string
+	if lookupErr := h.DB.QueryRowContext(ctx,
+		`SELECT organization_id FROM subscriptions WHERE stripe_customer_id = $1`, session.Customer,
+	).Scan(&orgID); lookupErr == nil {
+		if _, auditErr := h.DB.ExecContext(ctx,
+			`INSERT INTO audit_logs (organization_id, user_id, action, entity_type, entity_id, metadata)
+			 VALUES ($1, $2, $3, $4, $5, $6)`,
+			orgID, "system", "subscription.activated", "subscription", session.Subscription,
+			fmt.Sprintf(`{"source":"stripe_webhook","event":"checkout.session.completed","customer":"%s"}`, session.Customer),
+		); auditErr != nil {
+			log.Printf("error writing audit log for checkout.session.completed: %v", auditErr)
+		}
+	}
+
+	return nil
 }
 
 // handleInvoicePaid inserts an invoice record when payment succeeds.
@@ -310,7 +403,21 @@ func (h *Handler) handleInvoicePaid(ctx context.Context, event stripe.Event) err
 		orgID, invoice.ID, invoice.AmountPaid, invoice.Currency, invoice.Status,
 		invoice.HostedInvoiceURL, periodStart, periodEnd,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Audit log (non-fatal)
+	if _, auditErr := h.DB.ExecContext(ctx,
+		`INSERT INTO audit_logs (organization_id, user_id, action, entity_type, entity_id, metadata)
+		 VALUES ($1, $2, $3, $4, $5, $6)`,
+		orgID, "system", "invoice.paid", "invoice", invoice.ID,
+		fmt.Sprintf(`{"source":"stripe_webhook","event":"invoice.paid","amount_cents":%d,"currency":"%s"}`, invoice.AmountPaid, invoice.Currency),
+	); auditErr != nil {
+		log.Printf("error writing audit log for invoice.paid: %v", auditErr)
+	}
+
+	return nil
 }
 
 // handleInvoicePaymentFailed marks the subscription as past_due.
@@ -327,7 +434,26 @@ func (h *Handler) handleInvoicePaymentFailed(ctx context.Context, event stripe.E
 		 WHERE stripe_customer_id = $1`,
 		invoice.Customer,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Audit log (non-fatal)
+	var orgID string
+	if lookupErr := h.DB.QueryRowContext(ctx,
+		`SELECT organization_id FROM subscriptions WHERE stripe_customer_id = $1`, invoice.Customer,
+	).Scan(&orgID); lookupErr == nil {
+		if _, auditErr := h.DB.ExecContext(ctx,
+			`INSERT INTO audit_logs (organization_id, user_id, action, entity_type, entity_id, metadata)
+			 VALUES ($1, $2, $3, $4, $5, $6)`,
+			orgID, "system", "invoice.payment_failed", "subscription", invoice.Customer,
+			`{"source":"stripe_webhook","event":"invoice.payment_failed"}`,
+		); auditErr != nil {
+			log.Printf("error writing audit log for invoice.payment_failed: %v", auditErr)
+		}
+	}
+
+	return nil
 }
 
 // handleSubscriptionUpdated syncs subscription fields from Stripe.
@@ -339,6 +465,11 @@ func (h *Handler) handleSubscriptionUpdated(ctx context.Context, event stripe.Ev
 		CurrentPeriodStart int64  `json:"current_period_start"`
 		CurrentPeriodEnd   int64  `json:"current_period_end"`
 		CancelAt           *int64 `json:"cancel_at"`
+		Items              struct {
+			Data []struct {
+				ID string `json:"id"`
+			} `json:"data"`
+		} `json:"items"`
 	}
 	if err := json.Unmarshal(event.Data.Raw, &sub); err != nil {
 		return err
@@ -353,14 +484,40 @@ func (h *Handler) handleSubscriptionUpdated(ctx context.Context, event stripe.Ev
 		cancelAt = &t
 	}
 
+	// Extract the first subscription item ID (si_xxx) for metered billing
+	var subItemID *string
+	if len(sub.Items.Data) > 0 && sub.Items.Data[0].ID != "" {
+		subItemID = &sub.Items.Data[0].ID
+	}
+
 	_, err := h.DB.ExecContext(ctx,
 		`UPDATE subscriptions
 		 SET status = $1, current_period_start = $2, current_period_end = $3,
-		     cancel_at = $4, updated_at = NOW()
-		 WHERE stripe_customer_id = $5`,
-		sub.Status, periodStart, periodEnd, cancelAt, sub.Customer,
+		     cancel_at = $4, stripe_subscription_item_id = COALESCE($5, stripe_subscription_item_id),
+		     updated_at = NOW()
+		 WHERE stripe_customer_id = $6`,
+		sub.Status, periodStart, periodEnd, cancelAt, subItemID, sub.Customer,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Audit log (non-fatal)
+	var orgID string
+	if lookupErr := h.DB.QueryRowContext(ctx,
+		`SELECT organization_id FROM subscriptions WHERE stripe_customer_id = $1`, sub.Customer,
+	).Scan(&orgID); lookupErr == nil {
+		if _, auditErr := h.DB.ExecContext(ctx,
+			`INSERT INTO audit_logs (organization_id, user_id, action, entity_type, entity_id, metadata)
+			 VALUES ($1, $2, $3, $4, $5, $6)`,
+			orgID, "system", "subscription.updated", "subscription", sub.ID,
+			fmt.Sprintf(`{"source":"stripe_webhook","event":"customer.subscription.updated","status":"%s"}`, sub.Status),
+		); auditErr != nil {
+			log.Printf("error writing audit log for customer.subscription.updated: %v", auditErr)
+		}
+	}
+
+	return nil
 }
 
 // handleSubscriptionDeleted marks a subscription as canceled.
@@ -379,7 +536,80 @@ func (h *Handler) handleSubscriptionDeleted(ctx context.Context, event stripe.Ev
 		 WHERE stripe_customer_id = $2`,
 		now, sub.Customer,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Audit log (non-fatal)
+	var orgID string
+	if lookupErr := h.DB.QueryRowContext(ctx,
+		`SELECT organization_id FROM subscriptions WHERE stripe_customer_id = $1`, sub.Customer,
+	).Scan(&orgID); lookupErr == nil {
+		if _, auditErr := h.DB.ExecContext(ctx,
+			`INSERT INTO audit_logs (organization_id, user_id, action, entity_type, entity_id, metadata)
+			 VALUES ($1, $2, $3, $4, $5, $6)`,
+			orgID, "system", "subscription.canceled", "subscription", sub.Customer,
+			`{"source":"stripe_webhook","event":"customer.subscription.deleted"}`,
+		); auditErr != nil {
+			log.Printf("error writing audit log for customer.subscription.deleted: %v", auditErr)
+		}
+	}
+
+	return nil
+}
+
+// GetInvoices handles GET /api/billing/invoices — returns invoice history for the org.
+func (h *Handler) GetInvoices(c echo.Context) error {
+	orgID := getOrgID(c)
+	if orgID == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "organization_id is required"})
+	}
+
+	ctx := context.Background()
+	rows, err := h.DB.QueryContext(ctx,
+		`SELECT id, organization_id, stripe_invoice_id, amount_cents, currency, status,
+		        invoice_url, period_start, period_end, created_at
+		 FROM invoices
+		 WHERE organization_id = $1
+		 ORDER BY created_at DESC
+		 LIMIT 24`,
+		orgID,
+	)
+	if err != nil {
+		log.Printf("error querying invoices: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+	}
+	defer rows.Close()
+
+	invoices := make([]map[string]interface{}, 0)
+	for rows.Next() {
+		var (
+			id, orgId, stripeId, currency, status string
+			amountCents                           int
+			invoiceURL                            *string
+			periodStart, periodEnd, createdAt     time.Time
+		)
+		if err := rows.Scan(&id, &orgId, &stripeId, &amountCents, &currency, &status,
+			&invoiceURL, &periodStart, &periodEnd, &createdAt); err != nil {
+			log.Printf("error scanning invoice: %v", err)
+			continue
+		}
+		invoices = append(invoices, map[string]interface{}{
+			"id":                id,
+			"stripe_invoice_id": stripeId,
+			"amount_cents":      amountCents,
+			"currency":          currency,
+			"status":            status,
+			"invoice_url":       invoiceURL,
+			"period_start":      periodStart,
+			"period_end":        periodEnd,
+			"created_at":        createdAt,
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"invoices": invoices,
+	})
 }
 
 // GetSubscription handles GET /api/billing/subscription
@@ -393,14 +623,15 @@ func (h *Handler) GetSubscription(c echo.Context) error {
 
 	var sub models.Subscription
 	err := h.DB.QueryRowContext(ctx,
-		`SELECT id, organization_id, stripe_customer_id, stripe_subscription_id, plan, status,
+		`SELECT id, organization_id, stripe_customer_id, stripe_subscription_id,
+		        stripe_subscription_item_id, plan, status,
 		        current_period_start, current_period_end, cancel_at, canceled_at, created_at, updated_at
 		 FROM subscriptions WHERE organization_id = $1`,
 		orgID,
 	).Scan(
 		&sub.ID, &sub.OrganizationID, &sub.StripeCustomerID, &sub.StripeSubscriptionID,
-		&sub.Plan, &sub.Status, &sub.CurrentPeriodStart, &sub.CurrentPeriodEnd,
-		&sub.CancelAt, &sub.CanceledAt, &sub.CreatedAt, &sub.UpdatedAt,
+		&sub.StripeSubscriptionItemID, &sub.Plan, &sub.Status, &sub.CurrentPeriodStart,
+		&sub.CurrentPeriodEnd, &sub.CancelAt, &sub.CanceledAt, &sub.CreatedAt, &sub.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "no subscription found"})
@@ -551,11 +782,11 @@ func (h *Handler) GetTokenUsage(c echo.Context) error {
 	).Scan(&tokensOverage)
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
-		"tokens_used":              tokensUsed,
-		"tokens_overage":           tokensOverage,
-		"max_tokens_per_month":     maxTokens,
+		"tokens_used":               tokensUsed,
+		"tokens_overage":            tokensOverage,
+		"max_tokens_per_month":      maxTokens,
 		"overage_rate_cents_per_1k": overageRate,
-		"plan":                     plan,
-		"period_start":             ps,
+		"plan":                      plan,
+		"period_start":              ps,
 	})
 }

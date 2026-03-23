@@ -1,5 +1,5 @@
 import { useAuth, useOrganization } from "@clerk/react";
-import { useAnalytics } from "./useApi.ts";
+import { useAnalytics, useSubscription } from "./useApi.ts";
 import { getPlanLimits, type PlanLimits } from "../lib/planLimits.ts";
 
 /**
@@ -8,11 +8,13 @@ import { getPlanLimits, type PlanLimits } from "../lib/planLimits.ts";
  */
 export function usePlanLimits() {
   const { sessionClaims } = useAuth();
+  const { data: subData } = useSubscription();
   const { data: analytics } = useAnalytics();
   const { memberships } = useOrganization({ memberships: { pageSize: 100 } });
 
+  // Prefer plan from DB subscription (Stripe source of truth), fallback to JWT
   const planClaim = (sessionClaims as Record<string, unknown>)?.pla as string | undefined;
-  const currentPlan = planClaim?.replace("o:", "") || "free_org";
+  const currentPlan = subData?.subscription?.plan || planClaim?.replace("o:", "") || "free_org";
   const limits = getPlanLimits(currentPlan);
 
   const documentsUsed = analytics?.total_documents ?? 0;

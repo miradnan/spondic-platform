@@ -64,6 +64,9 @@ func (h *Handler) CreateProject(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
 	}
 
+	// Record usage metric for RFP/project creation
+	h.recordUsageMetric(orgID, "rfps_processed", 1)
+
 	return c.JSON(http.StatusCreated, project)
 }
 

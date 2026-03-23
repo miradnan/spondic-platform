@@ -227,14 +227,13 @@ func main() {
 	api.GET("/plan", h.GetPlan)
 
 	// Billing (authenticated)
-	// NOTE: Checkout and portal endpoints below are deprecated in favor of Clerk-managed
-	// Stripe billing. They remain for backward compatibility but Clerk now handles
-	// subscription checkout and portal flows via the "pla" JWT claim.
 	api.POST("/billing/checkout", h.CreateCheckout)
+	api.PUT("/billing/subscription", h.UpdateSubscription)
 	api.POST("/billing/portal", h.CreatePortalSession)
 	api.GET("/billing/subscription", h.GetSubscription)
 	api.GET("/billing/usage", h.GetUsage)
 	api.GET("/billing/token-usage", h.GetTokenUsage)
+	api.GET("/billing/invoices", h.GetInvoices)
 
 	// Notifications
 	api.GET("/notifications", h.ListNotifications)

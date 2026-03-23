@@ -1,4 +1,7 @@
-import { useAuth, PricingTable } from "@clerk/react";
+import { useAuth } from "@clerk/react";
+import { useNavigate } from "react-router-dom";
+import { CheckIcon } from "@heroicons/react/24/outline";
+import { useSubscription, useCreateCheckout } from "@/hooks/useApi";
 
 function LoadingScreen() {
   return (
@@ -8,12 +11,72 @@ function LoadingScreen() {
   );
 }
 
+const PLANS = [
+  {
+    id: "free",
+    name: "Free",
+    price: "$0",
+    period: "forever",
+    highlights: ["1 user", "3 RFPs/month", "10 documents", "100K AI tokens/month"],
+    cta: "Start Free",
+    isFree: true,
+  },
+  {
+    id: "starter",
+    name: "Starter",
+    price: "$299",
+    period: "/month",
+    highlights: ["5 team members", "10 RFPs/month", "100 documents", "1M AI tokens/month", "Priority support"],
+    cta: "Get Started",
+    isFree: false,
+  },
+  {
+    id: "growth",
+    name: "Growth",
+    price: "$799",
+    period: "/month",
+    highlights: ["20 team members", "Unlimited RFPs", "500 documents", "5M AI tokens/month", "Custom branding"],
+    cta: "Get Started",
+    isFree: false,
+    popular: true,
+  },
+  {
+    id: "enterprise",
+    name: "Enterprise",
+    price: "Custom",
+    period: "",
+    highlights: ["Unlimited users", "Unlimited RFPs", "Unlimited documents", "SSO & SAML", "Data residency"],
+    cta: "Contact Sales",
+    isFree: false,
+    isEnterprise: true,
+  },
+];
+
 function PlanSelectionScreen() {
-  const handleStartFree = async () => {
-    // The Free plan is auto-assigned by Clerk as "free_org".
-    // We just need to reload so the PlanGate re-checks and lets them through.
-    // If Clerk has a "free" plan configured, the user is already on it.
-    window.location.reload();
+  const checkout = useCreateCheckout();
+
+  const handleSelectPlan = (planId: string) => {
+    if (planId === "free") {
+      // Free plan — just reload, the middleware auto-creates the subscription
+      window.location.reload();
+      return;
+    }
+    if (planId === "enterprise") {
+      window.location.href = "mailto:sales@spondic.com?subject=Enterprise%20Plan%20Inquiry";
+      return;
+    }
+    checkout.mutate(
+      {
+        plan: planId,
+        success_url: `${window.location.origin}/dashboard?success=true`,
+        cancel_url: `${window.location.origin}/plan`,
+      },
+      {
+        onSuccess: (data) => {
+          window.location.href = data.checkout_url;
+        },
+      },
+    );
   };
 
   return (
@@ -32,77 +95,81 @@ function PlanSelectionScreen() {
             Choose your plan to get started
           </h1>
           <p className="mt-3 text-base text-navy/70 leading-relaxed max-w-xl mx-auto">
-            All plans include a 30-day free trial. No credit card required. Cancel anytime.
+            All paid plans include a 14-day free trial. Cancel anytime.
           </p>
         </div>
 
-        {/* Clerk PricingTable with brand styling */}
-        <div className="mx-auto max-w-4xl">
-          <PricingTable
-            for="organization"
-            appearance={{
-              elements: {
-                pricingTable: "gap-6",
-                pricingTableCard: "rounded-2xl border border-border shadow-sm hover:shadow-lg transition-shadow bg-surface",
-                pricingTableCardActive: "border-brand-blue ring-2 ring-brand-blue/20",
-                pricingTableCardTitle: "text-lg font-semibold text-navy",
-                pricingTableCardPrice: "text-3xl font-bold text-navy",
-                pricingTableCardPriceValue: "text-navy",
-                pricingTableCardPeriod: "text-sm text-navy/50",
-                pricingTableCardFeatureList: "space-y-2",
-                pricingTableCardFeatureListItem: "text-sm text-navy/70",
-                pricingTableCardFeatureListItemIcon: "text-brand-blue",
-                pricingTableCardCta: "rounded-xl bg-navy text-white font-medium hover:bg-navy/90 transition-colors py-3",
-                badge: "bg-brand-blue text-white text-xs font-semibold rounded-full px-3 py-0.5",
-              },
-            }}
-          />
+        {/* Plan Cards */}
+        <div className="mx-auto max-w-4xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {PLANS.map((plan) => (
+            <div
+              key={plan.id}
+              className={`flex flex-col rounded-2xl border p-5 bg-surface ${
+                plan.popular
+                  ? "border-brand-blue ring-2 ring-brand-blue/20 relative"
+                  : "border-border shadow-sm hover:shadow-lg transition-shadow"
+              }`}
+            >
+              {plan.popular && (
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-brand-blue text-white text-xs font-semibold rounded-full px-3 py-0.5">
+                  Most Popular
+                </span>
+              )}
+              <h3 className="text-lg font-semibold text-navy">{plan.name}</h3>
+              <div className="flex items-baseline gap-1 mt-1 mb-3">
+                <span className="text-2xl font-bold text-navy">{plan.price}</span>
+                {plan.period && <span className="text-sm text-navy/50">{plan.period}</span>}
+              </div>
+              <ul className="space-y-1.5 mb-5 flex-1">
+                {plan.highlights.map((h) => (
+                  <li key={h} className="flex items-center gap-2 text-sm text-navy/70">
+                    <CheckIcon className="h-3.5 w-3.5 text-brand-blue shrink-0" />
+                    {h}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => handleSelectPlan(plan.id)}
+                disabled={checkout.isPending}
+                className={`w-full rounded-xl py-3 text-sm font-medium transition-colors disabled:opacity-50 ${
+                  plan.popular
+                    ? "bg-brand-blue text-white hover:bg-brand-blue/90"
+                    : plan.isFree
+                      ? "border-2 border-navy/20 text-navy hover:border-navy/40 hover:bg-cream-light"
+                      : "bg-navy text-white hover:bg-navy/90"
+                }`}
+              >
+                {checkout.isPending ? "Redirecting..." : plan.cta}
+              </button>
+            </div>
+          ))}
         </div>
 
-        {/* Start Free button — for users who want to use the free plan */}
-        <div className="mt-8 text-center">
-          <button
-            onClick={handleStartFree}
-            className="rounded-xl border-2 border-navy/20 bg-surface px-8 py-3 text-sm font-medium text-navy hover:border-navy/40 hover:bg-cream-light transition-colors"
-          >
-            Start with Free Plan →
-          </button>
-          <p className="mt-2 text-xs text-navy/40">
-            1 user · 3 RFPs/month · 10 documents
+        {checkout.isError && (
+          <p className="mt-4 text-center text-sm text-red-600">
+            {checkout.error.message || "Failed to start checkout. Please try again."}
           </p>
-        </div>
+        )}
       </div>
     </div>
   );
 }
 
 export function PlanGate({ children }: { children: React.ReactNode }) {
-  const { has, sessionClaims, isLoaded } = useAuth();
+  const { isLoaded } = useAuth();
+  const { data: subData, isLoading: subLoading } = useSubscription();
 
-  if (!isLoaded) {
+  if (!isLoaded || subLoading) {
     return <LoadingScreen />;
   }
 
-  // Check if org has an explicitly chosen plan using Clerk's has() method
-  const hasFreePlan = has?.({ plan: "free" });
-  const hasStarterPlan = has?.({ plan: "starter" });
-  const hasGrowthPlan = has?.({ plan: "growth" });
-  const hasEnterprisePlan = has?.({ plan: "enterprise" });
-
-  const hasChosenPlan = hasFreePlan || hasStarterPlan || hasGrowthPlan || hasEnterprisePlan;
-
-  // Fallback: check JWT pla claim directly
-  if (!hasChosenPlan) {
-    const planClaim = (sessionClaims as Record<string, unknown>)?.pla as string | undefined;
-    const plan = planClaim?.replace("o:", "") || "";
-    // Allow both "free" (explicitly chosen) and "free_org" (Clerk default)
-    // since user clicked "Start with Free Plan"
-    const hasPlanFromJWT = ["free", "free_org", "starter", "growth", "enterprise"].includes(plan);
-
-    if (!hasPlanFromJWT) {
-      return <PlanSelectionScreen />;
-    }
+  // Check if the org has a subscription in the DB (Stripe is source of truth)
+  const sub = subData?.subscription;
+  if (sub) {
+    // Has a subscription — let them through
+    return <>{children}</>;
   }
 
-  return <>{children}</>;
+  // No subscription found — show plan selection
+  return <PlanSelectionScreen />;
 }

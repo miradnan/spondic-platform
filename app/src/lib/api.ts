@@ -769,6 +769,34 @@ export function getTokenUsage(token: string | null): Promise<TokenUsageResponse>
   return request("/api/billing/token-usage", token);
 }
 
+export interface InvoicesResponse {
+  invoices: {
+    id: string;
+    stripe_invoice_id: string;
+    amount_cents: number;
+    currency: string;
+    status: string;
+    invoice_url: string | null;
+    period_start: string;
+    period_end: string;
+    created_at: string;
+  }[];
+}
+
+export function getInvoices(token: string | null): Promise<InvoicesResponse> {
+  return request("/api/billing/invoices", token);
+}
+
+export function updateSubscription(
+  token: string | null,
+  body: { plan: string },
+): Promise<{ status: string; plan: string }> {
+  return request("/api/billing/subscription", token, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
 export function createCheckout(
   token: string | null,
   body: { plan: string; success_url: string; cancel_url: string },

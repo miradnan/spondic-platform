@@ -135,6 +135,9 @@ func (h *Handler) UploadDocuments(c echo.Context) error {
 		}(orgID, userID, docID, s3Key)
 	}
 
+	// Record usage metric for documents uploaded
+	h.recordUsageMetric(orgID, "documents_uploaded", len(documents))
+
 	return c.JSON(http.StatusCreated, map[string]interface{}{
 		"documents": documents,
 	})

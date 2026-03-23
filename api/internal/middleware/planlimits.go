@@ -32,6 +32,23 @@ var planCache struct {
 	fetchedAt time.Time
 }
 
+// ensureSubscription creates a free subscription row if none exists for the org.
+// Uses ON CONFLICT DO NOTHING so it's idempotent. Errors are logged but don't block.
+func ensureSubscription(db *sql.DB, orgID string) {
+	if orgID == "" {
+		return
+	}
+	_, err := db.Exec(
+		`INSERT INTO subscriptions (organization_id, plan, status)
+		 VALUES ($1, 'free', 'active')
+		 ON CONFLICT (organization_id) DO NOTHING`,
+		orgID,
+	)
+	if err != nil {
+		log.Printf("warning: failed to ensure subscription for org %s: %v", orgID, err)
+	}
+}
+
 // CheckPlanLimits returns middleware that enforces plan-based access control.
 // GET/OPTIONS requests pass through freely. Mutating requests (POST/PUT/DELETE)
 // require a paid plan. Plan limits are cached for 5 minutes.
@@ -42,13 +59,28 @@ func CheckPlanLimits(db *sql.DB) echo.MiddlewareFunc {
 			plan := GetPlan(c)
 			orgID := GetOrgID(c)
 
+			// Ensure a subscription row exists for this org (idempotent, cached check).
+			if orgID != "" {
+				subStatusCache.mu.RLock()
+				_, cached := subStatusCache.data[orgID]
+				if cached {
+					entry := subStatusCache.data[orgID]
+					cached = time.Since(entry.fetchedAt) < 60*time.Second
+				}
+				subStatusCache.mu.RUnlock()
+
+				if !cached {
+					ensureSubscription(db, orgID)
+				}
+			}
+
 			// Check subscription status — block past_due/canceled orgs.
 			// Allow billing endpoints so admins can fix their payment.
 			path := c.Path()
 			isBillingPath := path == "/api/billing/checkout" || path == "/api/billing/portal" ||
 				path == "/api/billing/subscription" || path == "/api/billing/usage" ||
-				path == "/api/billing/token-usage" || path == "/api/plan" ||
-				path == "/billing/webhook"
+				path == "/api/billing/token-usage" || path == "/api/billing/invoices" ||
+				path == "/api/plan" || path == "/billing/webhook"
 			if !isBillingPath && orgID != "" {
 				status := getSubscriptionStatus(db, orgID)
 				if status == "past_due" || status == "canceled" {

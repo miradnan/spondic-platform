@@ -1,6 +1,6 @@
 import { useAuth } from "@clerk/react";
 import { Badge } from "@/components/ui/badge";
-import { useAnalytics, useSubscription, useTokenUsage, useCreateCheckout, useCreatePortalSession } from "@/hooks/useApi";
+import { useAnalytics, useSubscription, useTokenUsage, useInvoices, useCreateCheckout, useCreatePortalSession, useUpdateSubscription } from "@/hooks/useApi";
 import {
   CreditCardIcon,
   DocumentTextIcon,
@@ -190,14 +190,16 @@ export function AdminBilling() {
   const { data: analytics } = useAnalytics();
   const { data: subData } = useSubscription();
   const { data: tokenData } = useTokenUsage();
+  const { data: invoiceData } = useInvoices();
   const checkout = useCreateCheckout();
   const portal = useCreatePortalSession();
+  const updateSub = useUpdateSubscription();
 
-  // Read current plan from JWT
+  // Read current plan from subscription (Stripe is source of truth), fallback to JWT
   const planClaim = (sessionClaims as Record<string, unknown>)?.pla as
     | string
     | undefined;
-  const currentPlan = planClaim?.replace("o:", "") || "free_org";
+  const currentPlan = subData?.subscription?.plan || planClaim?.replace("o:", "") || "free_org";
   const planInfo = PLAN_INFO[currentPlan] || {
     name: currentPlan,
     price: "—",
@@ -242,6 +244,20 @@ export function AdminBilling() {
         },
       },
     );
+  };
+
+  const handlePlanChange = (plan: string) => {
+    if (sub?.stripe_subscription_id) {
+      // Existing subscriber — update in place
+      updateSub.mutate({ plan }, {
+        onSuccess: () => {
+          window.location.reload();
+        },
+      });
+    } else {
+      // New subscriber — use checkout
+      handleCheckout(plan);
+    }
   };
 
   const handleManageBilling = () => {
@@ -541,16 +557,16 @@ export function AdminBilling() {
                   </a>
                 ) : (
                   <button
-                    onClick={() => handleCheckout(plan)}
-                    disabled={checkout.isPending}
+                    onClick={() => handlePlanChange(plan)}
+                    disabled={checkout.isPending || updateSub.isPending}
                     className={`w-full rounded-lg px-4 py-2.5 text-sm font-medium transition-colors disabled:opacity-50 ${
                       isDowngrade
                         ? "border border-border text-body hover:bg-cream-light"
                         : "bg-navy text-white hover:bg-navy/90"
                     }`}
                   >
-                    {checkout.isPending
-                      ? "Redirecting..."
+                    {checkout.isPending || updateSub.isPending
+                      ? "Updating..."
                       : isDowngrade
                         ? "Downgrade"
                         : "Upgrade"}
@@ -560,12 +576,67 @@ export function AdminBilling() {
             );
           })}
         </div>
-        {checkout.isError && (
+        {(checkout.isError || updateSub.isError) && (
           <p className="mt-3 text-sm text-red-600">
-            {checkout.error.message || "Failed to create checkout session. Please try again."}
+            {checkout.error?.message || updateSub.error?.message || "Failed to update subscription. Please try again."}
           </p>
         )}
       </section>
+
+      {/* ── Invoice History ──────────────────────────────────────────── */}
+      {invoiceData?.invoices && invoiceData.invoices.length > 0 && (
+        <section className="rounded-xl border border-border bg-surface overflow-hidden">
+          <div className="p-6 pb-4">
+            <h2 className="text-lg font-semibold text-heading mb-1">Invoice History</h2>
+            <p className="text-sm text-muted">Your recent invoices and payment records.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-t border-border bg-cream-lighter">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wide">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wide">Period</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wide">Amount</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wide">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wide"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {invoiceData.invoices.map((inv) => (
+                  <tr key={inv.id} className="hover:bg-cream-lighter/50 transition-colors">
+                    <td className="px-6 py-3 text-body">
+                      {new Date(inv.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </td>
+                    <td className="px-6 py-3 text-muted">
+                      {new Date(inv.period_start).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+                    </td>
+                    <td className="px-6 py-3 font-medium text-heading">
+                      {(inv.amount_cents / 100).toLocaleString(undefined, { style: 'currency', currency: inv.currency?.toUpperCase() || 'USD' })}
+                    </td>
+                    <td className="px-6 py-3">
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                        inv.status === 'paid' ? 'bg-green-50 text-green-700' :
+                        inv.status === 'open' ? 'bg-amber-50 text-amber-700' :
+                        'bg-gray-100 text-gray-600'
+                      }`}>
+                        {inv.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3">
+                      {inv.invoice_url && (
+                        <a href={inv.invoice_url} target="_blank" rel="noopener noreferrer"
+                           className="text-xs font-medium text-brand-blue hover:underline">
+                          View
+                        </a>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {/* ── Payment & Subscription Management (Stripe Portal) ────────────── */}
       <section className="rounded-xl border border-border bg-surface p-6">

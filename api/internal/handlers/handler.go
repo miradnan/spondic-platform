@@ -171,6 +171,29 @@ func checkFeatureEnabled(featureName string, enabled bool) error {
 	return nil
 }
 
+// recordUsageMetric increments a usage metric for the current billing period.
+func (h *Handler) recordUsageMetric(orgID, metric string, count int) {
+	if orgID == "" || count <= 0 {
+		return
+	}
+	now := time.Now()
+	periodStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	periodEnd := periodStart.AddDate(0, 1, 0).Add(-time.Second)
+	ps := periodStart.Format("2006-01-02")
+	pe := periodEnd.Format("2006-01-02")
+
+	_, err := h.DB.Exec(
+		`INSERT INTO usage_records (organization_id, metric, count, period_start, period_end)
+		 VALUES ($1, $2, $3, $4, $5)
+		 ON CONFLICT (organization_id, metric, period_start)
+		 DO UPDATE SET count = usage_records.count + $3, updated_at = NOW()`,
+		orgID, metric, count, ps, pe,
+	)
+	if err != nil {
+		log.Printf("error recording usage metric %s for org %s: %v", metric, orgID, err)
+	}
+}
+
 // recordTokenUsage records token usage, splitting between included allowance and overage.
 func (h *Handler) recordTokenUsage(orgID string, tokens int) {
 	if tokens <= 0 {
@@ -235,11 +258,12 @@ func (h *Handler) recordTokenUsage(orgID string, tokens int) {
 	// Report overage to Stripe metered billing (non-blocking)
 	if stripeClient != nil {
 		go func(oID string, overageUnits int64) {
-			// Look up the metered subscription item ID
+			// Look up the metered subscription item ID (si_xxx)
 			var subItemID *string
 			_ = h.DB.QueryRow(
-				`SELECT stripe_subscription_id FROM subscriptions
-				 WHERE organization_id = $1 AND status IN ('active', 'trialing')`,
+				`SELECT stripe_subscription_item_id FROM subscriptions
+				 WHERE organization_id = $1 AND status IN ('active', 'trialing')
+				 AND stripe_subscription_item_id IS NOT NULL`,
 				oID,
 			).Scan(&subItemID)
 			if subItemID == nil {

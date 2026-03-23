@@ -8,6 +8,7 @@ import (
 	"github.com/stripe/stripe-go/v81/billingportal/session"
 	checkoutsession "github.com/stripe/stripe-go/v81/checkout/session"
 	"github.com/stripe/stripe-go/v81/customer"
+	"github.com/stripe/stripe-go/v81/subscription"
 	"github.com/stripe/stripe-go/v81/usagerecord"
 	"github.com/stripe/stripe-go/v81/webhook"
 )
@@ -102,6 +103,44 @@ func (s *StripeClient) ReportMeteredUsage(subscriptionItemID string, quantity in
 	_, err := usagerecord.New(params)
 	if err != nil {
 		return fmt.Errorf("failed to report metered usage: %w", err)
+	}
+	return nil
+}
+
+// UpdateSubscription changes the price on an existing Stripe subscription.
+// This handles both upgrades and downgrades with proration.
+func (s *StripeClient) UpdateSubscription(subscriptionID, newPlan string) error {
+	priceID, ok := s.priceIDs[newPlan]
+	if !ok {
+		return fmt.Errorf("unknown plan: %s", newPlan)
+	}
+
+	// First, get the subscription to find the current item ID
+	sub, err := subscription.Get(subscriptionID, nil)
+	if err != nil {
+		return fmt.Errorf("failed to get subscription: %w", err)
+	}
+
+	if len(sub.Items.Data) == 0 {
+		return fmt.Errorf("subscription has no items")
+	}
+
+	itemID := sub.Items.Data[0].ID
+
+	// Update the subscription item with the new price
+	params := &stripe.SubscriptionParams{
+		Items: []*stripe.SubscriptionItemsParams{
+			{
+				ID:    stripe.String(itemID),
+				Price: stripe.String(priceID),
+			},
+		},
+		ProrationBehavior: stripe.String("create_prorations"),
+	}
+
+	_, err = subscription.Update(subscriptionID, params)
+	if err != nil {
+		return fmt.Errorf("failed to update subscription: %w", err)
 	}
 	return nil
 }

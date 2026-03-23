@@ -238,8 +238,9 @@ type Subscription struct {
 	ID                   string     `json:"id"`
 	OrganizationID       string     `json:"organization_id"`
 	StripeCustomerID     string     `json:"stripe_customer_id"`
-	StripeSubscriptionID *string    `json:"stripe_subscription_id,omitempty"`
-	Plan                 string     `json:"plan"`
+	StripeSubscriptionID     *string    `json:"stripe_subscription_id,omitempty"`
+	StripeSubscriptionItemID *string    `json:"stripe_subscription_item_id,omitempty"`
+	Plan                     string     `json:"plan"`
 	Status               string     `json:"status"`
 	CurrentPeriodStart   *time.Time `json:"current_period_start,omitempty"`
 	CurrentPeriodEnd     *time.Time `json:"current_period_end,omitempty"`

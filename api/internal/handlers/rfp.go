@@ -395,6 +395,11 @@ func (h *Handler) DraftRFP(c echo.Context) error {
 		answersCreated++
 	}
 
+	// Record usage metric for questions drafted
+	if answersCreated > 0 {
+		h.recordUsageMetric(orgID, "questions_drafted", answersCreated)
+	}
+
 	// Update project status
 	h.DB.Exec(
 		`UPDATE projects SET status = 'in_progress', updated_at = NOW() WHERE id = $1 AND organization_id = $2`,
@@ -535,6 +540,9 @@ func (h *Handler) RedraftQuestion(c echo.Context) error {
 			answerID, nullStr(cit.DocumentID), cit.CitationText, cit.DocumentTitle, cit.RelevanceScore,
 		)
 	}
+
+	// Record usage metric for question redraft
+	h.recordUsageMetric(orgID, "questions_drafted", 1)
 
 	return c.JSON(http.StatusOK, map[string]string{"status": "redrafted", "answer_id": answerID})
 }

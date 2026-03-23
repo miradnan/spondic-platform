@@ -6,7 +6,7 @@ import {
   type UseQueryOptions,
 } from "@tanstack/react-query";
 import * as api from "../lib/api.ts";
-import type { SubscriptionResponse, TokenUsageResponse, UserSearchResult } from "../lib/api.ts";
+import type { SubscriptionResponse, TokenUsageResponse, InvoicesResponse, UserSearchResult } from "../lib/api.ts";
 import type {
   Project,
   Document,
@@ -1086,6 +1086,28 @@ export function useTokenUsage() {
       return api.getTokenUsage(token);
     },
     retry: false,
+  });
+}
+
+export function useInvoices() {
+  const getToken = useToken();
+  return useQuery<InvoicesResponse>({
+    queryKey: ["invoices"],
+    queryFn: async () => {
+      const token = await getToken();
+      return api.getInvoices(token);
+    },
+    retry: false,
+  });
+}
+
+export function useUpdateSubscription() {
+  const getToken = useToken();
+  return useMutation<{ status: string; plan: string }, Error, { plan: string }>({
+    mutationFn: async (body) => {
+      const token = await getToken();
+      return api.updateSubscription(token, body);
+    },
   });
 }
 
