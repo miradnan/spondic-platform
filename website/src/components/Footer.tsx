@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useTranslation } from "react-i18next";
 
 export default function Footer() {
@@ -15,21 +14,9 @@ export default function Footer() {
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           {/* Brand column */}
           <div className="sm:col-span-2 lg:col-span-1">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2.5 group"
-            >
-              <Image
-                src="/logo.png"
-                alt={businessName}
-                width={32}
-                height={32}
-                className="rounded-lg"
-              />
-              <span className="font-logo text-[22px] font-bold tracking-tight uppercase text-white group-hover:text-white/90 transition-colors">
-                {businessName}
-              </span>
-            </Link>
+            <span className="font-logo text-[22px] font-bold tracking-tight uppercase text-white">
+              {businessName}
+            </span>
             <p className="mt-4 text-[13px] leading-[1.7] text-white/50 max-w-[260px]">
               AI-powered RFP response platform for enterprise sales teams. Draft winning proposals faster.
             </p>
@@ -96,11 +83,11 @@ export default function Footer() {
           <div className="flex items-center gap-2 text-[13px] text-white/50">
             <span>{t("footer.madeWithLove")}</span>
             <span className="inline-flex items-center gap-1">
-              <svg viewBox="0 0 36 36" className="h-4 w-4" aria-label="Canadian flag">
-                <rect fill="#FF0000" x="0" y="0" width="9" height="36" />
-                <rect fill="#FFFFFF" x="9" y="0" width="18" height="36" />
-                <rect fill="#FF0000" x="27" y="0" width="9" height="36" />
-                <path fill="#FF0000" d="M18 6l-1.5 4.5L13 9l1.5 3-3-0.5 1 2.5H9l3 3-1 1.5h2l-1 3h2l1-2 1 2h2l-1-3h2L19 21.5l3-3h-3.5l1-2.5-3 0.5L18 13.5l-3.5 1.5L16 10.5z"/>
+              <svg viewBox="0 0 9600 4800" className="h-4 w-4 rounded-sm" aria-label="Canadian flag">
+                <path fill="#f00" d="M0 0h2400v4800H0z"/>
+                <path fill="#fff" d="M2400 0h4800v4800H2400z"/>
+                <path fill="#f00" d="M7200 0h2400v4800H7200z"/>
+                <path fill="#f00" d="M4020 2230l-89-275-209 142 77-258-236 49 142-209-275-89 275-89-142-209 236 49-77-258 209 142 89-275 89 275 209-142-77 258 236-49-142 209 275 89-275 89 142 209-236-49 77 258-209-142z" transform="translate(780 582) scale(1.3)"/>
               </svg>
             </span>
           </div>

@@ -8,6 +8,7 @@ type Config struct {
 	DatabaseURL        string
 	CORSOrigins        string
 	ClerkJWKSURL       string
+	ClerkSecretKey     string
 	AWSRegion          string
 	AWSS3Bucket        string
 	AIServiceURL       string
@@ -26,8 +27,9 @@ func Load() *Config {
 		Port:         getEnv("PORT", "8080"),
 		DatabaseURL:  getEnv("DATABASE_URL", "postgres://spondic:spondic@localhost:5432/spondic?sslmode=disable"),
 		CORSOrigins:  getEnv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000"),
-		ClerkJWKSURL: getEnv("CLERK_JWKS_URL", ""),
-		AWSRegion:    getEnv("AWS_REGION", "us-east-1"),
+		ClerkJWKSURL:   getEnv("CLERK_JWKS_URL", ""),
+		ClerkSecretKey: getEnv("CLERK_SECRET_KEY", ""),
+		AWSRegion:      getEnv("AWS_REGION", "us-east-1"),
 		AWSS3Bucket:  getEnv("AWS_S3_BUCKET", ""),
 		AIServiceURL:       getEnv("AI_SERVICE_URL", "http://localhost:8000"),
 		StripeSecretKey:       getEnv("STRIPE_SECRET_KEY", ""),

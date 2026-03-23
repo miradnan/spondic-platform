@@ -6,7 +6,7 @@ import {
   type UseQueryOptions,
 } from "@tanstack/react-query";
 import * as api from "../lib/api.ts";
-import type { SubscriptionResponse, TokenUsageResponse } from "../lib/api.ts";
+import type { SubscriptionResponse, TokenUsageResponse, UserSearchResult } from "../lib/api.ts";
 import type {
   Project,
   Document,
@@ -582,6 +582,21 @@ export function useRemoveTagFromDocument() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["documents"] });
     },
+  });
+}
+
+// ── Users (Clerk search) ──────────────────────────────────────────────────────
+
+export function useSearchUsers(query: string) {
+  const getToken = useToken();
+  return useQuery<UserSearchResult[]>({
+    queryKey: ["userSearch", query],
+    queryFn: async () => {
+      const token = await getToken();
+      return api.searchUsers(token, query);
+    },
+    enabled: query.length >= 2,
+    staleTime: 30 * 1000, // cache results for 30s
   });
 }
 

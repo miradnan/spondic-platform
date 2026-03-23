@@ -36,6 +36,7 @@ logger = logging.getLogger(__name__)
 
 _CHAT_MODEL = settings.chat_model
 _RFP_DRAFT_MODEL = settings.rfp_draft_model
+_RFP_PARSE_MODEL = settings.rfp_parse_model
 _FALLBACK_MODEL = "llama-3.1-8b-instant"
 _MAX_RETRIES = 3
 
@@ -199,7 +200,7 @@ def extract_questions(document_text: str, usage: TokenUsage | None = None) -> li
         {"role": "user", "content": truncated},
     ]
 
-    raw = _call_groq(messages, temperature=0.1, max_tokens=8192, usage=usage)
+    raw = _call_groq(messages, temperature=0.1, max_tokens=8192, model=_RFP_PARSE_MODEL, usage=usage)
 
     # Parse the JSON response, handling markdown fences if present
     cleaned = raw.strip()

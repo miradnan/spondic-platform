@@ -7,7 +7,7 @@ import {
   CheckIcon,
   XMarkIcon,
   UserPlusIcon,
-  InformationCircleIcon,
+
 } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,7 @@ import {
   useTeamMembers,
   useAddTeamMember,
   useRemoveTeamMember,
+  useSearchUsers,
 } from "@/hooks/useApi";
 import type { Team } from "@/lib/types";
 
@@ -29,7 +30,6 @@ export function AdminTeams() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
-  const [newMemberUserId, setNewMemberUserId] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
@@ -191,15 +191,6 @@ export function AdminTeams() {
         </div>
       </div>
 
-      {/* Info banner */}
-      <div className="flex items-start gap-3 rounded-xl border border-brand-blue/20 bg-brand-blue/5 p-4 mb-6">
-        <InformationCircleIcon className="h-5 w-5 text-brand-blue shrink-0 mt-0.5" />
-        <p className="text-sm text-brand-blue">
-          User directory integration coming soon. For now, members are identified
-          by their user ID. You can add members using their Clerk user ID.
-        </p>
-      </div>
-
       {/* Create new team */}
       <div className="flex items-center gap-3 mb-6">
         <Input
@@ -334,8 +325,6 @@ export function AdminTeams() {
                 <TeamMembersPanel
                   teamId={team.id}
                   teamName={team.name}
-                  newMemberUserId={newMemberUserId}
-                  setNewMemberUserId={setNewMemberUserId}
                   showToast={showToast}
                 />
               )}
@@ -359,32 +348,60 @@ export function AdminTeams() {
 interface TeamMembersPanelProps {
   teamId: string;
   teamName: string;
-  newMemberUserId: string;
-  setNewMemberUserId: (v: string) => void;
   showToast: (message: string, type?: "success" | "error") => void;
 }
 
 function TeamMembersPanel({
   teamId,
   teamName,
-  newMemberUserId,
-  setNewMemberUserId,
   showToast,
 }: TeamMembersPanelProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const comboboxRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   const { data: membersData, isLoading } = useTeamMembers(teamId);
   const addMemberMutation = useAddTeamMember();
   const removeMemberMutation = useRemoveTeamMember();
+  const { data: searchResults, isLoading: isSearching } = useSearchUsers(debouncedQuery);
 
   const members = membersData?.members ?? [];
+  const memberUserIds = new Set(members.map((m) => m.user_id));
 
-  function handleAddMember() {
-    const userId = newMemberUserId.trim();
-    if (!userId) return;
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Open dropdown when we have results
+  useEffect(() => {
+    if (debouncedQuery.length >= 2) {
+      setIsDropdownOpen(true);
+    }
+  }, [debouncedQuery]);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (comboboxRef.current && !comboboxRef.current.contains(e.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  function handleSelectUser(userId: string) {
     addMemberMutation.mutate(
       { teamId, userId },
       {
         onSuccess: () => {
-          setNewMemberUserId("");
+          setSearchQuery("");
+          setDebouncedQuery("");
+          setIsDropdownOpen(false);
           showToast(`Member added to ${teamName}`);
         },
         onError: (err) => showToast(err.message, "error"),
@@ -402,31 +419,87 @@ function TeamMembersPanel({
     );
   }
 
+  // Filter out users who are already members
+  const filteredResults = (searchResults ?? []).filter((u) => !memberUserIds.has(u.id));
+
   return (
     <div className="mt-1 ml-4 rounded-xl border border-border bg-cream-light/50 p-4">
       <h4 className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">
         Members
       </h4>
 
-      {/* Add member */}
-      <div className="flex items-center gap-2 mb-3">
-        <Input
-          placeholder="User ID (e.g. user_2x...)"
-          value={newMemberUserId}
-          onChange={(e) => setNewMemberUserId(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleAddMember();
-          }}
-          className="text-xs h-8"
-        />
-        <Button
-          size="sm"
-          onClick={handleAddMember}
-          disabled={!newMemberUserId.trim() || addMemberMutation.isPending}
-        >
-          <UserPlusIcon className="h-3.5 w-3.5" />
-          Add
-        </Button>
+      {/* Add member — searchable combobox */}
+      <div ref={comboboxRef} className="relative mb-3">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search by name or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => {
+                if (debouncedQuery.length >= 2) setIsDropdownOpen(true);
+              }}
+              className="w-full rounded-md border border-border bg-surface px-3 py-1.5 text-xs text-heading placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand-blue/40 focus:border-brand-blue"
+            />
+            {isSearching && (
+              <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                <div className="h-3.5 w-3.5 border-2 border-brand-blue/30 border-t-brand-blue rounded-full animate-spin" />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Dropdown results */}
+        {isDropdownOpen && debouncedQuery.length >= 2 && (
+          <div className="absolute z-20 mt-1 w-full rounded-lg border border-border bg-surface shadow-lg max-h-48 overflow-y-auto">
+            {isSearching ? (
+              <div className="px-3 py-3 text-xs text-muted text-center">
+                Searching...
+              </div>
+            ) : filteredResults.length > 0 ? (
+              <ul>
+                {filteredResults.map((user) => (
+                  <li key={user.id}>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectUser(user.id)}
+                      disabled={addMemberMutation.isPending}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-brand-blue/5 transition-colors disabled:opacity-50"
+                    >
+                      {user.image_url ? (
+                        <img
+                          src={user.image_url}
+                          alt=""
+                          className="h-6 w-6 rounded-full object-cover shrink-0"
+                        />
+                      ) : (
+                        <div className="h-6 w-6 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center text-[10px] font-semibold shrink-0">
+                          {(user.first_name?.[0] ?? "").toUpperCase()}
+                          {(user.last_name?.[0] ?? "").toUpperCase()}
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-heading truncate">
+                          {[user.first_name, user.last_name].filter(Boolean).join(" ") || "Unnamed"}
+                        </p>
+                        {user.email && (
+                          <p className="text-[10px] text-muted truncate">{user.email}</p>
+                        )}
+                      </div>
+                      <UserPlusIcon className="h-3.5 w-3.5 text-muted shrink-0" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="px-3 py-3 text-xs text-muted text-center">
+                No users found
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Members list */}
@@ -456,7 +529,7 @@ function TeamMembersPanel({
         </ul>
       ) : (
         <p className="text-xs text-muted py-2 text-center">
-          No members yet. Add a user ID above.
+          No members yet. Search for users above to add them.
         </p>
       )}
     </div>

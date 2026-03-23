@@ -456,6 +456,20 @@ export function removeTagFromDocument(token: string | null, documentId: string, 
   return request(`/api/documents/${documentId}/tags/${tagId}`, token, { method: "DELETE" });
 }
 
+// ── Users (Clerk search) ──────────────────────────────────────────────────
+
+export interface UserSearchResult {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  image_url: string;
+}
+
+export function searchUsers(token: string | null, query: string): Promise<UserSearchResult[]> {
+  return request(`/api/users/search${qs({ q: query })}`, token);
+}
+
 // ── Teams ─────────────────────────────────────────────────────────────────
 
 export function listTeams(token: string | null): Promise<{ teams: Team[]; total: number }> {

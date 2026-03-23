@@ -141,12 +141,15 @@ export function RfpNew() {
       const saved = sessionStorage.getItem(DRAFT_STORAGE_KEY);
       if (saved) {
         const draft: DraftData = JSON.parse(saved);
-        if (draft.name) setName(draft.name);
-        if (draft.description) setDescription(draft.description);
-        if (draft.deadline) setDeadline(new Date(draft.deadline));
-        if (draft.pastedText) setPaste(draft.pastedText);
-        setDraftRestored(true);
-        setTimeout(() => setDraftRestored(false), 4000);
+        const hasData = draft.name || draft.description || draft.deadline || draft.pastedText;
+        if (hasData) {
+          if (draft.name) setName(draft.name);
+          if (draft.description) setDescription(draft.description);
+          if (draft.deadline) setDeadline(new Date(draft.deadline));
+          if (draft.pastedText) setPaste(draft.pastedText);
+          setDraftRestored(true);
+          setTimeout(() => setDraftRestored(false), 4000);
+        }
       }
     } catch {
       // Ignore parse errors

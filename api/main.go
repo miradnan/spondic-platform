@@ -78,6 +78,14 @@ func main() {
 	webhookSvc := services.NewWebhookService(db)
 	log.Println("Webhook notification service initialized")
 
+	// Initialize Clerk Backend API key for user search
+	if cfg.ClerkSecretKey != "" {
+		handlers.SetClerkSecretKey(cfg.ClerkSecretKey)
+		log.Println("Clerk Backend API configured for user search")
+	} else {
+		log.Println("warning: CLERK_SECRET_KEY not set, user search will be disabled")
+	}
+
 	// Initialize handler with all dependencies
 	eventBus := events.NewBus(cfg.DatabaseURL)
 	go eventBus.StartListener()
@@ -155,6 +163,9 @@ func main() {
 	api.POST("/documents/:id/reindex", h.ReindexDocument)
 	api.POST("/documents/:id/tags", h.AddDocumentTag)
 	api.DELETE("/documents/:id/tags/:tagId", h.RemoveDocumentTag)
+
+	// Users (Clerk search)
+	api.GET("/users/search", h.SearchUsers)
 
 	// Teams
 	api.GET("/teams", h.ListTeams)
