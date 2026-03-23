@@ -27,6 +27,8 @@ export interface PlanLimits {
   templatesEnabled: boolean;
   /** Analytics dashboard access. */
   analyticsEnabled: boolean;
+  /** Two-factor authentication available. */
+  twoFactorEnabled: boolean;
 }
 
 export const PLAN_LIMITS: Record<string, PlanLimits> = {
@@ -43,6 +45,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     complianceEnabled: false,
     templatesEnabled: false,
     analyticsEnabled: false,
+    twoFactorEnabled: false,
   },
   free_org: {
     maxDocuments: 10,
@@ -57,6 +60,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     complianceEnabled: false,
     templatesEnabled: false,
     analyticsEnabled: false,
+    twoFactorEnabled: false,
   },
   starter: {
     maxDocuments: 100,
@@ -71,6 +75,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     complianceEnabled: false,
     templatesEnabled: true,
     analyticsEnabled: true,
+    twoFactorEnabled: false,
   },
   growth: {
     maxDocuments: 500,
@@ -85,6 +90,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     complianceEnabled: true,
     templatesEnabled: true,
     analyticsEnabled: true,
+    twoFactorEnabled: true,
   },
   enterprise: {
     maxDocuments: null,
@@ -99,6 +105,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     complianceEnabled: true,
     templatesEnabled: true,
     analyticsEnabled: true,
+    twoFactorEnabled: true,
   },
 };
 

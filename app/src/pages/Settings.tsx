@@ -6,11 +6,12 @@ import {
   CommandLineIcon,
   UserCircleIcon,
   KeyIcon,
-  // ShieldCheckIcon, // TODO: Re-enable for 2FA
+  ShieldCheckIcon,
   CameraIcon,
-  // ClipboardDocumentIcon, // TODO: Re-enable for 2FA
+  ClipboardDocumentIcon,
+  LockClosedIcon,
 } from "@heroicons/react/24/outline";
-// import { useUser as useClerkUser, useReverification } from "@clerk/react"; // TODO: Re-enable for 2FA
+import { useUser as useClerkUser, useReverification, useAuth } from "@clerk/react";
 import {
   useNotificationPreferences,
   useUpdateNotificationPreference,
@@ -19,10 +20,11 @@ import {
   useUpdateUserPassword,
   useUploadUserAvatar,
   useDeleteUserAvatar,
-  // useUser2FAStatus, // TODO: Re-enable for 2FA
-  // useDisableUserMFA, // TODO: Re-enable for 2FA
+  useUser2FAStatus,
+  useDisableUserMFA,
 } from "../hooks/useApi.ts";
 import { useToast } from "../components/Toast.tsx";
+import { getPlanLimits } from "../lib/planLimits.ts";
 import type { NotificationType } from "../lib/types.ts";
 
 const NOTIFICATION_TYPES: { type: NotificationType; label: string; description: string }[] = [
@@ -401,10 +403,280 @@ function PasswordSection() {
   );
 }
 
-// ── Two-Factor Authentication Section ──────────────────────────────────────
-// TODO: Re-enable TwoFactorSection when 2FA is ready.
-// The full implementation (TOTP create/verify with useReverification, QR code,
-// backup codes, disable via backend DELETE /api/user/2fa) is preserved in git history.
+/* ── Two-Factor Authentication Section ──────────────────────────────────── */
+
+function TwoFactorSection() {
+  const { sessionClaims } = useAuth();
+  const planClaim = (sessionClaims as Record<string, unknown>)?.pla as string | undefined;
+  const currentPlan = planClaim?.replace("o:", "") || "free_org";
+  const { twoFactorEnabled: has2FA } = getPlanLimits(currentPlan);
+
+  if (!has2FA) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-6">
+        <div className="flex items-center gap-2 mb-1">
+          <ShieldCheckIcon className="h-5 w-5 text-brand-blue" />
+          <h2 className="text-base font-semibold text-heading">Two-Factor Authentication</h2>
+          <span className="ml-auto rounded-md border border-border bg-surface-inset px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
+            Growth+
+          </span>
+        </div>
+        <p className="text-sm text-muted mb-6">
+          Add an extra layer of security to your account using a TOTP authenticator app.
+        </p>
+        <div className="flex items-start gap-3 rounded-lg border border-border bg-cream-lighter p-4">
+          <LockClosedIcon className="h-5 w-5 text-muted mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-heading">
+              Available on Growth and Enterprise plans
+            </p>
+            <p className="text-xs text-muted mt-1">
+              Two-factor authentication adds an extra layer of security to protect your account and your organization's data.
+            </p>
+            <a
+              href="/admin/billing#change-plan"
+              className="inline-flex items-center gap-1 mt-3 text-sm font-medium text-brand-blue hover:text-brand-blue/80 transition-colors"
+            >
+              Upgrade your plan
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return <TwoFactorEnabled />;
+}
+
+function TwoFactorEnabled() {
+  const { data: status, isLoading } = useUser2FAStatus();
+  const disableMFA = useDisableUserMFA();
+  const { user } = useClerkUser();
+  const { toast } = useToast();
+
+  const [setupStep, setSetupStep] = useState<"idle" | "qr" | "verify" | "done">("idle");
+  const [totpData, setTotpData] = useState<{ secret: string; uri: string } | null>(null);
+  const [verifyCode, setVerifyCode] = useState("");
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [enabling, setEnabling] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+
+  const createTOTPWithReverification = useReverification(async () => {
+    if (!user) throw new Error("Not signed in");
+    return user.createTOTP();
+  });
+
+  const verifyTOTPWithReverification = useReverification(async (code: string) => {
+    if (!user) throw new Error("Not signed in");
+    return user.verifyTOTP({ code });
+  });
+
+  async function handleEnable() {
+    setEnabling(true);
+    try {
+      const totp = await createTOTPWithReverification();
+      if (!totp) return;
+      setTotpData({ secret: totp.secret ?? "", uri: totp.uri ?? "" });
+      if (totp.backupCodes?.length) setBackupCodes(totp.backupCodes);
+      setSetupStep("qr");
+    } catch (err) {
+      toast("error", err instanceof Error ? err.message : "Failed to create TOTP");
+    } finally {
+      setEnabling(false);
+    }
+  }
+
+  async function handleVerify(e: React.FormEvent) {
+    e.preventDefault();
+    setVerifying(true);
+    try {
+      const result = await verifyTOTPWithReverification(verifyCode);
+      if (!result) return;
+      if (result.backupCodes?.length) setBackupCodes(result.backupCodes);
+      setSetupStep("done");
+      toast("success", "Two-factor authentication enabled");
+    } catch (err) {
+      toast("error", err instanceof Error ? err.message : "Invalid verification code");
+    } finally {
+      setVerifying(false);
+    }
+  }
+
+  function handleDisable() {
+    disableMFA.mutate(undefined, {
+      onSuccess: () => {
+        setSetupStep("idle");
+        setTotpData(null);
+        setVerifyCode("");
+        setBackupCodes([]);
+        toast("success", "Two-factor authentication disabled");
+      },
+      onError: (err) => toast("error", err.message),
+    });
+  }
+
+  function copyToClipboard(text: string) {
+    navigator.clipboard.writeText(text);
+    toast("success", "Copied to clipboard");
+  }
+
+  if (isLoading) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-6 animate-pulse">
+        <div className="h-5 w-56 bg-surface-inset rounded mb-4" />
+        <div className="h-4 w-72 bg-surface-inset rounded" />
+      </div>
+    );
+  }
+
+  const isEnabled = status?.totp_enabled;
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-6">
+      <div className="flex items-center gap-2 mb-1">
+        <ShieldCheckIcon className="h-5 w-5 text-brand-blue" />
+        <h2 className="text-base font-semibold text-heading">Two-Factor Authentication</h2>
+      </div>
+      <p className="text-sm text-muted mb-6">
+        Add an extra layer of security to your account using a TOTP authenticator app.
+      </p>
+
+      {setupStep === "idle" && (
+        <div className="flex items-center justify-between py-3">
+          <div className="flex items-center gap-3">
+            <div className={`h-2.5 w-2.5 rounded-full ${isEnabled ? "bg-green-500" : "bg-surface-inset"}`} />
+            <span className="text-sm font-medium text-heading">
+              {isEnabled ? "Enabled" : "Disabled"}
+            </span>
+          </div>
+          {isEnabled ? (
+            <button
+              onClick={handleDisable}
+              disabled={disableMFA.isPending}
+              className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors disabled:opacity-50"
+            >
+              {disableMFA.isPending ? "Disabling..." : "Disable 2FA"}
+            </button>
+          ) : (
+            <button
+              onClick={handleEnable}
+              disabled={enabling}
+              className="rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue/90 transition-colors disabled:opacity-50"
+            >
+              {enabling ? "Setting up..." : "Enable 2FA"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {setupStep === "qr" && totpData && (
+        <div className="space-y-4">
+          <div className="rounded-lg border border-border bg-cream-lighter p-4">
+            <p className="text-sm font-medium text-heading mb-3">
+              Scan this QR code with your authenticator app
+            </p>
+            <div className="flex justify-center mb-3">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(totpData.uri)}`}
+                alt="TOTP QR Code"
+                className="h-48 w-48 rounded-lg"
+              />
+            </div>
+            <p className="text-xs text-muted text-center mb-2">Or enter this secret manually:</p>
+            <div className="flex items-center justify-center gap-2">
+              <code className="rounded bg-surface-inset px-2 py-1 text-xs font-mono text-heading">
+                {totpData.secret}
+              </code>
+              <button
+                onClick={() => copyToClipboard(totpData.secret)}
+                className="rounded p-1 hover:bg-surface-inset transition-colors"
+                aria-label="Copy secret"
+              >
+                <ClipboardDocumentIcon className="h-4 w-4 text-muted" />
+              </button>
+            </div>
+          </div>
+
+          <form onSubmit={handleVerify} className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-heading mb-1">
+                Enter the 6-digit code from your app
+              </label>
+              <input
+                type="text"
+                value={verifyCode}
+                onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="000000"
+                maxLength={6}
+                autoFocus
+                className="w-full max-w-[200px] rounded-lg border border-border bg-surface px-3 py-2 text-sm text-heading font-mono tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-brand-blue focus:ring-offset-1"
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="submit"
+                disabled={verifyCode.length !== 6 || verifying}
+                className="rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue/90 transition-colors disabled:opacity-50"
+              >
+                {verifying ? "Verifying..." : "Verify & Enable"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSetupStep("idle");
+                  setTotpData(null);
+                  setVerifyCode("");
+                }}
+                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-body hover:bg-cream-light transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {setupStep === "done" && backupCodes.length > 0 && (
+        <div className="space-y-4">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-4">
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">
+              Save your backup codes
+            </p>
+            <p className="text-xs text-amber-700 dark:text-amber-300 mb-3">
+              Store these codes in a safe place. Each code can be used once to access your account if you lose your authenticator device.
+            </p>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              {backupCodes.map((code) => (
+                <code
+                  key={code}
+                  className="rounded bg-white dark:bg-amber-950/40 px-2 py-1.5 text-xs font-mono text-heading text-center border border-amber-200 dark:border-amber-800"
+                >
+                  {code}
+                </code>
+              ))}
+            </div>
+            <button
+              onClick={() => copyToClipboard(backupCodes.join("\n"))}
+              className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300 hover:underline"
+            >
+              <ClipboardDocumentIcon className="h-3.5 w-3.5" />
+              Copy all codes
+            </button>
+          </div>
+          <button
+            onClick={() => {
+              setSetupStep("idle");
+              setBackupCodes([]);
+            }}
+            className="rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue/90 transition-colors"
+          >
+            Done
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 /* ── Main Settings Page ─────────────────────────────────────────────────── */
 
@@ -475,9 +747,8 @@ export function Settings() {
       {/* Password Section */}
       <PasswordSection />
 
-      {/* Two-Factor Authentication Section — disabled for now
+      {/* Two-Factor Authentication Section */}
       <TwoFactorSection />
-      */}
 
       {/* Display Preferences Section */}
       <div className="rounded-xl border border-border bg-surface p-6">
