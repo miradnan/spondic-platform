@@ -311,7 +311,7 @@ export function AdminBilling() {
               {isTrialing ? (
                 <Badge variant="warning">Trial</Badge>
               ) : hasIssue ? (
-                <Badge variant="destructive">
+                <Badge variant="error">
                   {isPastDue ? "Past Due" : "Canceled"}
                 </Badge>
               ) : hasActivePlan ? (

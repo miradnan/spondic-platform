@@ -13,8 +13,6 @@ import {
   BookOpenIcon,
   ExclamationTriangleIcon,
   DocumentTextIcon,
-  CheckCircleIcon,
-  ClockIcon,
 } from "@heroicons/react/24/outline";
 import {
   createColumnHelper,

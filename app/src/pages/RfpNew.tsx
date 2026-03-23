@@ -111,7 +111,7 @@ export function RfpNew() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   useWalkthrough({ key: "rfp-new", steps: RFP_NEW_STEPS });
-  const { canCreateRfp, rfpsUsed, rfpsRemaining, limits } = usePlanLimits();
+  const { canCreateRfp, rfpsUsed, limits } = usePlanLimits();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [paste, setPaste] = useState("");
@@ -133,7 +133,6 @@ export function RfpNew() {
   // #17: Touched state for inline validation
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-  const hasContent = paste.trim().length > 0 || files.length > 0;
 
   // #15: Restore draft from sessionStorage on mount
   useEffect(() => {

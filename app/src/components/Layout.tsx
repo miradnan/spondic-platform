@@ -20,7 +20,6 @@ import {
   Bars3Icon,
   XMarkIcon,
   ChevronRightIcon,
-  ChevronDownIcon,
   BellIcon,
   LinkIcon,
   GlobeAltIcon,
@@ -267,8 +266,6 @@ function LanguageSwitcher() {
   );
 }
 
-const navLinkNested =
-  "flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-white/60 hover:bg-navy-light hover:text-white transition-colors pl-10";
 
 function OrgNav({ pathname, onLinkClick }: { pathname: string; onLinkClick?: () => void }) {
   const [expanded, setExpanded] = useState(() => pathname.startsWith("/admin"));

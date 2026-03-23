@@ -50,7 +50,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog.tsx";
 import { Tooltip } from "../components/ui/tooltip.tsx";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs.tsx";
 import { useWalkthrough, RFP_VIEW_STEPS } from "../hooks/useWalkthrough.ts";
-import type { RFPQuestion, RFPAnswer, AnswerApproval, StageApproveRequest, AnswerActivity } from "../lib/types.ts";
+import type { RFPQuestion, RFPAnswer, AnswerApproval, StageApproveRequest } from "../lib/types.ts";
 import { StatusBadge } from "../components/ui/status-badge.tsx";
 import { RichTextEditor } from "../components/ui/rich-text-editor.tsx";
 import { ProjectCRMLinkPanel } from "../components/ProjectCRMLink.tsx";
@@ -291,6 +291,7 @@ export function RfpView() {
 
         <TabsContent value="questions">
           <QuestionsTab
+            projectId={id!}
             questions={questions ?? []}
             answerMap={answerMap}
             isLoading={questionsLoading}
@@ -336,6 +337,7 @@ interface QuestionRow extends RFPQuestion {
 const questionColumnHelper = createColumnHelper<QuestionRow>();
 
 function QuestionsTab({
+  projectId,
   questions,
   answerMap,
   isLoading,
@@ -345,6 +347,7 @@ function QuestionsTab({
   onDraftAll,
   onSelectQuestion,
 }: {
+  projectId: string;
   questions: RFPQuestion[];
   answerMap: Map<string, RFPAnswer>;
   isLoading: boolean;
@@ -388,7 +391,7 @@ function QuestionsTab({
       const ans = answerMap.get(qId);
       if (!ans) { completed++; return; }
       approveAnswer.mutate(
-        { projectId: ans.project_id, answerId: ans.id, body: { status: "approved" } },
+        { projectId, answerId: ans.id, body: { status: "approved" } },
         {
           onSuccess: () => {
             completed++;
@@ -413,7 +416,7 @@ function QuestionsTab({
       const ans = answerMap.get(qId);
       if (!ans) { completed++; return; }
       approveAnswer.mutate(
-        { projectId: ans.project_id, answerId: ans.id, body: { status: "in_review" } },
+        { projectId, answerId: ans.id, body: { status: "in_review" } },
         {
           onSuccess: () => {
             completed++;

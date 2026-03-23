@@ -689,7 +689,7 @@ export function testWebhook(token: string | null, id: string): Promise<{ status:
 
 // ── Notifications ─────────────────────────────────────────────────────────
 export function listNotifications(token: string | null, params?: { unread_only?: boolean; page?: number; limit?: number }): Promise<PaginatedResponse<Notification>> {
-  return request(`/api/notifications${qs(params ?? {})}`, token);
+  return request(`/api/notifications${qs(params as Record<string, string | number | undefined> ?? {})}`, token);
 }
 export function getUnreadCount(token: string | null): Promise<{ count: number }> {
   return request("/api/notifications/unread-count", token);
