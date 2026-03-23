@@ -124,6 +124,12 @@ func main() {
 
 	api := e.Group("/api", authMiddleware, ensureOrgMiddleware, planMiddleware, rlsMiddleware, auditMiddleware)
 
+	// Superadmin endpoints (Clerk auth + hardcoded user ID check, no org/plan/rls needed)
+	admin := e.Group("/admin", authMiddleware, handlers.SuperAdminAuth)
+	admin.POST("/upgrade-plan", h.AdminUpgradePlan)
+	admin.GET("/orgs", h.AdminListOrgs)
+	admin.GET("/orgs/:id", h.AdminGetOrg)
+
 	// Projects
 	api.POST("/projects", h.CreateProject)
 	api.GET("/projects", h.ListProjects)

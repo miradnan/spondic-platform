@@ -27,6 +27,7 @@ import { AdminAudit } from "./pages/admin/AdminAudit.tsx";
 import { AdminBilling } from "./pages/admin/AdminBilling.tsx";
 import { AdminIntegrations } from "./pages/admin/AdminIntegrations.tsx";
 import { SharedChat } from "./pages/SharedChat.tsx";
+import { SuperAdmin } from "./pages/SuperAdmin.tsx";
 import { BrandingProvider } from "./contexts/BrandingContext.tsx";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -64,6 +65,22 @@ export default function App() {
         <Route path="/sign-up/*" element={<ClerkSignUp />} />
         {/* Public shared chat — no auth required */}
         <Route path="/shared/chat/:token" element={<SharedChat />} />
+        {/* Superadmin — Clerk auth only, no org/plan gate */}
+        <Route
+          path="/superadmin"
+          element={
+            <>
+              <Show when="signed-in">
+                <div className="min-h-screen bg-cream px-4 py-8">
+                  <SuperAdmin />
+                </div>
+              </Show>
+              <Show when="signed-out">
+                <RedirectToSignIn />
+              </Show>
+            </>
+          }
+        />
         <Route
           path="/"
           element={
