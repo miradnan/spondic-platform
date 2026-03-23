@@ -57,7 +57,7 @@ export default function TrustBadges() {
   return (
     <div className="flex flex-col items-center gap-4">
       {/* Top row: 3 cards */}
-      <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid w-full gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3">
         {features.slice(0, 3).map((f, i) => (
           <ScrollReveal key={f.title} delay={i * 100}>
             <div className="group flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.06] px-6 py-7 text-center backdrop-blur-sm transition-colors hover:bg-white/[0.1]">

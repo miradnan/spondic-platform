@@ -19,6 +19,9 @@ import type {
   TeamMember,
   AuditLog,
   AnalyticsOverview,
+  WinLossAnalytics,
+  TimelinePoint,
+  UserPerformance,
   PaginatedResponse,
   CreateProjectRequest,
   UpdateProjectRequest,
@@ -690,6 +693,39 @@ export function useAnalytics() {
     queryFn: async () => {
       const token = await getToken();
       return api.getOverview(token);
+    },
+  });
+}
+
+export function useWinLossAnalytics() {
+  const getToken = useToken();
+  return useQuery<WinLossAnalytics>({
+    queryKey: ["winLossAnalytics"],
+    queryFn: async () => {
+      const token = await getToken();
+      return api.getWinLossAnalytics(token);
+    },
+  });
+}
+
+export function useTimeline(periodStart?: string, periodEnd?: string) {
+  const getToken = useToken();
+  return useQuery<TimelinePoint[]>({
+    queryKey: ["analyticsTimeline", periodStart, periodEnd],
+    queryFn: async () => {
+      const token = await getToken();
+      return api.getTimeline(token, periodStart, periodEnd);
+    },
+  });
+}
+
+export function useUserPerformance(periodStart?: string, periodEnd?: string) {
+  const getToken = useToken();
+  return useQuery<UserPerformance[]>({
+    queryKey: ["userPerformance", periodStart, periodEnd],
+    queryFn: async () => {
+      const token = await getToken();
+      return api.getUserPerformance(token, periodStart, periodEnd);
     },
   });
 }

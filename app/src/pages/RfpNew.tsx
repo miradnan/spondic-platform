@@ -233,7 +233,7 @@ export function RfpNew() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl pb-24">
+    <div className="w-full max-w-7xl mx-auto pb-24">
       {/* Page Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
@@ -494,8 +494,8 @@ export function RfpNew() {
         )}
 
         {/* Sticky Action Bar */}
-        <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-white/80 backdrop-blur-lg md:left-64">
-          <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-3">
+        <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-white/80 backdrop-blur-lg lg:left-56">
+          <div className="flex items-center justify-between px-4 lg:px-6 py-3">
             <div className="flex items-center gap-2 text-sm text-muted">
               {name.trim() && (
                 <>

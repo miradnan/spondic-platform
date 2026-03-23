@@ -38,7 +38,7 @@ export default function Testimonials() {
           {t("testimonials.title")}
         </h2>
 
-        <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-14 grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3">
           {testimonials.map((item, i) => (
             <ScrollReveal key={item.name} delay={i * 120}>
               <div className="flex h-full flex-col rounded-2xl border border-[#d8d4cb] bg-white px-7 py-8">

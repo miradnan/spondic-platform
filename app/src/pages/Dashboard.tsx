@@ -401,9 +401,14 @@ export function Dashboard() {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="font-display text-2xl font-bold text-heading">{t("dashboard.title")}</h1>
-          <p className="mt-1 text-body">{t("dashboard.subtitle")}</p>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-blue/10">
+            <Squares2X2Icon className="h-5 w-5 text-brand-blue" />
+          </div>
+          <div>
+            <h1 className="font-display text-2xl font-bold text-heading">{t("dashboard.title")}</h1>
+            <p className="text-sm text-body">{t("dashboard.subtitle")}</p>
+          </div>
         </div>
         <Link
           to="/rfp/new"

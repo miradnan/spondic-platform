@@ -27,7 +27,7 @@ export default function PricingPageContent() {
   return (
     <main className="min-h-[60vh]">
       <section className="py-12 sm:py-20 lg:py-28">
-        <div className="mx-auto max-w-[1200px] px-4 sm:px-8">
+        <div className="mx-auto max-w-[1200px] px-4 md:px-6 sm:px-8">
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-gold">
             {t("pricing.label")}
           </p>
@@ -42,7 +42,7 @@ export default function PricingPageContent() {
             {/* Starter */}
             <div className="rounded-2xl border border-[#d8d4cb] bg-white px-7 pb-8 pt-7">
               <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted">{t("pricing.starter")}</p>
-              <p className="mt-5 font-display text-[4rem] font-black italic leading-none text-[#141413]">$299</p>
+              <p className="mt-5 font-display text-[2.5rem] sm:text-[4rem] font-black italic leading-none text-[#141413]">$299</p>
               <p className="mt-1 text-[13px] text-muted">{t("pricing.perMonth")}</p>
               <ul className="mt-7 space-y-3.5 text-[13px] text-body">
                 {[t("pricing.starter1"), t("pricing.starter2"), t("pricing.starter3"), t("pricing.starter4")].map((f) => (
@@ -62,11 +62,11 @@ export default function PricingPageContent() {
 
             {/* Growth — highlighted */}
             <div className="relative rounded-2xl bg-brand-blue px-7 pb-8 pt-7 text-white">
-              <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-brand-gold px-5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm">
+              <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-brand-gold px-5 py-1 text-xs font-bold uppercase tracking-[0.12em] text-white shadow-sm">
                 {t("pricing.mostPopular")}
               </span>
               <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-white/60">{t("pricing.growth")}</p>
-              <p className="mt-5 font-display text-[4rem] font-black italic leading-none">$799</p>
+              <p className="mt-5 font-display text-[2.5rem] sm:text-[4rem] font-black italic leading-none">$799</p>
               <p className="mt-1 text-[13px] text-white/60">{t("pricing.perMonth")}</p>
               <ul className="mt-7 space-y-3.5 text-[13px]">
                 {[t("pricing.growth1"), t("pricing.growth2"), t("pricing.growth3"), t("pricing.growth4"), t("pricing.growth5")].map((f) => (
@@ -87,7 +87,7 @@ export default function PricingPageContent() {
             {/* Enterprise */}
             <div className="rounded-2xl border border-[#d8d4cb] bg-white px-7 pb-8 pt-7">
               <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted">{t("pricing.enterprise")}</p>
-              <p className="mt-5 font-display text-[4rem] font-black italic leading-none text-[#141413]">{t("pricing.custom")}</p>
+              <p className="mt-5 font-display text-[2.5rem] sm:text-[4rem] font-black italic leading-none text-[#141413]">{t("pricing.custom")}</p>
               <p className="mt-1 text-[13px] text-muted">{t("pricing.perMonth")}</p>
               <ul className="mt-7 space-y-3.5 text-[13px] text-body">
                 {[t("pricing.enterprise1"), t("pricing.enterprise2"), t("pricing.enterprise3"), t("pricing.enterprise4"), t("pricing.enterprise5")].map((f) => (

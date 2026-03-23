@@ -18,7 +18,7 @@ export default function MobileCTA() {
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#d8d4cb] bg-white/95 px-4 py-3 backdrop-blur-sm md:hidden">
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#d8d4cb] bg-white/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm md:hidden">
       <div className="flex items-center gap-3">
         <Link
           href={appUrl}

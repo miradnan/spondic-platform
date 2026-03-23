@@ -60,7 +60,7 @@ export default function Header() {
             type="button"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
-            className="flex h-10 w-10 items-center justify-center rounded-md text-[#141413] hover:bg-[#d8d4cb]/30 transition-colors"
+            className="flex h-11 w-11 items-center justify-center rounded-md text-[#141413] hover:bg-[#d8d4cb]/30 transition-colors"
             onClick={() => setMenuOpen((o) => !o)}
           >
             {menuOpen ? (

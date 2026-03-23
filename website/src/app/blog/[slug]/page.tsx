@@ -167,7 +167,7 @@ export default async function BlogPostPage({
             {post.description}
           </p>
 
-          <div className="mt-6 flex flex-wrap items-center gap-4 text-[13px] text-muted">
+          <div className="mt-6 flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-2 sm:gap-4 text-[13px] text-muted">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-navy text-[12px] font-bold text-white">
                 S
@@ -243,7 +243,7 @@ export default async function BlogPostPage({
             {nextPost && (
               <Link
                 href={`/blog/${nextPost.slug}`}
-                className="group rounded-lg border border-[#d8d4cb] p-4 text-right transition-shadow hover:shadow-md sm:col-start-2"
+                className="group rounded-lg border border-[#d8d4cb] p-4 text-left sm:text-right transition-shadow hover:shadow-md sm:col-start-2"
               >
                 <p className="text-[12px] font-medium text-muted">
                   Next Article

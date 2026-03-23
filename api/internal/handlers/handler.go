@@ -41,6 +41,17 @@ func getOrgID(c echo.Context) string {
 	return middleware.GetOrgID(c)
 }
 
+// getOrgRole extracts the user's organization role from the Echo context (set by auth middleware).
+func getOrgRole(c echo.Context) string {
+	return middleware.GetOrgRole(c)
+}
+
+// isAdmin returns true if the user has the admin role in the organization.
+func isAdmin(c echo.Context) bool {
+	role := getOrgRole(c)
+	return role == "admin" || role == "org:admin"
+}
+
 // paginationParams extracts page and limit from query params with defaults.
 func paginationParams(c echo.Context) (int, int, int) {
 	page, _ := strconv.Atoi(c.QueryParam("page"))

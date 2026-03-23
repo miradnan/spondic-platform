@@ -209,7 +209,7 @@ export function AdminBilling() {
   const canUpgrade = currentTier < PLAN_TIERS.length - 1;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8 pb-12">
+    <div className="w-full max-w-7xl mx-auto space-y-8 pb-12">
       {/* Page Header */}
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-blue/10">

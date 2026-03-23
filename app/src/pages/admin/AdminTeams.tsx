@@ -178,10 +178,17 @@ export function AdminTeams() {
       )}
 
       <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold text-heading">Teams</h1>
-        <p className="mt-1 text-body">
-          Organize members into teams for streamlined RFP collaboration.
-        </p>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-blue/10">
+            <UserGroupIcon className="h-5 w-5 text-brand-blue" />
+          </div>
+          <div>
+            <h1 className="font-display text-2xl font-bold text-heading">Teams</h1>
+            <p className="text-sm text-body">
+              Organize members into teams for streamlined RFP collaboration.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Info banner */}

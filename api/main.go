@@ -172,6 +172,8 @@ func main() {
 
 	// Analytics
 	api.GET("/analytics/overview", h.AnalyticsOverview)
+	api.GET("/analytics/timeline", h.AnalyticsTimeline)
+	api.GET("/analytics/user-performance", h.AnalyticsUserPerformance)
 
 	// Audit logs (admin only — for now, all authenticated users can access)
 	api.GET("/audit-logs", h.ListAuditLogs)

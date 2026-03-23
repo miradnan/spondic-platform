@@ -40,7 +40,7 @@ export default function HomePageContent() {
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div className="relative z-10 mx-auto grid w-full max-w-[1200px] px-4 sm:px-8 lg:grid-cols-2">
+        <div className="relative z-10 mx-auto grid w-full max-w-[1200px] px-4 md:px-6 sm:px-8 lg:grid-cols-2">
           {/* Left content */}
           <div className="relative z-10 pb-14 pt-8 sm:pb-16 sm:pt-10 lg:pb-24 lg:pt-16 lg:pr-16">
             <span className="hero-fade-in inline-flex items-center gap-1.5 rounded-full border border-[#141413]/15 bg-white/60 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#141413]/80 shadow-sm sm:mb-8 sm:py-2.5">
@@ -87,7 +87,7 @@ export default function HomePageContent() {
             </p>
 
             {/* Stats */}
-            <div className="hero-fade-in hero-delay-4 mt-10 grid grid-cols-3 gap-4 rounded-xl border border-[#d8d4cb]/60 bg-white/50 px-4 py-5 sm:mt-14 sm:flex sm:flex-wrap sm:gap-12 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">
+            <div className="hero-fade-in hero-delay-4 mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 rounded-xl border border-[#d8d4cb]/60 bg-white/50 px-4 py-5 sm:mt-14 sm:flex sm:flex-wrap sm:gap-12 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">
               <div className="text-center sm:text-left">
                 <p className="font-display text-[1.75rem] font-black italic leading-none text-[#141413] sm:text-[2.2rem]">
                   <CountUp end={90} suffix="%" />
@@ -121,7 +121,7 @@ export default function HomePageContent() {
           {/* Right — desktop mockup */}
           <div className="relative z-10 hidden items-center justify-center py-12 lg:flex">
             <div className="hero-backdrop" />
-            <div className="hero-mockup relative w-[380px] rounded-xl bg-white shadow-2xl">
+            <div className="hero-mockup relative w-full max-w-[380px] rounded-xl bg-white shadow-2xl">
               <div className="flex items-center gap-2 rounded-t-xl bg-navy-light px-4 py-3">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
                 <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
@@ -162,7 +162,7 @@ export default function HomePageContent() {
         </div>
 
         {/* Mobile mockup */}
-        <div className="relative z-10 mx-auto max-w-[340px] px-4 pb-10 sm:max-w-[400px] lg:hidden">
+        <div className="relative z-10 mx-auto w-full max-w-[340px] px-4 pb-10 sm:max-w-[400px] lg:hidden">
           <div className="rounded-xl border border-[#d8d4cb] bg-white shadow-lg">
             <div className="flex items-center gap-2 rounded-t-xl bg-navy-light px-3.5 py-2.5">
               <span className="h-2 w-2 rounded-full bg-[#ff5f57]" />
@@ -404,7 +404,11 @@ export default function HomePageContent() {
           </ScrollReveal>
 
           <ScrollReveal delay={100}>
-            <div className="mt-14 overflow-x-auto rounded-2xl border border-[#d8d4cb] bg-cream-light">
+            <div className="relative mt-14 rounded-2xl border border-[#d8d4cb] bg-cream-light">
+              {/* Mobile scroll hint */}
+              <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 rounded-r-2xl bg-gradient-to-l from-[#f0ede6] to-transparent sm:hidden" />
+              <p className="px-6 pt-3 text-[11px] text-muted sm:hidden">Scroll to see more &rarr;</p>
+              <div className="overflow-x-auto">
               <table className="w-full text-[13px]">
                 <thead>
                   <tr className="border-b border-[#d8d4cb] text-left">
@@ -439,6 +443,7 @@ export default function HomePageContent() {
                   </tr>
                 </tbody>
               </table>
+              </div>
             </div>
           </ScrollReveal>
         </div>

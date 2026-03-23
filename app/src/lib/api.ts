@@ -10,6 +10,9 @@ import type {
   TeamMember,
   AuditLog,
   AnalyticsOverview,
+  WinLossAnalytics,
+  TimelinePoint,
+  UserPerformance,
   PaginatedResponse,
   CreateProjectRequest,
   UpdateProjectRequest,
@@ -525,6 +528,32 @@ export function exportPdf(token: string | null, projectId: string): Promise<Expo
 
 export function getOverview(token: string | null): Promise<AnalyticsOverview> {
   return request("/api/analytics/overview", token);
+}
+
+export function getWinLossAnalytics(token: string | null): Promise<WinLossAnalytics> {
+  return request("/api/analytics/win-loss", token);
+}
+
+export function getTimeline(
+  token: string | null,
+  periodStart?: string,
+  periodEnd?: string,
+): Promise<TimelinePoint[]> {
+  const params: Record<string, string> = {};
+  if (periodStart) params.period_start = periodStart;
+  if (periodEnd) params.period_end = periodEnd;
+  return request(`/api/analytics/timeline${qs(params)}`, token);
+}
+
+export function getUserPerformance(
+  token: string | null,
+  periodStart?: string,
+  periodEnd?: string,
+): Promise<UserPerformance[]> {
+  const params: Record<string, string> = {};
+  if (periodStart) params.period_start = periodStart;
+  if (periodEnd) params.period_end = periodEnd;
+  return request(`/api/analytics/user-performance${qs(params)}`, token);
 }
 
 // ── Audit ────────────────────────────────────────────────────────────────────

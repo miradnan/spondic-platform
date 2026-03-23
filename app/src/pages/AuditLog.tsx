@@ -2,6 +2,7 @@ import { useMemo, useCallback, useState, useEffect } from "react";
 import {
   ArrowPathIcon,
   XMarkIcon,
+  ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 import { useTableParams } from "../hooks/useTableParams.ts";
 import { useOrganization } from "@clerk/react";
@@ -172,9 +173,14 @@ export function AuditLog() {
 
   return (
     <div>
-      <div>
-        <h1 className="font-display text-2xl font-bold text-heading">Audit Log</h1>
-        <p className="mt-1 text-body">Complete record of all actions in your organization.</p>
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-blue/10">
+          <ClipboardDocumentListIcon className="h-5 w-5 text-brand-blue" />
+        </div>
+        <div>
+          <h1 className="font-display text-2xl font-bold text-heading">Audit Log</h1>
+          <p className="text-sm text-body">Complete record of all actions in your organization.</p>
+        </div>
       </div>
 
       {/* Filters */}

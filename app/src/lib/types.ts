@@ -168,6 +168,30 @@ export interface AnalyticsOverview {
   avg_confidence_score: number;
 }
 
+export interface WinLossAnalytics {
+  win_rate: number;
+  total_won: number;
+  total_lost: number;
+  total_revenue: number;
+  avg_response_days: number;
+  loss_reasons: Record<string, number>;
+}
+
+export interface TimelinePoint {
+  month: string;
+  projects_created: number;
+  rfps_processed: number;
+  active_users: number;
+}
+
+export interface UserPerformance {
+  user_id: string;
+  projects_created: number;
+  projects_completed: number;
+  questions_answered: number;
+  avg_confidence: number;
+}
+
 // ── Request / Response Types ─────────────────────────────────────────────────
 
 export interface Pagination {

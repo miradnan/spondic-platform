@@ -387,6 +387,23 @@ type WinLossAnalytics struct {
 	LossReasons     map[string]int     `json:"loss_reasons"`
 }
 
+// TimelinePoint represents a single month's project creation stats.
+type TimelinePoint struct {
+	Month           string `json:"month"`
+	ProjectsCreated int    `json:"projects_created"`
+	RfpsProcessed   int    `json:"rfps_processed"`
+	ActiveUsers     int    `json:"active_users"`
+}
+
+// UserPerformance represents per-user performance stats.
+type UserPerformance struct {
+	UserID            string  `json:"user_id"`
+	ProjectsCreated   int     `json:"projects_created"`
+	ProjectsCompleted int     `json:"projects_completed"`
+	QuestionsAnswered int     `json:"questions_answered"`
+	AvgConfidence     float64 `json:"avg_confidence"`
+}
+
 // WebhookIntegration represents a Slack or Teams webhook integration for an org.
 type WebhookIntegration struct {
 	ID             string          `json:"id"`

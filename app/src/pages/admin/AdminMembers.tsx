@@ -5,6 +5,7 @@ import {
   TrashIcon,
   ClockIcon,
   XMarkIcon,
+  UsersIcon,
 } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,7 +47,7 @@ export function AdminMembers() {
 
   if (!isLoaded || !organization) {
     return (
-      <div className="space-y-4">
+      <div className="w-full max-w-7xl mx-auto space-y-4">
         <div className="h-6 w-40 animate-pulse rounded bg-gray-200" />
         <div className="h-4 w-64 animate-pulse rounded bg-gray-200" />
         <div className="rounded-xl border border-border bg-white p-6 space-y-3">
@@ -152,12 +153,19 @@ export function AdminMembers() {
   }
 
   return (
-    <div>
+    <div className="w-full max-w-7xl mx-auto">
       <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold text-heading">Members</h1>
-        <p className="mt-1 text-body">
-          Invite new members, manage roles, and view pending invitations.
-        </p>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-blue/10">
+            <UsersIcon className="h-5 w-5 text-brand-blue" />
+          </div>
+          <div>
+            <h1 className="font-display text-2xl font-bold text-heading">Members</h1>
+            <p className="text-sm text-body">
+              Invite new members, manage roles, and view pending invitations.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Global action error */}

@@ -10,19 +10,136 @@ import {
   PaintBrushIcon,
   PhotoIcon,
   ArrowPathIcon,
+  Cog6ToothIcon,
+  ChevronDownIcon,
+  SwatchIcon,
+  GlobeAltIcon,
+  EnvelopeIcon,
 } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { useBranding, useUpdateBranding, useUploadBrandingLogo } from "@/hooks/useApi.ts";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  useBranding,
+  useUpdateBranding,
+  useUploadBrandingLogo,
+} from "@/hooks/useApi.ts";
 import type { UpdateBrandingRequest } from "@/lib/types.ts";
+
+// ── Collapsible Section ─────────────────────────────────────────────────────
+
+function Section({
+  icon: Icon,
+  title,
+  description,
+  children,
+  collapsible = false,
+  defaultOpen = true,
+  badge,
+}: {
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+  badge?: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <section className="rounded-xl border border-border bg-white overflow-hidden">
+      <div
+        className={`flex items-start gap-3 p-6 pb-0 ${collapsible ? "cursor-pointer select-none" : ""}`}
+        onClick={collapsible ? () => setOpen(!open) : undefined}
+      >
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-blue/10">
+          <Icon className="h-4.5 w-4.5 text-brand-blue" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-semibold text-heading">{title}</h3>
+            {badge}
+          </div>
+          {description && (
+            <p className="text-sm text-muted mt-0.5">{description}</p>
+          )}
+        </div>
+        {collapsible && (
+          <ChevronDownIcon
+            className={`h-5 w-5 text-muted shrink-0 transition-transform mt-1 ${open ? "rotate-180" : ""}`}
+          />
+        )}
+      </div>
+      {(!collapsible || open) && <div className="p-6 pt-5">{children}</div>}
+      {collapsible && !open && <div className="h-6" />}
+    </section>
+  );
+}
+
+// ── Color Input ─────────────────────────────────────────────────────────────
+
+function ColorInput({
+  id,
+  label,
+  value,
+  onChange,
+  placeholder,
+  disabled,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  disabled?: boolean;
+}) {
+  const isValidHex = /^#[0-9a-fA-F]{6}$/.test(value);
+
+  return (
+    <div>
+      <Label htmlFor={id}>{label}</Label>
+      <div className="mt-1.5 flex items-center gap-2">
+        <div className="relative flex-1">
+          <Input
+            id={id}
+            type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            maxLength={7}
+            disabled={disabled}
+            className="pl-10 font-mono"
+          />
+          <input
+            type="color"
+            value={isValidHex ? value : placeholder}
+            onChange={(e) => onChange(e.target.value)}
+            disabled={disabled}
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 h-5 w-5 cursor-pointer rounded border-0 p-0 [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded [&::-webkit-color-swatch]:border-border"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Component ──────────────────────────────────────────────────────────
 
 export function AdminOrganization() {
   const { organization, isLoaded } = useOrganization();
   const navigate = useNavigate();
 
   const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
   const [initialized, setInitialized] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -39,7 +156,7 @@ export function AdminOrganization() {
   const [ssoTesting, setSsoTesting] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteInput, setDeleteInput] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
@@ -47,13 +164,12 @@ export function AdminOrganization() {
   // Initialize form values from org data
   if (isLoaded && organization && !initialized) {
     setName(organization.name);
-    setSlug(organization.slug ?? "");
     setInitialized(true);
   }
 
   if (!isLoaded || !organization) {
     return (
-      <div className="space-y-4">
+      <div className="w-full max-w-7xl mx-auto space-y-5">
         <div className="h-6 w-48 animate-pulse rounded bg-gray-200" />
         <div className="h-4 w-72 animate-pulse rounded bg-gray-200" />
         <div className="rounded-xl border border-border bg-white p-6 space-y-4">
@@ -65,7 +181,7 @@ export function AdminOrganization() {
     );
   }
 
-  // ── Save handler ──────────────────────────────────────────────────────
+  // ── Handlers ─────────────────────────────────────────────────────────────
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -76,10 +192,7 @@ export function AdminOrganization() {
     setSaveSuccess("");
 
     try {
-      await organization.update({
-        name: name.trim(),
-        slug: slug.trim() || undefined,
-      });
+      await organization.update({ name: name.trim() });
       setSaveSuccess("Organization updated successfully");
       setTimeout(() => setSaveSuccess(""), 4000);
     } catch (err: unknown) {
@@ -90,8 +203,6 @@ export function AdminOrganization() {
       setSaving(false);
     }
   }
-
-  // ── Delete handler ────────────────────────────────────────────────────
 
   async function handleDelete() {
     if (!organization || deleteInput !== organization.name) return;
@@ -110,14 +221,10 @@ export function AdminOrganization() {
     }
   }
 
-  // ── SSO handlers ───────────────────────────────────────────────────
-
   async function handleSsoSave(e: React.FormEvent) {
     e.preventDefault();
     setSsoSaving(true);
     setSsoSaveSuccess("");
-    // UI-only: Clerk handles actual SAML backend configuration
-    // In production, this would call Clerk's API to configure the SAML connection
     await new Promise((resolve) => setTimeout(resolve, 800));
     setSsoEnabled(true);
     setSsoSaving(false);
@@ -127,7 +234,6 @@ export function AdminOrganization() {
 
   async function handleSsoTest() {
     setSsoTesting(true);
-    // UI-only: simulate connection test
     await new Promise((resolve) => setTimeout(resolve, 1500));
     setSsoTesting(false);
   }
@@ -138,35 +244,52 @@ export function AdminOrganization() {
     setTimeout(() => setCopiedField(null), 2000);
   }
 
+  function CopyableCode({ text, field }: { text: string; field: string }) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-lg bg-cream px-2.5 py-1 mt-1">
+        <code className="text-xs font-mono text-heading">{text}</code>
+        <button
+          type="button"
+          onClick={() => copyToClipboard(text, field)}
+          className="text-muted hover:text-brand-blue transition-colors"
+          title="Copy to clipboard"
+        >
+          {copiedField === field ? (
+            <CheckIcon className="h-3.5 w-3.5 text-green-600" />
+          ) : (
+            <ClipboardDocumentIcon className="h-3.5 w-3.5" />
+          )}
+        </button>
+      </span>
+    );
+  }
+
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold text-heading">
-          Settings
-        </h1>
-        <p className="mt-1 text-body">
-          Update your organization name, slug, and manage settings.
-        </p>
+    <div className="w-full max-w-7xl mx-auto space-y-5 pb-12">
+      {/* Page Header */}
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-blue/10">
+          <Cog6ToothIcon className="h-5 w-5 text-brand-blue" />
+        </div>
+        <div>
+          <h1 className="font-display text-2xl font-bold text-heading">
+            Settings
+          </h1>
+          <p className="text-sm text-body">
+            Manage your organization, branding, and security.
+          </p>
+        </div>
       </div>
 
-      {/* ── Organization Details ──────────────────────────────────────── */}
-      <form
-        onSubmit={handleSave}
-        className="rounded-xl border border-border bg-white p-6 mb-6"
+      {/* ── Organization Details ─────────────────────────────────────── */}
+      <Section
+        icon={BuildingOffice2Icon}
+        title="Organization"
+        description="Your organization's display name."
       >
-        <h3 className="text-sm font-semibold text-heading mb-4 flex items-center gap-2">
-          <BuildingOffice2Icon className="h-4 w-4 text-brand-blue" />
-          Organization Details
-        </h3>
-
-        <div className="space-y-4 max-w-lg">
+        <form onSubmit={handleSave}>
           <div>
-            <label
-              htmlFor="org-name"
-              className="block text-sm font-medium text-heading mb-1.5"
-            >
-              Name
-            </label>
+            <Label htmlFor="org-name">Name</Label>
             <Input
               id="org-name"
               type="text"
@@ -174,83 +297,59 @@ export function AdminOrganization() {
               onChange={(e) => setName(e.target.value)}
               placeholder="Organization name"
               disabled={saving}
+              className="mt-1.5"
             />
           </div>
-
-          <div>
-            <label
-              htmlFor="org-slug"
-              className="block text-sm font-medium text-heading mb-1.5"
-            >
-              Slug
-            </label>
-            <Input
-              id="org-slug"
-              type="text"
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
-              placeholder="organization-slug"
-              disabled={saving}
-            />
-            <p className="mt-1 text-xs text-muted">
-              Used in URLs. Only lowercase letters, numbers, and hyphens.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-5 flex items-center gap-3">
-          <Button type="submit" disabled={!name.trim() || saving}>
-            {saving ? (
-              <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                Saving...
-              </>
-            ) : (
-              "Save Changes"
-            )}
-          </Button>
-          {saveError && <p className="text-sm text-red-600">{saveError}</p>}
-          {saveSuccess && (
-            <p className="text-sm text-green-600">{saveSuccess}</p>
-          )}
-        </div>
-      </form>
-
-      {/* ── Enterprise SSO (SAML) ─────────────────────────────────── */}
-      <div className="rounded-xl border border-border bg-white p-6 mb-6">
-        <h3 className="text-sm font-semibold text-heading mb-1 flex items-center gap-2">
-          <ShieldCheckIcon className="h-4 w-4 text-brand-blue" />
-          Enterprise SSO (SAML)
-        </h3>
-        <p className="text-sm text-body">
-          Configure SAML-based single sign-on for your organization. This allows
-          your team members to sign in using your company's identity provider.
-        </p>
-
-        {/* SSO Status */}
-        <div className="mt-4 rounded-lg bg-cream-light p-4">
-          <div className="flex items-center gap-2">
-            <Badge variant={ssoEnabled ? "success" : "secondary"}>
-              {ssoEnabled ? "SSO Enabled" : "SSO Not Configured"}
-            </Badge>
-            {ssoEnforced && (
-              <Badge variant="warning">Enforced</Badge>
+          <div className="mt-4 flex items-center gap-3">
+            <Button type="submit" disabled={!name.trim() || saving}>
+              {saving ? (
+                <>
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+            {saveError && <p className="text-sm text-red-600">{saveError}</p>}
+            {saveSuccess && (
+              <p className="flex items-center gap-1.5 text-sm text-green-600">
+                <CheckIcon className="h-4 w-4" />
+                {saveSuccess}
+              </p>
             )}
           </div>
-        </div>
+        </form>
+      </Section>
 
-        {/* Supported Identity Providers */}
-        <div className="mt-4">
+      {/* ── Branding ─────────────────────────────────────────────────── */}
+      <BrandingSection />
+
+      {/* ── Enterprise SSO (SAML) ─────────────────────────────────────── */}
+      <Section
+        icon={ShieldCheckIcon}
+        title="Enterprise SSO (SAML)"
+        description="Allow team members to sign in via your company's identity provider."
+        collapsible
+        defaultOpen={false}
+        badge={
+          <Badge variant={ssoEnabled ? "success" : "secondary"}>
+            {ssoEnabled ? "Active" : "Not Configured"}
+          </Badge>
+        }
+      >
+        {/* Supported IdPs */}
+        <div className="mb-5">
           <p className="text-xs font-medium text-heading mb-2">
             Supported Identity Providers
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {[
               "Okta",
-              "Azure AD (Microsoft Entra ID)",
+              "Azure AD",
               "Google Workspace",
               "OneLogin",
-              "SAML 2.0 Compatible",
+              "SAML 2.0",
             ].map((idp) => (
               <span
                 key={idp}
@@ -262,99 +361,59 @@ export function AdminOrganization() {
           </div>
         </div>
 
-        {/* Configuration Steps */}
-        <div className="mt-6 rounded-lg border border-border p-4">
-          <h4 className="text-sm font-medium text-navy">Setup Instructions</h4>
-          <ol className="mt-3 space-y-3 text-sm text-body">
-            <li className="flex gap-2">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-blue text-xs text-white font-semibold">
+        {/* Setup Steps */}
+        <div className="rounded-lg border border-border bg-cream-lighter p-4 mb-5">
+          <h4 className="text-sm font-medium text-heading mb-3">
+            Setup Instructions
+          </h4>
+          <ol className="space-y-3 text-sm text-body">
+            <li className="flex gap-2.5">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-blue text-[10px] text-white font-semibold mt-0.5">
                 1
               </span>
               <span>
-                In your Identity Provider (Okta, Azure AD, etc.), create a new
-                SAML application
+                Create a new SAML application in your Identity Provider
               </span>
             </li>
-            <li className="flex gap-2">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-blue text-xs text-white font-semibold">
+            <li className="flex gap-2.5">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-blue text-[10px] text-white font-semibold mt-0.5">
                 2
               </span>
               <span className="flex-1">
-                Use the following ACS URL:{" "}
-                <span className="inline-flex items-center gap-1">
-                  <code className="bg-cream px-1.5 py-0.5 rounded text-xs">
-                    https://clerk.spondic.com/v1/saml/acs
-                  </code>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      copyToClipboard(
-                        "https://clerk.spondic.com/v1/saml/acs",
-                        "acs",
-                      )
-                    }
-                    className="text-muted hover:text-brand-blue transition-colors"
-                    title="Copy to clipboard"
-                  >
-                    {copiedField === "acs" ? (
-                      <CheckIcon className="h-3.5 w-3.5 text-green-600" />
-                    ) : (
-                      <ClipboardDocumentIcon className="h-3.5 w-3.5" />
-                    )}
-                  </button>
-                </span>
+                Set the ACS URL to:
+                <br />
+                <CopyableCode
+                  text="https://clerk.spondic.com/v1/saml/acs"
+                  field="acs"
+                />
               </span>
             </li>
-            <li className="flex gap-2">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-blue text-xs text-white font-semibold">
+            <li className="flex gap-2.5">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-blue text-[10px] text-white font-semibold mt-0.5">
                 3
               </span>
               <span className="flex-1">
-                Entity ID:{" "}
-                <span className="inline-flex items-center gap-1">
-                  <code className="bg-cream px-1.5 py-0.5 rounded text-xs">
-                    https://clerk.spondic.com
-                  </code>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      copyToClipboard(
-                        "https://clerk.spondic.com",
-                        "entity",
-                      )
-                    }
-                    className="text-muted hover:text-brand-blue transition-colors"
-                    title="Copy to clipboard"
-                  >
-                    {copiedField === "entity" ? (
-                      <CheckIcon className="h-3.5 w-3.5 text-green-600" />
-                    ) : (
-                      <ClipboardDocumentIcon className="h-3.5 w-3.5" />
-                    )}
-                  </button>
-                </span>
+                Set Entity ID to:
+                <br />
+                <CopyableCode
+                  text="https://clerk.spondic.com"
+                  field="entity"
+                />
               </span>
             </li>
-            <li className="flex gap-2">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-blue text-xs text-white font-semibold">
+            <li className="flex gap-2.5">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-blue text-[10px] text-white font-semibold mt-0.5">
                 4
               </span>
-              <span>
-                Enter your IdP metadata URL or upload the metadata XML below
-              </span>
+              <span>Enter your IdP details in the form below</span>
             </li>
           </ol>
         </div>
 
-        {/* SAML Configuration Form */}
-        <form onSubmit={handleSsoSave} className="mt-6 space-y-4 max-w-lg">
+        {/* SAML Form */}
+        <form onSubmit={handleSsoSave} className="space-y-4">
           <div>
-            <label
-              htmlFor="idp-metadata-url"
-              className="block text-sm font-medium text-heading mb-1.5"
-            >
-              IdP Metadata URL
-            </label>
+            <Label htmlFor="idp-metadata-url">IdP Metadata URL</Label>
             <Input
               id="idp-metadata-url"
               type="url"
@@ -362,54 +421,41 @@ export function AdminOrganization() {
               onChange={(e) => setIdpMetadataUrl(e.target.value)}
               placeholder="https://your-idp.com/metadata.xml"
               disabled={ssoSaving}
+              className="mt-1.5"
             />
           </div>
-
-          <div>
-            <label
-              htmlFor="idp-entity-id"
-              className="block text-sm font-medium text-heading mb-1.5"
-            >
-              IdP Entity ID
-            </label>
-            <Input
-              id="idp-entity-id"
-              type="text"
-              value={idpEntityId}
-              onChange={(e) => setIdpEntityId(e.target.value)}
-              placeholder="https://your-idp.com/entity-id"
-              disabled={ssoSaving}
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="idp-entity-id">IdP Entity ID</Label>
+              <Input
+                id="idp-entity-id"
+                type="text"
+                value={idpEntityId}
+                onChange={(e) => setIdpEntityId(e.target.value)}
+                placeholder="https://your-idp.com/entity"
+                disabled={ssoSaving}
+                className="mt-1.5"
+              />
+            </div>
+            <div>
+              <Label htmlFor="idp-sso-url">IdP SSO URL</Label>
+              <Input
+                id="idp-sso-url"
+                type="url"
+                value={idpSsoUrl}
+                onChange={(e) => setIdpSsoUrl(e.target.value)}
+                placeholder="https://your-idp.com/sso"
+                disabled={ssoSaving}
+                className="mt-1.5"
+              />
+            </div>
           </div>
-
           <div>
-            <label
-              htmlFor="idp-sso-url"
-              className="block text-sm font-medium text-heading mb-1.5"
-            >
-              IdP SSO URL
-            </label>
-            <Input
-              id="idp-sso-url"
-              type="url"
-              value={idpSsoUrl}
-              onChange={(e) => setIdpSsoUrl(e.target.value)}
-              placeholder="https://your-idp.com/sso"
-              disabled={ssoSaving}
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="idp-certificate"
-              className="block text-sm font-medium text-heading mb-1.5"
-            >
-              IdP Certificate
-            </label>
+            <Label htmlFor="idp-certificate">IdP Certificate</Label>
             <textarea
               id="idp-certificate"
-              className="flex w-full rounded-lg border border-border bg-white px-4 py-3 text-sm text-heading placeholder-muted transition-colors focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue disabled:cursor-not-allowed disabled:opacity-50 font-mono"
-              rows={4}
+              className="mt-1.5 flex w-full rounded-lg border border-border bg-white px-4 py-3 text-sm text-heading placeholder-muted transition-colors focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue disabled:cursor-not-allowed disabled:opacity-50 font-mono"
+              rows={3}
               value={idpCertificate}
               onChange={(e) => setIdpCertificate(e.target.value)}
               placeholder="Paste your IdP X.509 certificate here..."
@@ -425,7 +471,7 @@ export function AdminOrganization() {
                   Saving...
                 </>
               ) : (
-                "Save SSO Configuration"
+                "Save Configuration"
               )}
             </Button>
             <Button
@@ -445,19 +491,21 @@ export function AdminOrganization() {
             </Button>
           </div>
           {ssoSaveSuccess && (
-            <p className="text-sm text-green-600">{ssoSaveSuccess}</p>
+            <p className="flex items-center gap-1.5 text-sm text-green-600">
+              <CheckIcon className="h-4 w-4" />
+              {ssoSaveSuccess}
+            </p>
           )}
         </form>
 
         {/* SSO Enforcement Toggle */}
-        <div className="flex items-center justify-between rounded-lg border border-border p-4 mt-6">
+        <div className="flex items-center justify-between rounded-lg border border-border bg-cream-lighter p-4 mt-5">
           <div>
-            <p className="text-sm font-medium text-navy">
+            <p className="text-sm font-medium text-heading">
               Require SSO for all members
             </p>
             <p className="text-xs text-muted mt-0.5">
-              When enabled, all organization members must sign in via SSO.
-              Password-based login will be disabled.
+              Password-based login will be disabled when enforced.
             </p>
           </div>
           <button
@@ -486,86 +534,112 @@ export function AdminOrganization() {
           >
             support@spondic.com
           </a>{" "}
-          for assistance with SSO setup.
+          for assistance.
         </p>
-      </div>
-
-      {/* ── Branding / White-Label ────────────────────────────────── */}
-      <BrandingSection />
+      </Section>
 
       {/* ── Danger Zone ──────────────────────────────────────────────── */}
-      <div className="rounded-xl border-2 border-red-200 bg-red-50/50 p-6">
-        <h3 className="text-sm font-semibold text-red-700 mb-1 flex items-center gap-2">
-          <ExclamationTriangleIcon className="h-4 w-4" />
-          Danger Zone
-        </h3>
-        <p className="text-sm text-red-600/80 mb-4">
-          Deleting your organization is permanent and cannot be undone. All data,
-          members, and settings will be lost.
-        </p>
+      <section className="rounded-xl border-2 border-red-200 bg-white overflow-hidden">
+        <div className="flex items-start gap-3 p-6">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-50">
+            <ExclamationTriangleIcon className="h-4.5 w-4.5 text-red-500" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-base font-semibold text-red-700">
+              Danger Zone
+            </h3>
+            <p className="text-sm text-red-600/80 mt-0.5">
+              Permanently delete this organization and all its data. This action
+              cannot be undone.
+            </p>
+            <Button
+              variant="destructive"
+              className="mt-4"
+              onClick={() => setShowDeleteDialog(true)}
+            >
+              <ExclamationTriangleIcon className="h-4 w-4" />
+              Delete Organization
+            </Button>
+          </div>
+        </div>
+      </section>
 
-        {!showDeleteConfirm ? (
-          <Button
-            variant="destructive"
-            onClick={() => setShowDeleteConfirm(true)}
-          >
-            Delete Organization
-          </Button>
-        ) : (
-          <div className="rounded-lg border border-red-200 bg-white p-4 max-w-md">
-            <p className="text-sm text-heading mb-3">
-              Type{" "}
-              <span className="font-semibold text-red-700">
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={showDeleteDialog}
+        onOpenChange={(open) => {
+          setShowDeleteDialog(open);
+          if (!open) {
+            setDeleteInput("");
+            setDeleteError("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Organization</DialogTitle>
+            <DialogDescription>
+              This will permanently delete{" "}
+              <span className="font-semibold text-heading">
                 {organization.name}
               </span>{" "}
-              to confirm deletion.
-            </p>
+              and all its data including projects, documents, and team members.
+              This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-2">
+            <Label htmlFor="delete-confirm">
+              Type{" "}
+              <span className="font-semibold text-red-600">
+                {organization.name}
+              </span>{" "}
+              to confirm
+            </Label>
             <Input
+              id="delete-confirm"
               type="text"
               value={deleteInput}
               onChange={(e) => setDeleteInput(e.target.value)}
               placeholder={organization.name}
-              className="mb-3"
+              className="mt-1.5"
               disabled={deleting}
             />
-            <div className="flex items-center gap-2">
-              <Button
-                variant="destructive"
-                disabled={deleteInput !== organization.name || deleting}
-                onClick={handleDelete}
-              >
-                {deleting ? (
-                  <>
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    Deleting...
-                  </>
-                ) : (
-                  "Permanently Delete"
-                )}
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setShowDeleteConfirm(false);
-                  setDeleteInput("");
-                  setDeleteError("");
-                }}
-                disabled={deleting}
-              >
-                Cancel
-              </Button>
-            </div>
             {deleteError && (
               <p className="mt-2 text-sm text-red-600">{deleteError}</p>
             )}
           </div>
-        )}
-      </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteInput !== organization.name || deleting}
+              onClick={handleDelete}
+            >
+              {deleting ? (
+                <>
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Deleting...
+                </>
+              ) : (
+                "Permanently Delete"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-// ── Branding Section Component ──────────────────────────────────────────────
+// ── Branding Section ────────────────────────────────────────────────────────
 
 function BrandingSection() {
   const { data: branding, isLoading } = useBranding();
@@ -585,7 +659,6 @@ function BrandingSection() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize from fetched branding data
   if (branding && !brandingInit) {
     setDisplayName(branding.display_name ?? "");
     setPrimaryColor(branding.primary_color ?? "");
@@ -609,7 +682,6 @@ function BrandingSection() {
         alert("Invalid file type. Please upload a PNG, JPG, or SVG file.");
         return;
       }
-      // Show local preview immediately
       const url = URL.createObjectURL(file);
       setLogoPreview(url);
 
@@ -682,259 +754,207 @@ function BrandingSection() {
 
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-border bg-white p-6 mb-6">
+      <section className="rounded-xl border border-border bg-white p-6">
         <div className="h-5 w-32 animate-pulse rounded bg-gray-200 mb-4" />
         <div className="space-y-3">
           <div className="h-10 w-full animate-pulse rounded-lg bg-gray-200" />
           <div className="h-10 w-full animate-pulse rounded-lg bg-gray-200" />
         </div>
-      </div>
+      </section>
     );
   }
 
   return (
-    <form
-      onSubmit={handleBrandingSave}
-      className="rounded-xl border border-border bg-white p-6 mb-6"
+    <Section
+      icon={PaintBrushIcon}
+      title="Branding"
+      description="Customize your workspace appearance for all members."
     >
-      <h3 className="text-sm font-semibold text-heading mb-1 flex items-center gap-2">
-        <PaintBrushIcon className="h-4 w-4 text-brand-blue" />
-        Branding
-      </h3>
-      <p className="text-sm text-body mb-5">
-        Customize your workspace appearance. Changes apply to all members of this organization.
-      </p>
+      <form onSubmit={handleBrandingSave}>
+        {/* Logo Upload */}
+        <div className="mb-6">
+          <Label className="mb-2">Logo</Label>
+          <div
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={handleFileDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-4 rounded-xl border-2 border-dashed border-border hover:border-brand-blue/40 p-4 cursor-pointer transition-colors group"
+          >
+            {logoPreview ? (
+              <img
+                src={logoPreview}
+                alt="Logo preview"
+                className="h-12 w-auto max-w-[160px] object-contain rounded"
+              />
+            ) : (
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cream group-hover:bg-brand-blue/10 transition-colors">
+                <PhotoIcon className="h-6 w-6 text-muted group-hover:text-brand-blue transition-colors" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-heading font-medium">
+                {logoPreview
+                  ? "Click or drag to replace"
+                  : "Click or drag to upload"}
+              </p>
+              <p className="text-xs text-muted mt-0.5">
+                PNG, JPG, or SVG &middot; Max 2MB
+              </p>
+            </div>
+            {uploadLogo.isPending && (
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-brand-blue border-t-transparent" />
+            )}
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".png,.jpg,.jpeg,.svg"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+        </div>
 
-      {/* Logo Upload */}
-      <div className="mb-5">
-        <label className="block text-sm font-medium text-heading mb-2">
-          Logo
-        </label>
-        <div
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={handleFileDrop}
-          onClick={() => fileInputRef.current?.click()}
-          className="flex items-center gap-4 rounded-lg border-2 border-dashed border-border hover:border-brand-blue/50 p-4 cursor-pointer transition-colors"
-        >
-          {logoPreview ? (
-            <img
-              src={logoPreview}
-              alt="Logo preview"
-              className="h-12 w-auto max-w-[160px] object-contain rounded"
+        <div className="space-y-5">
+          {/* Display Name */}
+          <div>
+            <Label htmlFor="brand-display-name">Display Name</Label>
+            <Input
+              id="brand-display-name"
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="Overrides org name in sidebar"
+              disabled={updateBranding.isPending}
+              className="mt-1.5"
             />
-          ) : (
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-cream">
-              <PhotoIcon className="h-6 w-6 text-muted" />
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <p className="text-sm text-heading font-medium">
-              {logoPreview ? "Click or drag to replace" : "Click or drag to upload"}
-            </p>
-            <p className="text-xs text-muted mt-0.5">
-              PNG, JPG, or SVG. Max 2MB.
-            </p>
           </div>
-          {uploadLogo.isPending && (
-            <span className="h-5 w-5 animate-spin rounded-full border-2 border-brand-blue border-t-transparent" />
-          )}
-        </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".png,.jpg,.jpeg,.svg"
-          className="hidden"
-          onChange={handleFileChange}
-        />
-      </div>
 
-      <div className="space-y-4 max-w-lg">
-        {/* Display Name */}
-        <div>
-          <label
-            htmlFor="brand-display-name"
-            className="block text-sm font-medium text-heading mb-1.5"
-          >
-            Display Name
-          </label>
-          <Input
-            id="brand-display-name"
-            type="text"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="Custom display name (overrides org name in sidebar)"
-            disabled={updateBranding.isPending}
-          />
-        </div>
-
-        {/* Colors */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Colors */}
           <div>
-            <label
-              htmlFor="brand-primary"
-              className="block text-sm font-medium text-heading mb-1.5"
-            >
-              Primary Color
-            </label>
-            <div className="flex items-center gap-2">
-              <Input
+            <div className="flex items-center gap-1.5 mb-3">
+              <SwatchIcon className="h-4 w-4 text-muted" />
+              <span className="text-sm font-medium text-heading">Colors</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <ColorInput
                 id="brand-primary"
-                type="text"
+                label="Primary"
                 value={primaryColor}
-                onChange={(e) => setPrimaryColor(e.target.value)}
+                onChange={setPrimaryColor}
                 placeholder="#2d5fa0"
-                maxLength={7}
-                className="flex-1"
                 disabled={updateBranding.isPending}
               />
-              {primaryColor && /^#[0-9a-fA-F]{6}$/.test(primaryColor) && (
-                <span
-                  className="h-8 w-8 rounded-md border border-border shrink-0"
-                  style={{ backgroundColor: primaryColor }}
-                />
-              )}
-            </div>
-          </div>
-          <div>
-            <label
-              htmlFor="brand-secondary"
-              className="block text-sm font-medium text-heading mb-1.5"
-            >
-              Secondary Color
-            </label>
-            <div className="flex items-center gap-2">
-              <Input
+              <ColorInput
                 id="brand-secondary"
-                type="text"
+                label="Secondary"
                 value={secondaryColor}
-                onChange={(e) => setSecondaryColor(e.target.value)}
+                onChange={setSecondaryColor}
                 placeholder="#1a2740"
-                maxLength={7}
-                className="flex-1"
                 disabled={updateBranding.isPending}
               />
-              {secondaryColor && /^#[0-9a-fA-F]{6}$/.test(secondaryColor) && (
-                <span
-                  className="h-8 w-8 rounded-md border border-border shrink-0"
-                  style={{ backgroundColor: secondaryColor }}
-                />
-              )}
-            </div>
-          </div>
-          <div>
-            <label
-              htmlFor="brand-accent"
-              className="block text-sm font-medium text-heading mb-1.5"
-            >
-              Accent Color
-            </label>
-            <div className="flex items-center gap-2">
-              <Input
+              <ColorInput
                 id="brand-accent"
-                type="text"
+                label="Accent"
                 value={accentColor}
-                onChange={(e) => setAccentColor(e.target.value)}
+                onChange={setAccentColor}
                 placeholder="#c49a3c"
-                maxLength={7}
-                className="flex-1"
                 disabled={updateBranding.isPending}
               />
-              {accentColor && /^#[0-9a-fA-F]{6}$/.test(accentColor) && (
-                <span
-                  className="h-8 w-8 rounded-md border border-border shrink-0"
-                  style={{ backgroundColor: accentColor }}
+            </div>
+          </div>
+
+          {/* Custom Domain */}
+          <div>
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <GlobeAltIcon className="h-4 w-4 text-muted" />
+              <Label htmlFor="brand-domain">Custom Domain</Label>
+            </div>
+            <Input
+              id="brand-domain"
+              type="text"
+              value={customDomain}
+              onChange={(e) => setCustomDomain(e.target.value)}
+              placeholder="rfp.acmecorp.com"
+              disabled={updateBranding.isPending}
+            />
+            <p className="mt-1 text-xs text-muted">
+              Contact support to configure DNS for your custom domain.
+            </p>
+          </div>
+
+          {/* Email Settings */}
+          <div>
+            <div className="flex items-center gap-1.5 mb-3">
+              <EnvelopeIcon className="h-4 w-4 text-muted" />
+              <span className="text-sm font-medium text-heading">
+                Email Settings
+              </span>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="brand-email-from">From Name</Label>
+                <Input
+                  id="brand-email-from"
+                  type="text"
+                  value={emailFromName}
+                  onChange={(e) => setEmailFromName(e.target.value)}
+                  placeholder="Acme Corp RFP Team"
+                  disabled={updateBranding.isPending}
+                  className="mt-1.5"
                 />
-              )}
+              </div>
+              <div>
+                <Label htmlFor="brand-email-footer">
+                  Email / Export Footer
+                </Label>
+                <textarea
+                  id="brand-email-footer"
+                  className="mt-1.5 flex w-full rounded-lg border border-border bg-white px-4 py-3 text-sm text-heading placeholder-muted transition-colors focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                  rows={2}
+                  value={emailFooter}
+                  onChange={(e) => setEmailFooter(e.target.value)}
+                  placeholder="Custom footer text for exported documents and emails..."
+                  disabled={updateBranding.isPending}
+                />
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Custom Domain */}
-        <div>
-          <label
-            htmlFor="brand-domain"
-            className="block text-sm font-medium text-heading mb-1.5"
-          >
-            Custom Domain
-          </label>
-          <Input
-            id="brand-domain"
-            type="text"
-            value={customDomain}
-            onChange={(e) => setCustomDomain(e.target.value)}
-            placeholder="rfp.acmecorp.com"
+        {/* Actions */}
+        <div className="mt-6 flex items-center gap-3">
+          <Button type="submit" disabled={updateBranding.isPending}>
+            {updateBranding.isPending ? (
+              <>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Saving...
+              </>
+            ) : (
+              "Save Branding"
+            )}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleResetDefaults}
             disabled={updateBranding.isPending}
-          />
-          <p className="mt-1 text-xs text-muted">
-            Contact support to configure DNS for your custom domain.
-          </p>
-        </div>
-
-        {/* Email Settings */}
-        <div>
-          <label
-            htmlFor="brand-email-from"
-            className="block text-sm font-medium text-heading mb-1.5"
           >
-            Email From Name
-          </label>
-          <Input
-            id="brand-email-from"
-            type="text"
-            value={emailFromName}
-            onChange={(e) => setEmailFromName(e.target.value)}
-            placeholder="Acme Corp RFP Team"
-            disabled={updateBranding.isPending}
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor="brand-email-footer"
-            className="block text-sm font-medium text-heading mb-1.5"
-          >
-            Email / Export Footer Text
-          </label>
-          <textarea
-            id="brand-email-footer"
-            className="flex w-full rounded-lg border border-border bg-white px-4 py-3 text-sm text-heading placeholder-muted transition-colors focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue disabled:cursor-not-allowed disabled:opacity-50"
-            rows={3}
-            value={emailFooter}
-            onChange={(e) => setEmailFooter(e.target.value)}
-            placeholder="Custom footer text for exported documents and emails..."
-            disabled={updateBranding.isPending}
-          />
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div className="mt-5 flex items-center gap-3">
-        <Button type="submit" disabled={updateBranding.isPending}>
-          {updateBranding.isPending ? (
-            <>
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              Saving...
-            </>
-          ) : (
-            "Save Branding"
+            <ArrowPathIcon className="h-4 w-4" />
+            Reset Defaults
+          </Button>
+          {updateBranding.isError && (
+            <p className="text-sm text-red-600">
+              {updateBranding.error.message}
+            </p>
           )}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleResetDefaults}
-          disabled={updateBranding.isPending}
-        >
-          <ArrowPathIcon className="h-4 w-4 mr-1" />
-          Reset to Defaults
-        </Button>
-        {updateBranding.isError && (
-          <p className="text-sm text-red-600">{updateBranding.error.message}</p>
-        )}
-        {brandingSaveSuccess && (
-          <p className="text-sm text-green-600">{brandingSaveSuccess}</p>
-        )}
-      </div>
-    </form>
+          {brandingSaveSuccess && (
+            <p className="flex items-center gap-1.5 text-sm text-green-600">
+              <CheckIcon className="h-4 w-4" />
+              {brandingSaveSuccess}
+            </p>
+          )}
+        </div>
+      </form>
+    </Section>
   );
 }

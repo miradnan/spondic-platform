@@ -31,7 +31,7 @@ function Calendar({ className, classNames, ...props }: CalendarProps) {
           "[&>button]:bg-brand-blue [&>button]:text-white [&>button]:hover:bg-brand-blue-hover [&>button]:hover:text-white [&>button]:font-medium rounded-lg",
         today: "bg-cream-light rounded-lg font-semibold text-heading ring-1 ring-brand-blue/30",
         outside: "text-muted/40 hover:bg-transparent hover:text-muted/40",
-        disabled: "text-muted/30 hover:bg-transparent cursor-not-allowed",
+        disabled: "opacity-30 [&>button]:cursor-not-allowed [&>button]:hover:bg-transparent [&>button]:hover:text-muted [&>button]:line-through",
         hidden: "invisible",
         ...classNames,
       }}
