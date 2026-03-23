@@ -349,6 +349,7 @@ export async function sendMessageStream(
   onCitations: (citations: StreamChatCitation[]) => void,
   onDone: () => void,
   onError: (error: string) => void,
+  onThinking?: (text: string) => void,
 ): Promise<void> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -402,6 +403,8 @@ export async function sendMessageStream(
             };
             if (data.type === "text" && data.content) {
               onText(data.content);
+            } else if (data.type === "thinking" && data.content && onThinking) {
+              onThinking(data.content);
             } else if (data.type === "citations" && data.citations) {
               onCitations(data.citations);
             } else if (data.type === "done") {

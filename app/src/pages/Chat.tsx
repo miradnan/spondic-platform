@@ -202,6 +202,45 @@ function ThinkingIndicator() {
   );
 }
 
+function ThinkingBlock({ text, isStreaming }: { text: string; isStreaming: boolean }) {
+  const [open, setOpen] = useState(true);
+
+  // Auto-collapse when streaming answer starts
+  useEffect(() => {
+    if (!isStreaming) setOpen(false);
+  }, [isStreaming]);
+
+  return (
+    <div className="w-full max-w-[85%] mb-1">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 px-3 py-1 text-muted hover:text-body transition-colors rounded-lg hover:bg-cream-light/50"
+      >
+        <Brain className={`h-3.5 w-3.5 ${isStreaming ? "animate-pulse" : ""}`} />
+        <span className="text-xs font-medium">
+          {isStreaming ? "Thinking..." : "Thought process"}
+        </span>
+        <svg
+          className={`h-3 w-3 transition-transform ${open ? "rotate-90" : ""}`}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      </button>
+      {open && (
+        <div className="mt-1 ml-3 pl-3 border-l-2 border-brand-blue/20 text-xs text-muted leading-relaxed whitespace-pre-line">
+          {text}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AutoResizeTextarea({
   value,
   onChange,
@@ -261,6 +300,7 @@ export function Chat() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState("");
   const [streamingCitations, setStreamingCitations] = useState<StreamChatCitation[]>([]);
+  const [thinkingText, setThinkingText] = useState<string | null>(null);
   const [pendingUserMessage, setPendingUserMessage] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
@@ -323,6 +363,7 @@ export function Chat() {
     setIsStreaming(true);
     setStreamingText("");
     setStreamingCitations([]);
+    setThinkingText(null);
     setPendingUserMessage(messageText);
 
     const token = await getToken();
@@ -349,10 +390,13 @@ export function Chat() {
         setIsStreaming(false);
         setStreamingText("");
         setStreamingCitations([]);
+        setThinkingText(null);
         setPendingUserMessage(null);
         toast("error", error);
-        // Refetch to get the user message that was saved
         void queryClient.invalidateQueries({ queryKey: ["chatMessages", activeChatId] });
+      },
+      (thinking) => {
+        setThinkingText(thinking);
       },
     );
   };
@@ -610,7 +654,10 @@ export function Chat() {
             {isStreaming && (
               <div className="flex flex-col items-start gap-1 mb-4">
                 {/* Thinking indicator — shown before streaming text arrives */}
-                {!streamingText && <ThinkingIndicator />}
+                {!streamingText && !thinkingText && <ThinkingIndicator />}
+
+                {/* Chain of thinking — collapsible */}
+                {thinkingText && <ThinkingBlock text={thinkingText} isStreaming={!streamingText} />}
 
                 {/* Streaming response bubble */}
                 {streamingText && (

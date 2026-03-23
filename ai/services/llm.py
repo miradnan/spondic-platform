@@ -260,6 +260,41 @@ RULES:
 6. Keep responses concise. Answer what was asked — nothing more."""
 
 
+_THINKING_SYSTEM_PROMPT = """You are an internal reasoning engine. Given a user question and retrieved context passages, \
+output a brief chain of thought (2-4 bullet points) explaining your approach:
+- Which sources are most relevant and why
+- What key facts you will use from each source
+- Any gaps in the context you notice
+
+Keep it under 80 words. Use plain text bullet points (• prefix). No markdown headers. No preamble."""
+
+
+def generate_thinking(
+    message: str,
+    context_passages: list[dict],
+    usage: TokenUsage | None = None,
+) -> str:
+    """Generate a brief chain-of-thought plan before answering."""
+    if not context_passages:
+        return ""
+
+    context_block = _build_context_block(context_passages)
+
+    messages = [
+        {"role": "system", "content": _THINKING_SYSTEM_PROMPT},
+        {"role": "user", "content": (
+            f"CONTEXT PASSAGES:\n{context_block}\n\n"
+            f"USER QUESTION:\n{message}"
+        )},
+    ]
+
+    try:
+        return _call_groq(messages, temperature=0.1, max_tokens=200, usage=usage)
+    except Exception as exc:
+        logger.warning("Thinking generation failed: %s", exc)
+        return ""
+
+
 def chat_response_stream(
     message: str,
     context_passages: list[dict],
