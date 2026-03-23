@@ -8,6 +8,7 @@ interface PaginationBarProps {
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
   pageSizeOptions?: number[];
+  className?: string;
 }
 
 function formatNumber(n: number): string {
@@ -21,6 +22,7 @@ export function PaginationBar({
   onPageChange,
   onPageSizeChange,
   pageSizeOptions = [25, 50, 100],
+  className,
 }: PaginationBarProps) {
   if (totalItems <= 25) return null;
 
@@ -37,7 +39,7 @@ export function PaginationBar({
   const btnDisabled = "opacity-50 cursor-not-allowed text-muted";
 
   return (
-    <div className="border-t border-border bg-surface px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
+    <div className={cn("bg-surface px-4 py-3 flex items-center justify-between gap-4 flex-wrap", className)}>
       {/* LEFT: Showing X-Y of Z */}
       <p className="text-sm text-muted whitespace-nowrap">
         Showing {formatNumber(from)}&ndash;{formatNumber(to)} of{" "}

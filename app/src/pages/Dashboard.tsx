@@ -559,7 +559,7 @@ export function Dashboard() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto w-full">
+    <div className="max-w-7xl mx-auto w-full p-4 lg:p-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-blue/10">
@@ -875,19 +875,22 @@ export function Dashboard() {
             })}
           </div>
 
-          {/* Card Pagination */}
-          {total > 25 && (
-            <div className="sticky bottom-0 mt-6 rounded-xl border border-border bg-surface overflow-hidden z-10 shadow-sm [&>div]:border-t-0">
-              <PaginationBar
-                currentPage={pagination.pageIndex + 1}
-                totalItems={total}
-                pageSize={pagination.pageSize}
-                onPageChange={handlePageChange}
-                onPageSizeChange={handlePageSizeChange}
-              />
-            </div>
-          )}
         </>
+      )}
+
+      {/* Card Pagination */}
+      {!isLoading && !isError && projects.length > 0 && viewMode === "cards" && total > 25 && (
+        <div className="sticky bottom-0 z-10 mt-6 bg-cream-lighter">
+          <div className="rounded-xl border border-border bg-surface overflow-hidden shadow-sm">
+            <PaginationBar
+              currentPage={pagination.pageIndex + 1}
+              totalItems={total}
+              pageSize={pagination.pageSize}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+            />
+          </div>
+        </div>
       )}
 
       {/* Project Table View */}

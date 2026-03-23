@@ -504,6 +504,28 @@ export function useDeleteChat() {
   });
 }
 
+export function useShareChat() {
+  const getToken = useToken();
+  const qc = useQueryClient();
+  return useMutation<{ shared: boolean; share_token: string | null }, Error, string>({
+    mutationFn: async (chatId) => {
+      const token = await getToken();
+      return api.shareChat(token, chatId);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["chats"] });
+    },
+  });
+}
+
+export function useSharedChat(shareToken: string | undefined) {
+  return useQuery<{ chat: Chat; messages: ChatMessage[] }>({
+    queryKey: ["sharedChat", shareToken],
+    queryFn: () => api.getPublicSharedChat(shareToken!),
+    enabled: !!shareToken,
+  });
+}
+
 export function useSendMessage() {
   const getToken = useToken();
   const qc = useQueryClient();

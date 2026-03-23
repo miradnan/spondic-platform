@@ -252,7 +252,7 @@ export function RfpView() {
   }
 
   return (
-    <div className="flex flex-col min-h-0 flex-1 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col min-h-0 flex-1 max-w-7xl mx-auto w-full p-4 lg:p-6">
       <TokenLimitDialog open={showTokenLimit} onClose={() => setShowTokenLimit(false)} />
 
       {/* Header */}

@@ -615,7 +615,7 @@ export function KnowledgeBase() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto w-full">
+    <div className="max-w-7xl mx-auto w-full p-4 lg:p-6">
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         open={deleteTarget !== null}

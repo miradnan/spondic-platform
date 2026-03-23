@@ -211,7 +211,7 @@ export function DataTable<TData>({
 
       {/* Pagination Bar — sticky bottom */}
       {!loading && totalRowCount > 25 && (
-        <div className="sticky bottom-0 rounded-b-xl rounded-t-none border border-border bg-surface overflow-hidden z-10 shadow-sm [&>div]:border-t-0">
+        <div className="sticky bottom-0 rounded-b-xl rounded-t-none border border-border bg-surface overflow-hidden z-10 shadow-sm">
           <PaginationBar
             currentPage={currentPage}
             totalItems={totalRowCount}

@@ -93,15 +93,6 @@ async def chat_stream(req: ChatRequest):
                 # First event: citations
                 yield f"data: {json.dumps({'type': 'citations', 'citations': citations})}\n\n"
 
-                # Thinking phase: brief chain-of-thought before the answer
-                thinking_text = llm.generate_thinking(
-                    message=req.message,
-                    context_passages=search_results,
-                    usage=usage,
-                )
-                if thinking_text:
-                    yield f"data: {json.dumps({'type': 'thinking', 'content': thinking_text})}\n\n"
-
                 # Stream text chunks
                 for chunk in llm.chat_response_stream(
                     message=req.message,

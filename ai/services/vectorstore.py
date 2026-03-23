@@ -260,30 +260,41 @@ def hybrid_search(
     """
     collection = _get_collection()
 
+    # Fetch extra results to account for duplicates that will be filtered out
     results = collection.query.hybrid(
         query=query_text,
         vector=query_embedding,
-        limit=limit,
+        limit=limit * 2,
         alpha=0.7,  # 0.7 = lean toward vector, 0.3 toward keyword
         filters=Filter.by_property("organization_id").equal(organization_id),
         return_metadata=MetadataQuery(distance=True, score=True),
     )
 
-    return _format_results(results.objects)
+    deduplicated = _format_results(results.objects)
+    return deduplicated[:limit]
 
 
 def _format_results(objects: list[Any]) -> list[dict]:
-    """Convert Weaviate result objects to plain dicts."""
+    """Convert Weaviate result objects to plain dicts, deduplicating by content."""
     formatted: list[dict] = []
+    seen_content: set[str] = set()
     for obj in objects:
         props = obj.properties
+        content = props.get("content", "")
+
+        # Skip duplicate chunks (same content from the same or different chunks)
+        content_key = content.strip().lower()
+        if content_key in seen_content:
+            continue
+        seen_content.add(content_key)
+
         # Weaviate returns distance (lower = more similar). Convert to a
         # similarity score in [0, 1].
         distance = getattr(obj.metadata, "distance", None) or 0.0
         score = max(0.0, 1.0 - distance)
 
         formatted.append({
-            "content": props.get("content", ""),
+            "content": content,
             "document_id": props.get("document_id", ""),
             "chunk_id": str(obj.uuid),
             "section": props.get("section", ""),

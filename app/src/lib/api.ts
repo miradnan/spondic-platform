@@ -335,6 +335,18 @@ export function deleteChat(token: string | null, chatId: string): Promise<void> 
   return request(`/api/chats/${chatId}`, token, { method: "DELETE" });
 }
 
+export function shareChat(token: string | null, chatId: string): Promise<{ shared: boolean; share_token: string | null }> {
+  return request(`/api/chats/${chatId}/share`, token, { method: "POST" });
+}
+
+export function getSharedChat(token: string | null, shareToken: string): Promise<{ chat: Chat; messages: ChatMessage[] }> {
+  return request(`/api/shared/chats/${shareToken}`, token);
+}
+
+export function getPublicSharedChat(shareToken: string): Promise<{ chat: Chat; messages: ChatMessage[] }> {
+  return request(`/api/public/shared/chats/${shareToken}`, null);
+}
+
 export interface StreamChatCitation {
   document_title: string;
   citation_text: string;

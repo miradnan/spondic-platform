@@ -73,7 +73,7 @@ export function Notifications() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl">
+    <div className="mx-auto w-full max-w-3xl p-4 lg:p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>

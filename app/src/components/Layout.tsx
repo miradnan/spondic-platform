@@ -639,6 +639,8 @@ function SidebarContent({
 export function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
+  const location = useLocation();
+  const isChatPage = location.pathname.startsWith("/chat");
   useAppEvents();
 
   // Cmd+K / Ctrl+K keyboard shortcut
@@ -654,7 +656,7 @@ export function Layout() {
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-cream text-heading font-sans">
+    <div className="flex h-screen bg-cream text-heading font-sans">
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex w-56 flex-col border-r border-navy-light bg-navy sticky top-0 h-screen overflow-y-auto">
         <SidebarContent />
@@ -681,7 +683,7 @@ export function Layout() {
         </div>
       )}
 
-      <div className="flex flex-1 flex-col min-w-0">
+      <div className="flex flex-1 flex-col min-w-0 min-h-0 overflow-hidden">
         {/* Header */}
         <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4 lg:px-6 bg-cream">
           {/* Mobile hamburger */}
@@ -738,7 +740,7 @@ export function Layout() {
           </div>
         </header>
 
-        <main className="flex flex-1 flex-col min-h-0 p-4 lg:p-6 bg-cream-lighter">
+        <main className={`flex-1 ${isChatPage ? "overflow-hidden" : "overflow-y-auto"} bg-cream-lighter`}>
           <Outlet />
         </main>
       </div>

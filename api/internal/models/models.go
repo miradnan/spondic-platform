@@ -180,6 +180,7 @@ type Chat struct {
 	OrganizationID string     `json:"organization_id"`
 	UserID         string     `json:"user_id"`
 	Title          *string    `json:"title,omitempty"`
+	ShareToken     *string    `json:"share_token,omitempty"`
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
 	DeletedAt      *time.Time `json:"deleted_at,omitempty"`
@@ -187,11 +188,12 @@ type Chat struct {
 
 // ChatMessage represents a single message in a chat session.
 type ChatMessage struct {
-	ID        int64     `json:"id"`
-	ChatID    string    `json:"chat_id"`
-	Role      string    `json:"role"`
-	Message   string    `json:"message"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        int64             `json:"id"`
+	ChatID    string            `json:"chat_id"`
+	Role      string            `json:"role"`
+	Message   string            `json:"message"`
+	Citations json.RawMessage   `json:"citations"`
+	CreatedAt time.Time         `json:"created_at"`
 }
 
 // AuditLog records an auditable action.

@@ -111,6 +111,9 @@ func main() {
 	// Stripe webhook (no auth — uses Stripe signature verification)
 	e.POST("/billing/webhook", h.HandleWebhook)
 
+	// Public shared chat (no auth — accessed via share token)
+	e.GET("/api/public/shared/chats/:token", h.GetPublicSharedChat)
+
 	// API group — require auth + ensure org + plan enforcement + RLS context + audit logging
 	// Note: CORS is handled globally above — not duplicated here
 	authMiddleware := middleware.ClerkAuth(cfg.ClerkJWKSURL)
@@ -195,9 +198,11 @@ func main() {
 	api.POST("/chats", h.CreateChat)
 	api.GET("/chats", h.ListChats)
 	api.DELETE("/chats/:id", h.DeleteChat)
+	api.POST("/chats/:id/share", h.ShareChat)
 	api.POST("/chats/:id/messages", h.SendMessage)
 	api.POST("/chats/:id/messages/stream", h.SendMessageStream)
 	api.GET("/chats/:id/messages", h.GetMessages)
+	api.GET("/shared/chats/:token", h.GetSharedChat)
 
 	// Export
 	api.POST("/rfp/:id/export/docx", h.ExportDOCX)

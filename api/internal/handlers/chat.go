@@ -2,12 +2,14 @@ package handlers
 
 import (
 	"bufio"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
 	"github.com/spondic/api/internal/models"
@@ -65,7 +67,7 @@ func (h *Handler) ListChats(c echo.Context) error {
 	}
 
 	rows, err := h.DB.Query(
-		`SELECT id, organization_id, user_id, title, created_at, updated_at
+		`SELECT id, organization_id, user_id, title, share_token, created_at, updated_at
 		 FROM chats
 		 WHERE organization_id = $1 AND user_id = $2 AND deleted_at IS NULL
 		 ORDER BY updated_at DESC
@@ -82,7 +84,7 @@ func (h *Handler) ListChats(c echo.Context) error {
 	for rows.Next() {
 		var ch models.Chat
 		if err := rows.Scan(
-			&ch.ID, &ch.OrganizationID, &ch.UserID, &ch.Title,
+			&ch.ID, &ch.OrganizationID, &ch.UserID, &ch.Title, &ch.ShareToken,
 			&ch.CreatedAt, &ch.UpdatedAt,
 		); err != nil {
 			log.Printf("error scanning chat: %v", err)
@@ -133,9 +135,9 @@ func (h *Handler) SendMessage(c echo.Context) error {
 	err = h.DB.QueryRow(
 		`INSERT INTO chat_messages (chat_id, role, message)
 		 VALUES ($1, 'user', $2)
-		 RETURNING id, chat_id, role, message, created_at`,
+		 RETURNING id, chat_id, role, message, citations, created_at`,
 		chatID, body.Message,
-	).Scan(&userMsg.ID, &userMsg.ChatID, &userMsg.Role, &userMsg.Message, &userMsg.CreatedAt)
+	).Scan(&userMsg.ID, &userMsg.ChatID, &userMsg.Role, &userMsg.Message, &userMsg.Citations, &userMsg.CreatedAt)
 	if err != nil {
 		log.Printf("error saving user message: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
@@ -183,14 +185,30 @@ func (h *Handler) SendMessage(c echo.Context) error {
 		assistantMessage = "I'm sorry, I wasn't able to generate a response. Please try again."
 	}
 
+	// Build citations JSON for storage
+	citJSON := []byte("[]")
+	if aiResp.Citations != nil {
+		var citArray []map[string]interface{}
+		for _, cit := range aiResp.Citations {
+			citArray = append(citArray, map[string]interface{}{
+				"document_title":  cit.DocumentTitle,
+				"citation_text":   cit.CitationText,
+				"relevance_score": cit.RelevanceScore,
+			})
+		}
+		if b, err := json.Marshal(citArray); err == nil {
+			citJSON = b
+		}
+	}
+
 	// Save assistant message
 	var assistantMsg models.ChatMessage
 	err = h.DB.QueryRow(
-		`INSERT INTO chat_messages (chat_id, role, message)
-		 VALUES ($1, 'assistant', $2)
-		 RETURNING id, chat_id, role, message, created_at`,
-		chatID, assistantMessage,
-	).Scan(&assistantMsg.ID, &assistantMsg.ChatID, &assistantMsg.Role, &assistantMsg.Message, &assistantMsg.CreatedAt)
+		`INSERT INTO chat_messages (chat_id, role, message, citations)
+		 VALUES ($1, 'assistant', $2, $3)
+		 RETURNING id, chat_id, role, message, citations, created_at`,
+		chatID, assistantMessage, citJSON,
+	).Scan(&assistantMsg.ID, &assistantMsg.ChatID, &assistantMsg.Role, &assistantMsg.Message, &assistantMsg.Citations, &assistantMsg.CreatedAt)
 	if err != nil {
 		log.Printf("error saving assistant message: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
@@ -309,6 +327,7 @@ func (h *Handler) SendMessageStream(c echo.Context) error {
 
 	// Proxy the SSE stream from the AI service to the client
 	var fullText strings.Builder
+	var citationsJSON []byte
 	scanner := bufio.NewScanner(aiResp.Body)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 
@@ -318,12 +337,15 @@ func (h *Handler) SendMessageStream(c echo.Context) error {
 		if strings.HasPrefix(line, "data: ") {
 			jsonData := line[6:]
 			var event struct {
-				Type    string `json:"type"`
-				Content string `json:"content,omitempty"`
+				Type      string            `json:"type"`
+				Content   string            `json:"content,omitempty"`
+				Citations json.RawMessage   `json:"citations,omitempty"`
 			}
 			if err := json.Unmarshal([]byte(jsonData), &event); err == nil {
 				if event.Type == "text" {
 					fullText.WriteString(event.Content)
+				} else if event.Type == "citations" && event.Citations != nil {
+					citationsJSON = event.Citations
 				}
 			}
 
@@ -343,9 +365,12 @@ func (h *Handler) SendMessageStream(c echo.Context) error {
 		assistantMessage = "I'm sorry, I wasn't able to generate a response. Please try again."
 	}
 
+	if citationsJSON == nil {
+		citationsJSON = []byte("[]")
+	}
 	h.DB.Exec(
-		`INSERT INTO chat_messages (chat_id, role, message) VALUES ($1, 'assistant', $2)`,
-		chatID, assistantMessage,
+		`INSERT INTO chat_messages (chat_id, role, message, citations) VALUES ($1, 'assistant', $2, $3)`,
+		chatID, assistantMessage, citationsJSON,
 	)
 
 	// Update chat's updated_at
@@ -423,7 +448,7 @@ func (h *Handler) GetMessages(c echo.Context) error {
 	h.DB.QueryRow(`SELECT COUNT(*) FROM chat_messages WHERE chat_id = $1`, chatID).Scan(&total)
 
 	rows, err := h.DB.Query(
-		`SELECT id, chat_id, role, message, created_at
+		`SELECT id, chat_id, role, message, citations, created_at
 		 FROM chat_messages
 		 WHERE chat_id = $1
 		 ORDER BY created_at
@@ -439,7 +464,7 @@ func (h *Handler) GetMessages(c echo.Context) error {
 	messages := make([]models.ChatMessage, 0)
 	for rows.Next() {
 		var m models.ChatMessage
-		if err := rows.Scan(&m.ID, &m.ChatID, &m.Role, &m.Message, &m.CreatedAt); err != nil {
+		if err := rows.Scan(&m.ID, &m.ChatID, &m.Role, &m.Message, &m.Citations, &m.CreatedAt); err != nil {
 			log.Printf("error scanning message: %v", err)
 			continue
 		}
@@ -454,5 +479,154 @@ func (h *Handler) GetMessages(c echo.Context) error {
 			Total:      total,
 			TotalPages: totalPages(total, limit),
 		},
+	})
+}
+
+// ShareChat handles POST /api/chats/:id/share
+// Toggles sharing: if share_token exists, removes it; otherwise generates one.
+func (h *Handler) ShareChat(c echo.Context) error {
+	orgID := getOrgID(c)
+	userID := getUserID(c)
+	chatID := c.Param("id")
+
+	// Verify ownership
+	var currentToken *string
+	err := h.DB.QueryRow(
+		`SELECT share_token FROM chats WHERE id = $1 AND organization_id = $2 AND user_id = $3 AND deleted_at IS NULL`,
+		chatID, orgID, userID,
+	).Scan(&currentToken)
+	if err == sql.ErrNoRows {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "chat not found"})
+	}
+	if err != nil {
+		log.Printf("error querying chat share token: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+	}
+
+	if currentToken != nil {
+		// Unshare
+		_, err = h.DB.Exec(
+			`UPDATE chats SET share_token = NULL, updated_at = NOW() WHERE id = $1 AND organization_id = $2`,
+			chatID, orgID,
+		)
+		if err != nil {
+			log.Printf("error removing share token: %v", err)
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+		}
+		return c.JSON(http.StatusOK, map[string]interface{}{"shared": false, "share_token": nil})
+	}
+
+	// Share — generate new token
+	token := uuid.New().String()
+	_, err = h.DB.Exec(
+		`UPDATE chats SET share_token = $1, updated_at = NOW() WHERE id = $2 AND organization_id = $3`,
+		token, chatID, orgID,
+	)
+	if err != nil {
+		log.Printf("error setting share token: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{"shared": true, "share_token": token})
+}
+
+// GetSharedChat handles GET /api/shared/chats/:token
+// Returns chat + messages for a shared chat. Requires auth and same org.
+func (h *Handler) GetSharedChat(c echo.Context) error {
+	orgID := getOrgID(c)
+	token := c.Param("token")
+
+	// Find chat by share token, scoped to same org
+	var ch models.Chat
+	err := h.DB.QueryRow(
+		`SELECT id, organization_id, user_id, title, share_token, created_at, updated_at
+		 FROM chats
+		 WHERE share_token = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+		token, orgID,
+	).Scan(&ch.ID, &ch.OrganizationID, &ch.UserID, &ch.Title, &ch.ShareToken, &ch.CreatedAt, &ch.UpdatedAt)
+	if err == sql.ErrNoRows {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "shared chat not found"})
+	}
+	if err != nil {
+		log.Printf("error fetching shared chat: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+	}
+
+	// Fetch all messages
+	rows, err := h.DB.Query(
+		`SELECT id, chat_id, role, message, citations, created_at
+		 FROM chat_messages
+		 WHERE chat_id = $1
+		 ORDER BY created_at`,
+		ch.ID,
+	)
+	if err != nil {
+		log.Printf("error fetching shared chat messages: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+	}
+	defer rows.Close()
+
+	messages := make([]models.ChatMessage, 0)
+	for rows.Next() {
+		var m models.ChatMessage
+		if err := rows.Scan(&m.ID, &m.ChatID, &m.Role, &m.Message, &m.Citations, &m.CreatedAt); err != nil {
+			continue
+		}
+		messages = append(messages, m)
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"chat":     ch,
+		"messages": messages,
+	})
+}
+
+// GetPublicSharedChat handles GET /api/public/shared/chats/:token
+// Returns chat + messages for a shared chat. No auth required — fully public.
+// Only returns chats that have a valid share_token (explicitly shared by owner).
+func (h *Handler) GetPublicSharedChat(c echo.Context) error {
+	token := c.Param("token")
+
+	var ch models.Chat
+	err := h.DB.QueryRow(
+		`SELECT id, organization_id, user_id, title, share_token, created_at, updated_at
+		 FROM chats
+		 WHERE share_token = $1 AND deleted_at IS NULL`,
+		token,
+	).Scan(&ch.ID, &ch.OrganizationID, &ch.UserID, &ch.Title, &ch.ShareToken, &ch.CreatedAt, &ch.UpdatedAt)
+	if err == sql.ErrNoRows {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "shared chat not found"})
+	}
+	if err != nil {
+		log.Printf("error fetching shared chat: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+	}
+
+	// Fetch all messages
+	rows, err := h.DB.Query(
+		`SELECT id, chat_id, role, message, citations, created_at
+		 FROM chat_messages
+		 WHERE chat_id = $1
+		 ORDER BY created_at`,
+		ch.ID,
+	)
+	if err != nil {
+		log.Printf("error fetching shared chat messages: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+	}
+	defer rows.Close()
+
+	messages := make([]models.ChatMessage, 0)
+	for rows.Next() {
+		var m models.ChatMessage
+		if err := rows.Scan(&m.ID, &m.ChatID, &m.Role, &m.Message, &m.Citations, &m.CreatedAt); err != nil {
+			continue
+		}
+		messages = append(messages, m)
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"chat":     ch,
+		"messages": messages,
 	})
 }

@@ -119,7 +119,9 @@ RULES:
 Use the number from the passage header (e.g., if information comes from "[Source 3]", cite it as [Source 3]). \
 If a sentence uses information from multiple sources, cite all of them (e.g., [Source 1][Source 3]). \
 Do NOT cite all sources as [Source 1] — match each claim to its actual source passage. \
-Every factual statement must have at least one citation.
+Every factual statement must have at least one citation. \
+IMPORTANT: You must use information from ALL provided source passages. Every source must be cited at least once in your answer. \
+If a source contains relevant supporting details, incorporate them and cite that source — do not ignore any provided source.
 4. Use bullet points for lists. Use short paragraphs for prose. No walls of text.
 5. Do NOT fabricate information. Accuracy is critical.
 6. Do NOT restate the question, add closing summaries, or offer unsolicited advice.
@@ -254,7 +256,8 @@ Do NOT answer the off-topic question, even partially. Do NOT explain what you co
 RULES:
 1. Answer using ONLY the provided context passages. Do NOT use external knowledge.
 2. If the context is insufficient, say so in one sentence — do not guess.
-3. Cite sources inline (e.g., [Source 1]).
+3. Cite sources inline using the exact format [Source N] (e.g., [Source 1], [Source 3]). \
+Every factual claim must have a citation. Use information from all provided sources when relevant — do not ignore any source that contains useful information.
 4. Be conversational but professional. No filler, no preamble, no "Sure!" or "Great question!".
 5. Do NOT fabricate information.
 6. Keep responses concise. Answer what was asked — nothing more."""
