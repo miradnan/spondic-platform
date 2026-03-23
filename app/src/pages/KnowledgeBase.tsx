@@ -10,6 +10,7 @@ import {
   PlusIcon,
   XMarkIcon,
   FolderOpenIcon,
+  BookOpenIcon,
 } from "@heroicons/react/24/outline";
 import {
   createColumnHelper,

@@ -457,22 +457,63 @@ export function RfpNew() {
         </section>
 
         {/* Submission Progress */}
+        {/* Upload Overlay */}
         {isSubmitting && (
-          <div className="rounded-xl border border-brand-blue/20 bg-brand-blue/5 p-4">
-            <div className="flex items-center gap-3">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-blue border-t-transparent" />
-              <div>
-                <p className="text-sm font-medium text-heading">
-                  {submittingStep === "project"
-                    ? t("rfp.new.creatingProject") || "Creating project..."
-                    : t("rfp.new.uploadingFiles") || "Uploading RFP content..."}
-                </p>
-                <p className="text-xs text-muted mt-0.5">
-                  {submittingStep === "project"
-                    ? t("rfp.new.step1of2") || "Step 1 of 2"
-                    : t("rfp.new.step2of2") || "Step 2 of 2"}
-                </p>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+            <div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-8 shadow-2xl text-center">
+              {/* Animated spinner */}
+              <div className="mx-auto mb-5 relative h-16 w-16">
+                <div className="absolute inset-0 rounded-full border-4 border-brand-blue/15" />
+                <div className="absolute inset-0 animate-spin rounded-full border-4 border-transparent border-t-brand-blue" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <CloudArrowUpIcon className="h-6 w-6 text-brand-blue" />
+                </div>
               </div>
+
+              {/* Step indicator */}
+              <p className="text-lg font-semibold text-heading">
+                {submittingStep === "project"
+                  ? t("rfp.new.creatingProject") || "Creating project..."
+                  : t("rfp.new.uploadingFiles") || "Uploading RFP content..."}
+              </p>
+              <p className="text-sm text-muted mt-1.5">
+                {submittingStep === "project"
+                  ? t("rfp.new.step1of2") || "Step 1 of 2"
+                  : t("rfp.new.step2of2") || "Step 2 of 2"}
+              </p>
+
+              {/* Progress steps */}
+              <div className="flex items-center justify-center gap-3 mt-5">
+                <div className="flex items-center gap-2">
+                  <div className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
+                    submittingStep === "project"
+                      ? "bg-brand-blue text-white animate-pulse"
+                      : "bg-green-500 text-white"
+                  }`}>
+                    {submittingStep === "upload" ? (
+                      <CheckIcon className="h-3.5 w-3.5" />
+                    ) : (
+                      "1"
+                    )}
+                  </div>
+                  <span className="text-xs text-muted hidden sm:inline">Project</span>
+                </div>
+                <div className="w-8 h-px bg-border" />
+                <div className="flex items-center gap-2">
+                  <div className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
+                    submittingStep === "upload"
+                      ? "bg-brand-blue text-white animate-pulse"
+                      : "bg-gray-200 text-muted"
+                  }`}>
+                    2
+                  </div>
+                  <span className="text-xs text-muted hidden sm:inline">Upload</span>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted mt-5">
+                Please don't close this page
+              </p>
             </div>
           </div>
         )}
@@ -495,7 +536,7 @@ export function RfpNew() {
 
         {/* Sticky Action Bar */}
         <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-white/80 backdrop-blur-lg lg:left-56">
-          <div className="flex items-center justify-between px-4 lg:px-6 py-3">
+          <div className="w-full max-w-7xl mx-auto flex items-center justify-between px-4 lg:px-6 py-3">
             <div className="flex items-center gap-2 text-sm text-muted">
               {name.trim() && (
                 <>

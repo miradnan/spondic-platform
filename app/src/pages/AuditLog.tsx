@@ -64,7 +64,7 @@ export function AuditLog() {
     }));
   }, [userNameMap]);
 
-  const { sorting, onSortingChange, pagination, onPaginationChange, resetPage, updateParams, searchParams } = useTableParams({
+  const { sorting, onSortingChange, pagination, onPaginationChange, updateParams, searchParams } = useTableParams({
     sortId: "created_at",
     sortDesc: true,
   });

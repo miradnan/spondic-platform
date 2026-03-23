@@ -24,7 +24,7 @@ function DatePicker({
   disabled = false,
   disablePast = false,
   minDate,
-  maxDate,
+  maxDate: _maxDate,
 }: DatePickerProps) {
   const disabledDays = disablePast
     ? { before: minDate ?? new Date() }

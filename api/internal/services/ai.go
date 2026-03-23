@@ -93,7 +93,7 @@ func (a *AIClient) ParseRFP(ctx context.Context, orgID, docID, s3Key string) (*P
 
 // DraftQuestion is a question to be drafted by the AI service.
 type DraftQuestion struct {
-	QuestionID   string `json:"question_id"`
+	QuestionID   string `json:"id"`
 	QuestionText string `json:"question_text"`
 	Section      string `json:"section,omitempty"`
 	WordLimit    *int   `json:"word_limit,omitempty"`

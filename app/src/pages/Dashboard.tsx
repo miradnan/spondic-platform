@@ -260,7 +260,7 @@ export function Dashboard() {
   const STATUS_OPTIONS = useStatusOptions();
   const DEADLINE_OPTIONS = useDeadlineOptions();
 
-  const { sorting, onSortingChange, pagination, onPaginationChange, resetPage, updateParams, searchParams } = useTableParams();
+  const { sorting, onSortingChange, pagination, onPaginationChange, updateParams, searchParams } = useTableParams();
 
   // Read filters from URL
   const search = searchParams.get("q") ?? "";
