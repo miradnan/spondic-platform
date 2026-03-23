@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
-import { useOrganization } from "@clerk/react";
+import { useAuth, useOrganization } from "@clerk/react";
+import { getPlanLimits } from "@/lib/planLimits.ts";
 import { useNavigate } from "react-router-dom";
 import {
   BuildingOffice2Icon,
@@ -15,6 +16,7 @@ import {
   SwatchIcon,
   GlobeAltIcon,
   EnvelopeIcon,
+  LockClosedIcon,
 } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -136,8 +138,14 @@ function ColorInput({
 // ── Main Component ──────────────────────────────────────────────────────────
 
 export function AdminOrganization() {
+  const { sessionClaims } = useAuth();
   const { organization, isLoaded } = useOrganization();
   const navigate = useNavigate();
+
+  // Check plan for gating features
+  const planClaim = (sessionClaims as Record<string, unknown>)?.pla as string | undefined;
+  const currentPlan = planClaim?.replace("o:", "") || "free_org";
+  const { brandingEnabled: hasBranding } = getPlanLimits(currentPlan);
 
   const [name, setName] = useState("");
   const [initialized, setInitialized] = useState(false);
@@ -323,7 +331,35 @@ export function AdminOrganization() {
       </Section>
 
       {/* ── Branding ─────────────────────────────────────────────────── */}
-      <BrandingSection />
+      {hasBranding ? (
+        <BrandingSection />
+      ) : (
+        <Section
+          icon={PaintBrushIcon}
+          title="Branding"
+          description="Customize your workspace appearance for all members."
+          badge={<Badge variant="secondary">Growth+</Badge>}
+        >
+          <div className="flex items-start gap-3 rounded-lg border border-border bg-cream-lighter p-4">
+            <LockClosedIcon className="h-5 w-5 text-muted mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-heading">
+                Available on Growth and Enterprise plans
+              </p>
+              <p className="text-xs text-muted mt-1">
+                Custom logo, brand colors, custom domain, and email settings are
+                available on Growth and Enterprise plans.
+              </p>
+              <a
+                href="/admin/billing#change-plan"
+                className="inline-flex items-center gap-1 mt-3 text-sm font-medium text-brand-blue hover:text-brand-blue/80 transition-colors"
+              >
+                Upgrade your plan
+              </a>
+            </div>
+          </div>
+        </Section>
+      )}
 
       {/* ── Enterprise SSO (SAML) ─────────────────────────────────────── */}
       <Section
@@ -656,6 +692,7 @@ function BrandingSection() {
   const [brandingInit, setBrandingInit] = useState(false);
   const [brandingSaveSuccess, setBrandingSaveSuccess] = useState("");
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoError, setLogoError] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -673,15 +710,46 @@ function BrandingSection() {
 
   const handleLogoUpload = useCallback(
     async (file: File) => {
+      setLogoError("");
+
       if (file.size > 2 * 1024 * 1024) {
-        alert("File too large. Maximum size is 2MB.");
+        setLogoError("File too large. Maximum size is 2MB.");
         return;
       }
       const validTypes = ["image/png", "image/jpeg", "image/svg+xml"];
       if (!validTypes.includes(file.type)) {
-        alert("Invalid file type. Please upload a PNG, JPG, or SVG file.");
+        setLogoError("Invalid file type. Please upload a PNG, JPG, or SVG file.");
         return;
       }
+
+      // Validate dimensions for raster images (skip SVG)
+      if (file.type !== "image/svg+xml") {
+        const dimensionError = await new Promise<string | null>((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+            const { width, height } = img;
+            URL.revokeObjectURL(img.src);
+            if (width > 800 || height > 200) {
+              resolve(`Image is ${width}x${height}px. Maximum dimensions are 800x200px.`);
+            } else if (width < 100 || height < 32) {
+              resolve(`Image is ${width}x${height}px. Minimum dimensions are 100x32px.`);
+            } else {
+              resolve(null);
+            }
+          };
+          img.onerror = () => {
+            URL.revokeObjectURL(img.src);
+            resolve("Could not read image dimensions.");
+          };
+          img.src = URL.createObjectURL(file);
+        });
+
+        if (dimensionError) {
+          setLogoError(dimensionError);
+          return;
+        }
+      }
+
       const url = URL.createObjectURL(file);
       setLogoPreview(url);
 
@@ -798,7 +866,7 @@ function BrandingSection() {
                   : "Click or drag to upload"}
               </p>
               <p className="text-xs text-muted mt-0.5">
-                PNG, JPG, or SVG &middot; Max 2MB
+                PNG, JPG, or SVG &middot; 800&times;200px max &middot; 2MB
               </p>
             </div>
             {uploadLogo.isPending && (
@@ -812,6 +880,13 @@ function BrandingSection() {
             className="hidden"
             onChange={handleFileChange}
           />
+          {logoError && (
+            <p className="mt-2 text-sm text-red-600">{logoError}</p>
+          )}
+          <p className="mt-2 text-xs text-muted">
+            Recommended: horizontal logo, 400&times;100px or similar aspect ratio.
+            Displays at 32px height in the sidebar and scaled for PDF exports.
+          </p>
         </div>
 
         <div className="space-y-5">

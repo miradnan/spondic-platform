@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   UserButton,
   useOrganization,
@@ -24,7 +24,11 @@ import {
   BellIcon,
   LinkIcon,
   GlobeAltIcon,
+  MagnifyingGlassIcon,
+  SunIcon,
+  MoonIcon,
 } from "@heroicons/react/24/outline";
+import { CheckIcon } from "@heroicons/react/24/solid";
 import { Popover, PopoverTrigger, PopoverContent } from "./ui/popover.tsx";
 import { useProject, useUnreadCount, useNotifications, useMarkNotificationRead, useMarkAllRead } from "../hooks/useApi.ts";
 import { useAppEvents } from "../hooks/useAppEvents.ts";
@@ -117,7 +121,7 @@ function NotificationBell() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const { data: unreadData } = useUnreadCount();
-  const { data: notifData } = useNotifications({ limit: 8 });
+  const { data: notifData } = useNotifications({ limit: 20 });
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllRead();
 
@@ -173,7 +177,7 @@ function NotificationBell() {
             </p>
           </div>
         ) : (
-          <div className="max-h-[360px] overflow-y-auto">
+          <div className="max-h-[400px] overflow-y-auto">
             {notifications.map((n) => (
               <button
                 key={n.id}
@@ -197,10 +201,17 @@ function NotificationBell() {
             ))}
           </div>
         )}
-        <div className="border-t border-border px-4 py-2">
+        <div className="border-t border-border px-4 py-2 flex items-center gap-2">
+          <button
+            onClick={() => { setOpen(false); navigate("/notifications"); }}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium text-brand-blue hover:text-brand-blue-hover hover:bg-brand-blue/5 transition-colors"
+          >
+            View all notifications
+          </button>
+          <span className="h-4 w-px bg-border" />
           <button
             onClick={() => { setOpen(false); navigate("/settings"); }}
-            className="flex w-full items-center justify-center gap-1.5 rounded-md py-1.5 text-xs text-muted hover:text-brand-blue transition-colors"
+            className="flex items-center justify-center gap-1.5 rounded-md py-1.5 px-2 text-xs text-muted hover:text-brand-blue transition-colors"
           >
             <Cog6ToothIcon className="h-3.5 w-3.5" />
             Settings
@@ -245,7 +256,10 @@ function LanguageSwitcher() {
             }`}
           >
             <span>{lang.flag}</span>
-            <span>{lang.label}</span>
+            <span className="flex-1 text-left">{lang.label}</span>
+            {i18n.language === lang.code && (
+              <CheckIcon className="h-4 w-4 text-brand-blue shrink-0" />
+            )}
           </button>
         ))}
       </PopoverContent>
@@ -330,6 +344,174 @@ function PlanBadge() {
   );
 }
 
+/* ---- Command Palette (Cmd+K) ---- */
+
+interface CommandItem {
+  label: string;
+  to: string;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+}
+
+const commandItems: CommandItem[] = [
+  { label: "Dashboard", to: "/dashboard", icon: Squares2X2Icon },
+  { label: "Knowledge Base", to: "/knowledge-base", icon: BookOpenIcon },
+  { label: "Chat", to: "/chat", icon: ChatBubbleLeftEllipsisIcon },
+  { label: "New RFP", to: "/rfp/new", icon: DocumentPlusIcon },
+  { label: "Analytics", to: "/analytics", icon: ChartBarIcon },
+  { label: "Settings", to: "/settings", icon: Cog6ToothIcon },
+  { label: "Members", to: "/admin/members", icon: UsersIcon },
+  { label: "Teams", to: "/admin/teams", icon: UserGroupIcon },
+  { label: "Billing", to: "/admin/billing", icon: CreditCardIcon },
+  { label: "Integrations", to: "/admin/integrations", icon: LinkIcon },
+  { label: "Audit Log", to: "/admin/audit", icon: ClipboardDocumentListIcon },
+  { label: "Organization Settings", to: "/admin/organization", icon: BuildingOffice2Icon },
+];
+
+function CommandPaletteInner({ onClose }: { onClose: () => void }) {
+  const [query, setQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
+  const navigate = useNavigate();
+
+  const filtered = query.trim()
+    ? commandItems.filter((item) =>
+        item.label.toLowerCase().includes(query.toLowerCase())
+      )
+    : commandItems;
+
+  const handleQueryChange = useCallback((value: string) => {
+    setQuery(value);
+    setActiveIndex(0);
+  }, []);
+
+  const select = useCallback(
+    (item: CommandItem) => {
+      onClose();
+      navigate(item.to);
+    },
+    [navigate, onClose]
+  );
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((i) => (i + 1) % filtered.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((i) => (i - 1 + filtered.length) % filtered.length);
+    } else if (e.key === "Enter" && filtered[activeIndex]) {
+      e.preventDefault();
+      select(filtered[activeIndex]);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      onClose();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      {/* Dialog */}
+      <div
+        className="relative w-full max-w-lg rounded-xl border border-border bg-cream shadow-2xl overflow-hidden"
+        role="dialog"
+        aria-label="Command palette"
+      >
+        <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+          <MagnifyingGlassIcon className="h-5 w-5 text-muted shrink-0" />
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            autoFocus
+            onChange={(e) => handleQueryChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Search pages..."
+            className="flex-1 bg-transparent text-sm text-heading placeholder:text-muted outline-none"
+          />
+          <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border border-border bg-cream-light px-1.5 py-0.5 text-[10px] font-medium text-muted">
+            ESC
+          </kbd>
+        </div>
+        <div className="max-h-[300px] overflow-y-auto p-2">
+          {filtered.length === 0 ? (
+            <p className="px-3 py-6 text-center text-sm text-muted">No results found</p>
+          ) : (
+            filtered.map((item, i) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.to}
+                  onClick={() => select(item)}
+                  onMouseEnter={() => setActiveIndex(i)}
+                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
+                    i === activeIndex
+                      ? "bg-brand-blue/10 text-brand-blue"
+                      : "text-body hover:bg-cream-light"
+                  }`}
+                >
+                  <Icon className="h-4.5 w-4.5 shrink-0" />
+                  {item.label}
+                </button>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
+  if (!open) return null;
+  return <CommandPaletteInner onClose={onClose} />;
+}
+
+/* ---- Dark Mode Toggle ---- */
+
+function useDarkMode() {
+  const [dark, setDark] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const stored = localStorage.getItem("theme");
+    if (stored === "dark") return true;
+    if (stored === "light") return false;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (dark) {
+      root.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      root.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  }, [dark]);
+
+  return [dark, setDark] as const;
+}
+
+function DarkModeToggle() {
+  const [dark, setDark] = useDarkMode();
+
+  return (
+    <button
+      onClick={() => setDark(!dark)}
+      className="rounded-lg p-1.5 text-muted hover:text-body hover:bg-cream-light transition-colors"
+      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+    >
+      {dark ? (
+        <SunIcon className="h-5 w-5" />
+      ) : (
+        <MoonIcon className="h-5 w-5" />
+      )}
+    </button>
+  );
+}
+
+/* ---- Sidebar with grouped navigation ---- */
+
 function SidebarContent({
   onLinkClick,
 }: {
@@ -342,15 +524,46 @@ function SidebarContent({
 
   const isAdmin = membership?.role === "org:admin";
 
-  const navItems = [
+  const workspaceItems = [
     { to: "/dashboard", label: t("nav.dashboard"), icon: Squares2X2Icon, match: (p: string) => p === "/" || p === "/dashboard" },
     { to: "/knowledge-base", label: t("nav.knowledgeBase"), icon: BookOpenIcon, match: (p: string) => p.startsWith("/knowledge-base") },
-    { to: "/rfp/new", label: t("nav.newRfp"), icon: DocumentPlusIcon, match: (p: string) => p === "/rfp/new" },
     { to: "/chat", label: t("nav.chat"), icon: ChatBubbleLeftEllipsisIcon, match: (p: string) => p.startsWith("/chat") },
+  ];
+
+  const createItems = [
+    { to: "/rfp/new", label: t("nav.newRfp"), icon: DocumentPlusIcon, match: (p: string) => p === "/rfp/new" },
+  ];
+
+  const insightsItems = [
     { to: "/analytics", label: t("nav.analytics"), icon: ChartBarIcon, match: (p: string) => p === "/analytics" },
     { to: "/admin/audit", label: t("nav.auditLog"), icon: ClipboardDocumentListIcon, match: (p: string) => p === "/admin/audit" },
     { to: "/settings", label: "Settings", icon: Cog6ToothIcon, match: (p: string) => p === "/settings" },
   ];
+
+  const renderNavGroup = (
+    label: string,
+    items: typeof workspaceItems,
+    showDivider: boolean
+  ) => (
+    <div className={showDivider ? "mt-4 pt-4 border-t border-white/10" : ""}>
+      <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/40">
+        {label}
+      </p>
+      <div className="space-y-0.5">
+        {items.map((item) => (
+          <Link
+            key={item.to}
+            to={item.to}
+            onClick={onLinkClick}
+            className={`${navLink} ${item.match(location.pathname) ? navLinkActive : ""}`}
+          >
+            <item.icon className="h-5 w-5 shrink-0" />
+            {item.label}
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -376,20 +589,12 @@ function SidebarContent({
       </div>
 
       {/* Main Nav */}
-      <nav className="flex-1 p-4 space-y-1" data-tour="sidebar-nav">
-        {navItems.map((item) => (
-          <Link
-            key={item.to}
-            to={item.to}
-            onClick={onLinkClick}
-            className={`${navLink} ${item.match(location.pathname) ? navLinkActive : ""}`}
-          >
-            <item.icon className="h-5 w-5 shrink-0" />
-            {item.label}
-          </Link>
-        ))}
+      <nav className="flex-1 p-4" data-tour="sidebar-nav">
+        {renderNavGroup("Workspace", workspaceItems, false)}
+        {renderNavGroup("Create", createItems, true)}
+        {renderNavGroup("Insights", insightsItems, true)}
 
-        {/* Organization — nested under main nav, admin-only */}
+        {/* Organization -- admin-only */}
         {isAdmin && (
           <OrgNav pathname={location.pathname} onLinkClick={onLinkClick} />
         )}
@@ -403,7 +608,20 @@ function SidebarContent({
 
 export function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
   useAppEvents();
+
+  // Cmd+K / Ctrl+K keyboard shortcut
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setCmdPaletteOpen((prev) => !prev);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   return (
     <div className="flex min-h-screen bg-cream text-heading font-sans">
@@ -445,18 +663,41 @@ export function Layout() {
             <Bars3Icon className="h-5 w-5" />
           </button>
 
-          {/* Breadcrumbs */}
-          <div className="hidden sm:block flex-1 min-w-0">
+          {/* Breadcrumbs (desktop) */}
+          <div className="hidden sm:flex flex-1 items-center gap-3 min-w-0">
             <Breadcrumbs />
           </div>
 
-          {/* Mobile: just page title */}
+          {/* Mobile breadcrumbs: show full breadcrumb trail compactly */}
           <div className="sm:hidden flex-1 min-w-0">
-            <MobilePageTitle />
+            <MobileBreadcrumbs />
           </div>
 
           {/* Right side */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            {/* Cmd+K trigger */}
+            <button
+              onClick={() => setCmdPaletteOpen(true)}
+              className="hidden sm:flex items-center gap-2 rounded-lg border border-border bg-cream-light/50 px-2.5 py-1.5 text-xs text-muted hover:text-body hover:border-brand-blue/30 transition-colors"
+              aria-label="Open command palette"
+            >
+              <MagnifyingGlassIcon className="h-3.5 w-3.5" />
+              <span className="hidden md:inline">Search...</span>
+              <kbd className="rounded border border-border bg-cream px-1 py-0.5 text-[10px] font-medium leading-none">
+                {navigator.platform?.includes("Mac") ? "\u2318K" : "Ctrl+K"}
+              </kbd>
+            </button>
+            <button
+              onClick={() => setCmdPaletteOpen(true)}
+              className="sm:hidden rounded-lg p-1.5 text-muted hover:text-body hover:bg-cream-light transition-colors"
+              aria-label="Search"
+            >
+              <MagnifyingGlassIcon className="h-5 w-5" />
+            </button>
+
+            {/* Dark mode toggle */}
+            <DarkModeToggle />
+
             {/* Language Switcher */}
             <LanguageSwitcher />
 
@@ -468,21 +709,52 @@ export function Layout() {
         </header>
 
         <main className="flex flex-1 flex-col min-h-0 p-4 lg:p-6 bg-cream-lighter">
-          <div className="mx-auto w-full max-w-[1800px] flex flex-1 flex-col min-h-0">
+          <div className="mx-auto w-full max-w-7xl flex flex-1 flex-col min-h-0">
             <Outlet />
           </div>
         </main>
       </div>
+
+      {/* Command Palette */}
+      <CommandPalette open={cmdPaletteOpen} onClose={() => setCmdPaletteOpen(false)} />
     </div>
   );
 }
 
-function MobilePageTitle() {
+function MobileBreadcrumbs() {
   const crumbs = useBreadcrumbs();
-  const last = crumbs[crumbs.length - 1];
+
+  if (crumbs.length <= 1) {
+    const last = crumbs[crumbs.length - 1];
+    return (
+      <span className="text-sm font-medium text-heading truncate">
+        {last?.label ?? ""}
+      </span>
+    );
+  }
+
   return (
-    <span className="text-sm font-medium text-heading truncate">
-      {last?.label ?? ""}
-    </span>
+    <nav className="flex items-center gap-1 text-sm min-w-0" aria-label="Breadcrumb">
+      {crumbs.map((crumb, i) => (
+        <span key={i} className="flex items-center gap-1 min-w-0">
+          {i > 0 && (
+            <ChevronRightIcon className="h-3 w-3 text-muted shrink-0" />
+          )}
+          {i < crumbs.length - 1 ? (
+            crumb.to ? (
+              <Link to={crumb.to} className="text-muted text-xs shrink-0">
+                {crumb.label}
+              </Link>
+            ) : (
+              <span className="text-muted text-xs shrink-0">{crumb.label}</span>
+            )
+          ) : (
+            <span className="font-medium text-heading truncate">
+              {crumb.label}
+            </span>
+          )}
+        </span>
+      ))}
+    </nav>
   );
 }

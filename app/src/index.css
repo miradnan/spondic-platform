@@ -38,8 +38,58 @@
   --radius: 0.5rem;
 }
 
+/* ========================================
+   Dark mode color tokens
+   Toggle by adding 'dark' class to <html>.
+   ======================================== */
+.dark {
+  --bg-cream: #1a1a1a;
+  --bg-cream-light: #242424;
+  --bg-cream-lighter: #1e1e1e;
+  --text-dark: #f0f0f0;
+  --text-body: #c0c0c0;
+  --text-muted: #888888;
+  --border: #333333;
+  --gold: #c49a3c;
+  --blue: #4a8ad4;
+  --blue-hover: #3a78c0;
+  --navy: #111827;
+  --navy-light: #1e293b;
+
+  /* Override Tailwind theme colors for dark mode */
+  --color-cream: #1a1a1a;
+  --color-cream-light: #242424;
+  --color-cream-lighter: #1e1e1e;
+  --color-heading: #f0f0f0;
+  --color-body: #c0c0c0;
+  --color-muted: #888888;
+  --color-border: #333333;
+  --color-navy: #111827;
+  --color-navy-light: #1e293b;
+
+  color-scheme: dark;
+}
+
 html {
   scroll-behavior: smooth;
+}
+
+/* ========================================
+   Focus ring consistency
+   Uses brand-blue for all focusable elements.
+   ======================================== */
+*:focus-visible {
+  outline: 2px solid var(--blue, #2d5fa0);
+  outline-offset: 2px;
+}
+
+/* Opt out for elements that handle their own focus styles */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--blue, #2d5fa0);
+  border-color: var(--blue, #2d5fa0);
 }
 
 /* RTL support for Arabic */
@@ -86,6 +136,18 @@ button:disabled,
   50% { transform: translateX(100%); }
   100% { transform: translateX(300%); }
 }
+
+/* ========================================
+   Card elevation pattern
+   Use these shadow utilities for consistent
+   card elevation across all pages:
+     - shadow-sm   : subtle cards, list items
+     - shadow-md   : standard cards, modals
+     - shadow-lg   : popovers, dropdowns
+     - shadow-xl   : command palette, dialogs
+   All cards should use rounded-xl border border-border
+   for a consistent look.
+   ======================================== */
 
 /* driver.js walkthrough overrides */
 .spondic-tour-popover {

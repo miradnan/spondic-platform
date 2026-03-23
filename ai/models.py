@@ -6,6 +6,16 @@ from pydantic import BaseModel, Field
 
 
 # --------------------------------------------------------------------------- #
+# Shared: token usage
+# --------------------------------------------------------------------------- #
+
+class TokenUsageResponse(BaseModel):
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+
+# --------------------------------------------------------------------------- #
 # Index
 # --------------------------------------------------------------------------- #
 
@@ -43,6 +53,7 @@ class ParseRequest(BaseModel):
 
 class ParseResponse(BaseModel):
     questions: list[ExtractedQuestion]
+    tokens_used: TokenUsageResponse | None = None
 
 
 # --------------------------------------------------------------------------- #
@@ -77,6 +88,7 @@ class DraftRequest(BaseModel):
 
 class DraftResponse(BaseModel):
     answers: list[DraftAnswer]
+    tokens_used: TokenUsageResponse | None = None
 
 
 # --------------------------------------------------------------------------- #
@@ -103,6 +115,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     response: str
     citations: list[ChatCitation]
+    tokens_used: TokenUsageResponse | None = None
 
 
 # --------------------------------------------------------------------------- #
@@ -165,6 +178,7 @@ class DraftWithReviewResponse(BaseModel):
     review_comments: list[ReviewComment]
     compliance_flags: list[ComplianceFlag]
     overall_score: float
+    tokens_used: TokenUsageResponse | None = None
 
 
 # --------------------------------------------------------------------------- #
@@ -213,6 +227,7 @@ class AutoTagResponse(BaseModel):
     industry: str | None = None
     doc_type: str | None = None
     domain: str | None = None
+    tokens_used: TokenUsageResponse | None = None
 
 
 class StaleDocumentResponse(BaseModel):
@@ -264,3 +279,4 @@ class ScoreResponse(BaseModel):
     recommendation: str
     total_requirements: int
     covered_requirements: int
+    tokens_used: TokenUsageResponse | None = None

@@ -7,6 +7,7 @@ import {
   Bars3Icon,
   XMarkIcon,
   TrashIcon,
+  MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import { useChats, useDeleteChat } from "../hooks/useApi.ts";
 
@@ -16,10 +17,19 @@ export function ChatLayout() {
   const { data: chatsData } = useChats();
   const deleteChat = useDeleteChat();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const chatHistory = chatsData?.data ?? [];
   const isNewChat = location.pathname === "/chat";
   const activeChatId = location.pathname.match(/\/chat\/(.+)/)?.[1];
+
+  const filteredChats = searchQuery.trim()
+    ? chatHistory.filter((chat) =>
+        (chat.title || "Untitled chat")
+          .toLowerCase()
+          .includes(searchQuery.trim().toLowerCase())
+      )
+    : chatHistory;
 
   const chatList = (
     <>
@@ -35,11 +45,33 @@ export function ChatLayout() {
         </Link>
       </div>
 
+      {/* Search input */}
+      <div className="px-3 pt-2 pb-1">
+        <div className="flex items-center gap-1.5 rounded-lg bg-cream-light border border-border px-2.5 py-1.5 focus-within:border-brand-blue/40 transition-colors">
+          <MagnifyingGlassIcon className="h-3.5 w-3.5 text-muted shrink-0" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search chats..."
+            className="flex-1 min-w-0 bg-transparent text-xs text-heading placeholder-muted focus:outline-none"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="text-muted hover:text-body transition-colors"
+            >
+              <XMarkIcon className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Chat list */}
       <div className="flex-1 overflow-y-auto p-2">
-        {chatHistory.length > 0 ? (
+        {filteredChats.length > 0 ? (
           <ul className="space-y-0.5">
-            {chatHistory.map((chat) => {
+            {filteredChats.map((chat) => {
               const isActive = activeChatId === chat.id;
               return (
                 <li key={chat.id}>
@@ -79,6 +111,11 @@ export function ChatLayout() {
               );
             })}
           </ul>
+        ) : searchQuery.trim() ? (
+          <div className="px-3 py-6 text-center">
+            <MagnifyingGlassIcon className="mx-auto h-8 w-8 text-muted/30" />
+            <p className="mt-2 text-xs text-muted">No chats matching "{searchQuery}"</p>
+          </div>
         ) : (
           <div className="px-3 py-6 text-center">
             <ChatBubbleLeftEllipsisIcon className="mx-auto h-8 w-8 text-muted/30" />

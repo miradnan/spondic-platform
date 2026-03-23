@@ -165,8 +165,8 @@ func (h *Handler) UpdateAnswer(c echo.Context) error {
 			prevText = prevDraftText
 		}
 		_, _ = h.DB.Exec(
-			`INSERT INTO rfp_answer_history (answer_id, previous_text, new_text, edited_by)
-			 VALUES ($1, $2, $3, $4)`,
+			`INSERT INTO rfp_answer_history (answer_id, action, previous_text, new_text, edited_by)
+			 VALUES ($1, 'edited', $2, $3, $4)`,
 			answerID, prevText, *body.EditedText, userID,
 		)
 	}
@@ -183,6 +183,13 @@ func (h *Handler) UpdateAnswer(c echo.Context) error {
 		setClauses = append(setClauses, "status = $"+itoa(argIdx))
 		args = append(args, *body.Status)
 		argIdx++
+
+		// Log status change activity
+		_, _ = h.DB.Exec(
+			`INSERT INTO rfp_answer_history (answer_id, action, edited_by)
+			 VALUES ($1, $2, $3)`,
+			answerID, *body.Status, userID,
+		)
 	}
 
 	if len(setClauses) == 0 {
@@ -243,6 +250,13 @@ func (h *Handler) ApproveAnswer(c echo.Context) error {
 		log.Printf("error approving answer: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
 	}
+
+	// Log approval activity
+	_, _ = h.DB.Exec(
+		`INSERT INTO rfp_answer_history (answer_id, action, edited_by)
+		 VALUES ($1, 'approved', $2)`,
+		answerID, userID,
+	)
 
 	// Also update the question status to approved
 	h.DB.Exec(
@@ -326,6 +340,13 @@ func (h *Handler) CommentOnAnswer(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
 	}
 
+	// Log comment activity
+	_, _ = h.DB.Exec(
+		`INSERT INTO rfp_answer_history (answer_id, action, new_text, edited_by)
+		 VALUES ($1, 'commented', $2, $3)`,
+		answerID, body.CommentText, userID,
+	)
+
 	// Notify other commenters on this answer
 	if h.Notifier != nil {
 		commenterRows, err := h.DB.Query(
@@ -347,5 +368,50 @@ func (h *Handler) CommentOnAnswer(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusCreated, comment)
+}
+
+// ListAnswerHistory handles GET /api/rfp/:id/answers/:aid/history
+func (h *Handler) ListAnswerHistory(c echo.Context) error {
+	orgID := getOrgID(c)
+	answerID := c.Param("aid")
+
+	// Verify answer belongs to org
+	var exists bool
+	err := h.DB.QueryRow(
+		`SELECT EXISTS(SELECT 1 FROM rfp_answers WHERE id = $1 AND organization_id = $2)`,
+		answerID, orgID,
+	).Scan(&exists)
+	if err != nil || !exists {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "answer not found"})
+	}
+
+	rows, err := h.DB.Query(
+		`SELECT id, answer_id, action, previous_text, new_text, edited_by, edited_at
+		 FROM rfp_answer_history
+		 WHERE answer_id = $1
+		 ORDER BY edited_at DESC`,
+		answerID,
+	)
+	if err != nil {
+		log.Printf("error listing answer history: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+	}
+	defer rows.Close()
+
+	history := make([]models.RFPAnswerHistory, 0)
+	for rows.Next() {
+		var h models.RFPAnswerHistory
+		if err := rows.Scan(
+			&h.ID, &h.AnswerID, &h.Action, &h.PreviousText, &h.NewText, &h.EditedBy, &h.EditedAt,
+		); err != nil {
+			log.Printf("error scanning history: %v", err)
+			continue
+		}
+		history = append(history, h)
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"history": history,
+	})
 }
 

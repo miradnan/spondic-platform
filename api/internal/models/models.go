@@ -159,12 +159,13 @@ type RFPAnswerComment struct {
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
-// RFPAnswerHistory stores the edit history of an answer.
+// RFPAnswerHistory stores the activity history of an answer.
 type RFPAnswerHistory struct {
 	ID           string    `json:"id"`
 	AnswerID     string    `json:"answer_id"`
+	Action       string    `json:"action"`
 	PreviousText *string   `json:"previous_text,omitempty"`
-	NewText      string    `json:"new_text"`
+	NewText      *string   `json:"new_text,omitempty"`
 	EditedBy     string    `json:"edited_by"`
 	EditedAt     time.Time `json:"edited_at"`
 }

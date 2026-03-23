@@ -44,6 +44,7 @@ import type {
   Notification,
   NotificationPreference,
   UpdateNotificationPreferenceRequest,
+  AnswerActivity,
 } from "./types.ts";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "";
@@ -242,6 +243,14 @@ export function redraftAnswer(
   return request(`/api/rfp/${projectId}/questions/${questionId}/redraft`, token, {
     method: "POST",
   });
+}
+
+export function listAnswerHistory(
+  token: string | null,
+  projectId: string,
+  answerId: string,
+): Promise<{ history: AnswerActivity[] }> {
+  return request(`/api/rfp/${projectId}/answers/${answerId}/history`, token);
 }
 
 // ── Approval Workflows ────────────────────────────────────────────────────────
@@ -675,4 +684,71 @@ export function getNotificationPreferences(token: string | null): Promise<Notifi
 }
 export function updateNotificationPreference(token: string | null, body: UpdateNotificationPreferenceRequest): Promise<NotificationPreference> {
   return request("/api/notifications/preferences", token, { method: "PUT", body: JSON.stringify(body) });
+}
+
+// ── Billing ───────────────────────────────────────────────────────────────
+
+export interface SubscriptionResponse {
+  subscription: {
+    id: string;
+    organization_id: string;
+    stripe_customer_id: string;
+    stripe_subscription_id: string | null;
+    plan: string;
+    status: string; // 'active' | 'past_due' | 'canceled' | 'trialing' | 'incomplete'
+    current_period_start: string | null;
+    current_period_end: string | null;
+    cancel_at: string | null;
+    canceled_at: string | null;
+    created_at: string;
+    updated_at: string;
+  };
+  plan_limits: {
+    plan: string;
+    max_rfps_per_month: number | null;
+    max_documents: number | null;
+    max_users: number | null;
+    max_questions_per_rfp: number | null;
+    ai_review_enabled: boolean;
+    compliance_enabled: boolean;
+    template_library: boolean;
+    analytics_enabled: boolean;
+  };
+}
+
+export function getSubscription(token: string | null): Promise<SubscriptionResponse> {
+  return request("/api/billing/subscription", token);
+}
+
+export interface TokenUsageResponse {
+  tokens_used: number;
+  tokens_overage: number;
+  max_tokens_per_month: number | null;
+  overage_rate_cents_per_1k: number | null;
+  plan: string;
+  period_start: string;
+}
+
+export function getTokenUsage(token: string | null): Promise<TokenUsageResponse> {
+  return request("/api/billing/token-usage", token);
+}
+
+export function createCheckout(
+  token: string | null,
+  body: { plan: string; success_url: string; cancel_url: string },
+): Promise<{ checkout_url: string }> {
+  return request("/api/billing/checkout", token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function createPortalSession(
+  token: string | null,
+  body: { return_url: string },
+): Promise<{ portal_url: string }> {
+  return request("/api/billing/portal", token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }

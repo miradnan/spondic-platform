@@ -161,11 +161,21 @@ func (h *Handler) SendMessage(c echo.Context) error {
 		}
 	}
 
+	// Check token limit
+	if err := h.checkTokenLimit(orgID); err != nil {
+		return c.JSON(http.StatusForbidden, map[string]string{"error": err.Error()})
+	}
+
 	// Call AI service
 	aiResp, err := h.AI.Chat(c.Request().Context(), orgID, body.Message, history)
 	if err != nil {
 		log.Printf("AI chat error: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "AI service error"})
+	}
+
+	// Record token usage
+	if aiResp.TokensUsed != nil {
+		h.recordTokenUsage(orgID, aiResp.TokensUsed.TotalTokens)
 	}
 
 	assistantMessage := aiResp.Response

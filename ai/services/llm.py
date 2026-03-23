@@ -5,10 +5,31 @@ Groq LLM client for answer generation and question extraction.
 import json
 import logging
 import time
+from dataclasses import dataclass, field
 
 from groq import Groq, RateLimitError
 
 from config import settings
+
+
+@dataclass
+class TokenUsage:
+    """Tracks token usage across one or more LLM calls."""
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+    def add(self, prompt: int, completion: int) -> None:
+        self.prompt_tokens += prompt
+        self.completion_tokens += completion
+        self.total_tokens += prompt + completion
+
+    def to_dict(self) -> dict:
+        return {
+            "prompt_tokens": self.prompt_tokens,
+            "completion_tokens": self.completion_tokens,
+            "total_tokens": self.total_tokens,
+        }
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +56,17 @@ def _get_client() -> Groq:
     return Groq(api_key=settings.groq_api_key)
 
 
-def _call_groq(messages: list[dict], temperature: float = 0.3, max_tokens: int = 4096, model: str = _RFP_DRAFT_MODEL) -> str:
+def _call_groq(
+    messages: list[dict],
+    temperature: float = 0.3,
+    max_tokens: int = 4096,
+    model: str = _RFP_DRAFT_MODEL,
+    usage: TokenUsage | None = None,
+) -> str:
     """
     Send a chat completion request to Groq with retry and model fallback.
     Identity guard is automatically prepended to every call.
+    If *usage* is provided, token counts are accumulated into it.
     """
     client = _get_client()
     guarded_messages = [_IDENTITY_GUARD] + messages
@@ -52,6 +80,10 @@ def _call_groq(messages: list[dict], temperature: float = 0.3, max_tokens: int =
                 temperature=temperature,
                 max_tokens=max_tokens,
             )
+            # Capture token usage
+            if usage is not None and response.usage:
+                usage.add(response.usage.prompt_tokens, response.usage.completion_tokens)
+
             return response.choices[0].message.content or ""
         except RateLimitError as exc:
             wait = 2 ** attempt
@@ -75,19 +107,28 @@ _ANSWER_SYSTEM_PROMPT = """You are an expert RFP response writer for enterprise 
 
 RULES:
 1. Answer using ONLY the provided context passages. Do NOT use external knowledge.
-2. If the context is insufficient, state that in one sentence — do not speculate.
-3. Be direct and professional. No filler, no introductions like "Great question" or "Based on the provided context".
-4. Cite sources inline (e.g., [Source 1], [Source 2]).
-5. Use bullet points for lists. Use short paragraphs for prose. No walls of text.
-6. Do NOT fabricate information. Accuracy is critical.
-7. Do NOT restate the question, add closing summaries, or offer unsolicited advice.
-8. Every sentence must directly answer the question or provide supporting evidence — cut everything else."""
+2. Be direct and professional. No filler, no introductions like "Great question" or "Based on the provided context".
+3. Cite sources inline (e.g., [Source 1], [Source 2]).
+4. Use bullet points for lists. Use short paragraphs for prose. No walls of text.
+5. Do NOT fabricate information. Accuracy is critical.
+6. Do NOT restate the question, add closing summaries, or offer unsolicited advice.
+7. Every sentence must directly answer the question or provide supporting evidence — cut everything else.
+
+MISSING INFORMATION: When the context does not contain a specific detail needed to fully answer the question \
+(e.g., a date, number, name, statistic, or any factual detail), insert an editable placeholder in this exact format:
+  [ENTER: brief description]
+Examples:
+  "Founded in [ENTER: year founded], the company has [ENTER: number of employees] employees."
+  "Our [ENTER: certification name] certification was obtained in [ENTER: year]."
+NEVER say "the context does not include", "not mentioned in the provided passages", or similar. \
+NEVER leave gaps without a placeholder. Always draft the full answer with placeholders where details are missing."""
 
 
 def generate_answer(
     question: str,
     context_passages: list[dict],
     system_prompt: str | None = None,
+    usage: TokenUsage | None = None,
 ) -> str:
     """
     Generate an answer to *question* grounded in *context_passages*.
@@ -105,7 +146,7 @@ def generate_answer(
         )},
     ]
 
-    return _call_groq(messages)
+    return _call_groq(messages, usage=usage)
 
 
 def _build_context_block(passages: list[dict]) -> str:
@@ -139,7 +180,7 @@ For each item output a JSON object with these fields:
 Return a JSON array of these objects. Output ONLY valid JSON — no markdown fences, no explanation."""
 
 
-def extract_questions(document_text: str) -> list[dict]:
+def extract_questions(document_text: str, usage: TokenUsage | None = None) -> list[dict]:
     """
     Send the full document text to the LLM and extract structured questions.
     """
@@ -152,7 +193,7 @@ def extract_questions(document_text: str) -> list[dict]:
         {"role": "user", "content": truncated},
     ]
 
-    raw = _call_groq(messages, temperature=0.1, max_tokens=8192)
+    raw = _call_groq(messages, temperature=0.1, max_tokens=8192, usage=usage)
 
     # Parse the JSON response, handling markdown fences if present
     cleaned = raw.strip()
@@ -202,6 +243,7 @@ def chat_response_stream(
     message: str,
     context_passages: list[dict],
     chat_history: list[dict] | None = None,
+    usage: TokenUsage | None = None,
 ):
     """
     Generator that yields text chunks from Groq streaming response.
@@ -237,10 +279,14 @@ def chat_response_stream(
                 temperature=0.3,
                 max_tokens=4096,
                 stream=True,
+                stream_options={"include_usage": True} if usage is not None else None,
             )
             for chunk in stream:
                 if chunk.choices and chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
+                # Capture usage from final chunk
+                if usage is not None and hasattr(chunk, "usage") and chunk.usage:
+                    usage.add(chunk.usage.prompt_tokens, chunk.usage.completion_tokens)
             return  # Successfully streamed
         except RateLimitError as exc:
             wait = 2 ** attempt
@@ -260,6 +306,7 @@ def chat_response(
     message: str,
     context_passages: list[dict],
     chat_history: list[dict] | None = None,
+    usage: TokenUsage | None = None,
 ) -> str:
     """
     Generate a chat response grounded in context, with optional history.
@@ -285,7 +332,7 @@ def chat_response(
         ),
     })
 
-    return _call_groq(messages, model=_CHAT_MODEL)
+    return _call_groq(messages, model=_CHAT_MODEL, usage=usage)
 
 
 # --------------------------------------------------------------------------- #
@@ -313,7 +360,7 @@ For each answer, provide:
 Return a JSON array of these objects. Output ONLY valid JSON — no markdown fences, no explanation."""
 
 
-def review_answers(qa_pairs: list[dict]) -> list[dict]:
+def review_answers(qa_pairs: list[dict], usage: TokenUsage | None = None) -> list[dict]:
     """
     Send drafted Q&A pairs to the LLM for quality review.
 
@@ -330,7 +377,7 @@ def review_answers(qa_pairs: list[dict]) -> list[dict]:
         )},
     ]
 
-    raw = _call_groq(messages, temperature=0.3, max_tokens=8192)
+    raw = _call_groq(messages, temperature=0.3, max_tokens=8192, usage=usage)
     return _parse_json_array(raw, "review")
 
 
@@ -362,7 +409,7 @@ Return a JSON array of flag objects. Output ONLY valid JSON — no markdown fenc
 If there are no flags at all, return an empty array: []"""
 
 
-def check_compliance(qa_pairs: list[dict]) -> list[dict]:
+def check_compliance(qa_pairs: list[dict], usage: TokenUsage | None = None) -> list[dict]:
     """
     Send drafted Q&A pairs to the LLM for compliance checking.
 
@@ -379,7 +426,7 @@ def check_compliance(qa_pairs: list[dict]) -> list[dict]:
         )},
     ]
 
-    raw = _call_groq(messages, temperature=0.1, max_tokens=8192)
+    raw = _call_groq(messages, temperature=0.1, max_tokens=8192, usage=usage)
     return _parse_json_array(raw, "compliance")
 
 
@@ -433,7 +480,7 @@ Return JSON: {{"coverage_status": "covered|partial|gap", "confidence": 0.0-1.0, 
 Do not output markdown fences."""
 
 
-async def assess_compliance_coverage(requirement: str, evidence: str) -> dict:
+async def assess_compliance_coverage(requirement: str, evidence: str, usage: TokenUsage | None = None) -> dict:
     """
     Assess how well the provided evidence covers a specific compliance requirement.
 
@@ -453,7 +500,7 @@ async def assess_compliance_coverage(requirement: str, evidence: str) -> dict:
         )},
     ]
 
-    raw = _call_groq(messages, temperature=0.1, max_tokens=1024)
+    raw = _call_groq(messages, temperature=0.1, max_tokens=1024, usage=usage)
 
     # Parse the JSON response
     cleaned = raw.strip()
@@ -488,7 +535,7 @@ Analyse the following document excerpt and return a JSON object with:
 Output ONLY valid JSON — no markdown fences, no explanation."""
 
 
-def extract_document_tags(text_sample: str) -> dict:
+def extract_document_tags(text_sample: str, usage: TokenUsage | None = None) -> dict:
     """
     Use the LLM to classify a document excerpt and extract tags,
     industry, document type, and domain.
@@ -498,7 +545,7 @@ def extract_document_tags(text_sample: str) -> dict:
         {"role": "user", "content": text_sample},
     ]
 
-    raw = _call_groq(messages, temperature=0.1, max_tokens=1024)
+    raw = _call_groq(messages, temperature=0.1, max_tokens=1024, usage=usage)
 
     # Parse the JSON response, handling markdown fences if present
     cleaned = raw.strip()
@@ -543,7 +590,7 @@ Return a JSON array of objects, each with:
 Output ONLY valid JSON — no markdown fences, no explanation."""
 
 
-def assess_requirement_risks(gaps: list[dict]) -> list[dict]:
+def assess_requirement_risks(gaps: list[dict], usage: TokenUsage | None = None) -> list[dict]:
     """
     Use the LLM to assess the risk level of uncovered RFP requirements.
 
@@ -564,7 +611,7 @@ def assess_requirement_risks(gaps: list[dict]) -> list[dict]:
         {"role": "user", "content": f"UNCOVERED REQUIREMENTS:\n{gap_block}"},
     ]
 
-    raw = _call_groq(messages, temperature=0.2, max_tokens=4096)
+    raw = _call_groq(messages, temperature=0.2, max_tokens=4096, usage=usage)
 
     # Parse the JSON response
     cleaned = raw.strip()

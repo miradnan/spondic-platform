@@ -45,7 +45,12 @@ func main() {
 
 	// Initialize Stripe client (optional)
 	if cfg.StripeSecretKey != "" {
-		sc := services.NewStripeClient(cfg.StripeSecretKey, cfg.StripeWebhookSecret)
+		stripePrices := map[string]string{
+			"starter":    cfg.StripePriceStarter,
+			"growth":     cfg.StripePriceGrowth,
+			"enterprise": cfg.StripePriceEnterprise,
+		}
+		sc := services.NewStripeClient(cfg.StripeSecretKey, cfg.StripeWebhookSecret, stripePrices)
 		handlers.SetStripeClient(sc)
 		log.Println("Stripe billing configured")
 	} else {
@@ -130,6 +135,7 @@ func main() {
 	api.PUT("/rfp/:id/answers/:aid", h.UpdateAnswer)
 	api.POST("/rfp/:id/answers/:aid/approve", h.ApproveAnswer)
 	api.POST("/rfp/:id/answers/:aid/comment", h.CommentOnAnswer)
+	api.GET("/rfp/:id/answers/:aid/history", h.ListAnswerHistory)
 
 	// Approval workflows
 	api.POST("/projects/:id/approval-stages", h.CreateApprovalStages)
@@ -196,6 +202,7 @@ func main() {
 	api.POST("/billing/portal", h.CreatePortalSession)
 	api.GET("/billing/subscription", h.GetSubscription)
 	api.GET("/billing/usage", h.GetUsage)
+	api.GET("/billing/token-usage", h.GetTokenUsage)
 
 	// Notifications
 	api.GET("/notifications", h.ListNotifications)

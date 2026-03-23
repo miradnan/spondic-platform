@@ -11,6 +11,8 @@ import {
   XMarkIcon,
   FolderOpenIcon,
   BookOpenIcon,
+  ExclamationTriangleIcon,
+  DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 import {
   createColumnHelper,
@@ -28,6 +30,7 @@ import {
   useAddTagToDocument,
   useRemoveTagFromDocument,
 } from "../hooks/useApi.ts";
+import { usePlanLimits } from "../hooks/usePlanLimits.ts";
 import { useWalkthrough, KNOWLEDGE_BASE_STEPS } from "../hooks/useWalkthrough.ts";
 import { useToast } from "../components/Toast.tsx";
 import { DataTable } from "../components/DataTable.tsx";
@@ -53,6 +56,20 @@ function formatDate(dateStr: string): string {
   });
 }
 
+function formatElapsed(dateStr: string): string {
+  const now = Date.now();
+  const created = new Date(dateStr).getTime();
+  const diffMs = now - created;
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 60) return `${diffSec}s ago`;
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDays = Math.floor(diffHr / 24);
+  return `${diffDays}d ago`;
+}
+
 const columnHelper = createColumnHelper<DocType>();
 
 export function KnowledgeBase() {
@@ -68,6 +85,10 @@ export function KnowledgeBase() {
   const [tagDocId, setTagDocId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DocType | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<DocType | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkTagOpen, setBulkTagOpen] = useState(false);
+  const [duplicateWarnings, setDuplicateWarnings] = useState<string[]>([]);
 
   // Server-side pagination state
   const [pagination, setPagination] = useState<PaginationState>({
@@ -87,6 +108,7 @@ export function KnowledgeBase() {
   const reindexDoc = useReindexDocument();
   const searchDocs = useSearchDocuments();
   const createTag = useCreateTag();
+  const { canUploadDocuments, documentsUsed, documentsRemaining, limits } = usePlanLimits();
   const addTagToDoc = useAddTagToDocument();
   const removeTagFromDoc = useRemoveTagFromDocument();
 
@@ -96,6 +118,27 @@ export function KnowledgeBase() {
 
   const handleFileUpload = (fileList: FileList | null) => {
     if (!fileList?.length) return;
+
+    if (!canUploadDocuments) {
+      toast("error", `You've reached the ${limits.maxDocuments} document limit on your plan. Upgrade to upload more.`);
+      return;
+    }
+
+    if (documentsRemaining !== null && fileList.length > documentsRemaining) {
+      toast("error", `You can upload ${documentsRemaining} more document(s) on your current plan. You selected ${fileList.length}.`);
+      return;
+    }
+
+    // Check for duplicate document names
+    const existingNames = new Set(documents.map((d) => d.file_name?.toLowerCase() || d.title?.toLowerCase()));
+    const dupes: string[] = [];
+    for (let i = 0; i < fileList.length; i++) {
+      if (existingNames.has(fileList[i].name.toLowerCase())) {
+        dupes.push(fileList[i].name);
+      }
+    }
+    setDuplicateWarnings(dupes);
+
     const formData = new FormData();
     for (let i = 0; i < fileList.length; i++) {
       formData.append("files", fileList[i]);
@@ -103,6 +146,7 @@ export function KnowledgeBase() {
     uploadDoc.mutate(formData, {
       onSuccess: (data) => {
         toast("success", `Uploaded ${data.documents.length} document(s).`);
+        setDuplicateWarnings([]);
       },
       onError: (err) => toast("error", err.message),
     });
@@ -182,8 +226,85 @@ export function KnowledgeBase() {
     );
   };
 
+  // Multi-select handlers
+  const toggleSelect = useCallback((docId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(docId)) {
+        next.delete(docId);
+      } else {
+        next.add(docId);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === documents.length && documents.length > 0) {
+        return new Set();
+      }
+      return new Set(documents.map((d) => d.id));
+    });
+  }, [documents]);
+
+  const handleBulkTagAssign = (tagId: string) => {
+    const promises = Array.from(selectedIds).map((docId) =>
+      addTagToDoc.mutate(
+        { documentId: docId, tagId },
+        {
+          onError: (err) => toast("error", err.message),
+        },
+      ),
+    );
+    void promises;
+    toast("success", `Adding tag to ${selectedIds.size} document(s).`);
+    setBulkTagOpen(false);
+  };
+
+  const handleBulkDelete = () => {
+    const ids = Array.from(selectedIds);
+    ids.forEach((id) => {
+      deleteDoc.mutate(id, {
+        onError: (err) => toast("error", err.message),
+      });
+    });
+    toast("success", `Deleting ${ids.length} document(s).`);
+    setSelectedIds(new Set());
+  };
+
   const columns = useMemo(
     () => [
+      // Checkbox column for multi-select
+      columnHelper.display({
+        id: "select",
+        header: () => (
+          <input
+            type="checkbox"
+            checked={documents.length > 0 && selectedIds.size === documents.length}
+            onChange={(e) => {
+              e.stopPropagation();
+              toggleSelectAll();
+            }}
+            className="h-4 w-4 rounded border-border text-brand-blue focus:ring-brand-blue cursor-pointer"
+          />
+        ),
+        cell: (info) => {
+          const doc = info.row.original;
+          return (
+            <input
+              type="checkbox"
+              checked={selectedIds.has(doc.id)}
+              onChange={(e) => {
+                e.stopPropagation();
+                toggleSelect(doc.id);
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="h-4 w-4 rounded border-border text-brand-blue focus:ring-brand-blue cursor-pointer"
+            />
+          );
+        },
+      }),
       columnHelper.accessor("title", {
         header: "Title",
         enableSorting: true,
@@ -225,8 +346,19 @@ export function KnowledgeBase() {
         enableSorting: true,
         cell: (info) => {
           const val = info.getValue();
+          const doc = info.row.original;
+          const isProcessing = val === "processing";
           return (
-            <StatusBadge status={val} />
+            <div className="flex items-center gap-1.5">
+              <span className={isProcessing ? "animate-pulse" : ""}>
+                <StatusBadge status={val} />
+              </span>
+              {isProcessing && (
+                <span className="text-xs text-muted">
+                  ({formatElapsed(doc.created_at)})
+                </span>
+              )}
+            </div>
           );
         },
       }),
@@ -308,7 +440,7 @@ export function KnowledgeBase() {
           const doc = info.row.original;
           return (
             <div className="flex items-center gap-1">
-              <Tooltip content="Re-index document">
+              <Tooltip content="Re-process this document through the AI pipeline to update its embeddings and search index.">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -337,7 +469,7 @@ export function KnowledgeBase() {
         },
       }),
     ] as ColumnDef<DocType>[],
-    [tags, tagDocId, reindexDoc.isPending, deleteDoc.isPending],
+    [tags, tagDocId, reindexDoc.isPending, deleteDoc.isPending, documents, selectedIds, toggleSelectAll, toggleSelect],
   );
 
   return (
@@ -354,6 +486,79 @@ export function KnowledgeBase() {
         variant="danger"
         loading={deleteDoc.isPending}
       />
+
+      {/* Document Preview Side Panel */}
+      {previewDoc && (
+        <>
+          {/* Backdrop overlay */}
+          <div
+            className="fixed inset-0 bg-black/30 z-40"
+            onClick={() => setPreviewDoc(null)}
+          />
+          {/* Side panel */}
+          <div className="fixed right-0 top-0 h-full w-[400px] bg-white shadow-xl z-50 overflow-y-auto animate-in slide-in-from-right duration-200">
+            <div className="p-6">
+              {/* Close button */}
+              <button
+                onClick={() => setPreviewDoc(null)}
+                className="absolute top-4 right-4 rounded-lg p-1.5 text-muted hover:text-heading hover:bg-cream-light transition-colors"
+                aria-label="Close preview"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+
+              {/* Document title */}
+              <div className="flex items-start gap-3 pr-8">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-blue/10">
+                  <DocumentTextIcon className="h-5 w-5 text-brand-blue" />
+                </div>
+                <h2 className="text-lg font-semibold text-heading leading-tight">
+                  {previewDoc.title}
+                </h2>
+              </div>
+
+              {/* Status badge */}
+              <div className="mt-4">
+                <StatusBadge status={previewDoc.status} />
+              </div>
+
+              {/* File size + upload date */}
+              <div className="mt-4 flex items-center gap-4 text-sm text-muted">
+                <span>{formatFileSize(previewDoc.file_size_bytes)}</span>
+                <span>Uploaded {formatDate(previewDoc.created_at)}</span>
+              </div>
+
+              {/* Tags list */}
+              {previewDoc.tags && previewDoc.tags.length > 0 && (
+                <div className="mt-4">
+                  <h3 className="text-xs font-medium text-muted uppercase tracking-wider mb-2">Tags</h3>
+                  <div className="flex flex-wrap gap-1.5">
+                    {previewDoc.tags.map((tag: Tag) => (
+                      <span
+                        key={tag.id}
+                        className="inline-flex items-center rounded-full bg-cream px-2.5 py-1 text-xs text-body"
+                      >
+                        {tag.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Content Preview section */}
+              <div className="mt-6 border-t border-border pt-4">
+                <h3 className="text-xs font-medium text-muted uppercase tracking-wider mb-3">Content Preview</h3>
+                <div className="rounded-lg border border-border bg-cream-light/50 p-6 text-center">
+                  <DocumentTextIcon className="mx-auto h-8 w-8 text-muted/50" />
+                  <p className="mt-2 text-sm text-muted">
+                    Document content preview will be available after indexing.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -378,16 +583,46 @@ export function KnowledgeBase() {
           }}
           className="sr-only"
         />
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploadDoc.isPending}
-          data-tour="upload-docs"
-          className="inline-flex items-center gap-2 rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue-hover transition-colors disabled:opacity-50"
-        >
-          <CloudArrowUpIcon className="h-4 w-4" />
-          {uploadDoc.isPending ? t("knowledgeBase.uploading") : t("knowledgeBase.uploadDocuments")}
-        </button>
+        <div className="flex items-center gap-3">
+          {limits.maxDocuments !== null && (
+            <span className={`text-xs tabular-nums ${!canUploadDocuments ? "text-red-600 font-medium" : "text-muted"}`}>
+              {documentsUsed}/{limits.maxDocuments} docs
+            </span>
+          )}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadDoc.isPending || !canUploadDocuments}
+            data-tour="upload-docs"
+            className="inline-flex items-center gap-2 rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue-hover transition-colors disabled:opacity-50"
+          >
+            <CloudArrowUpIcon className="h-4 w-4" />
+            {!canUploadDocuments
+              ? "Limit Reached"
+              : uploadDoc.isPending
+                ? t("knowledgeBase.uploading")
+                : t("knowledgeBase.uploadDocuments")}
+          </button>
+        </div>
       </div>
+
+      {/* Duplicate document name warning */}
+      {duplicateWarnings.length > 0 && (
+        <div className="mt-4 rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 flex items-start gap-2">
+          <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
+          <div className="text-sm text-yellow-800">
+            <span className="font-medium">The following files already exist:</span>{" "}
+            {duplicateWarnings.join(", ")}.
+            {" "}Uploading will create duplicates.
+          </div>
+          <button
+            onClick={() => setDuplicateWarnings([])}
+            className="ml-auto shrink-0 text-yellow-600 hover:text-yellow-800 transition-colors"
+            aria-label="Dismiss warning"
+          >
+            <XMarkIcon className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Drop zone — compact, only expands on drag */}
       <div
@@ -549,7 +784,67 @@ export function KnowledgeBase() {
             pagination={pagination}
             onPaginationChange={setPagination}
             totalRows={total}
+            onRowClick={(row) => setPreviewDoc(row.original)}
           />
+        </div>
+      )}
+
+      {/* Floating bulk action bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 rounded-xl border border-border bg-white px-5 py-3 shadow-lg">
+          <span className="text-sm font-medium text-heading">
+            {selectedIds.size} selected
+          </span>
+
+          <div className="h-5 w-px bg-border" />
+
+          {/* Bulk tag assignment */}
+          <div className="relative">
+            <button
+              onClick={() => setBulkTagOpen(!bulkTagOpen)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-body hover:bg-cream-light transition-colors"
+            >
+              <TagIcon className="h-4 w-4" />
+              Tag selected
+            </button>
+            {bulkTagOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setBulkTagOpen(false)} />
+                <div className="absolute bottom-full left-0 mb-2 w-48 rounded-lg border border-border bg-white shadow-lg z-20 max-h-48 overflow-y-auto">
+                  {(tags ?? []).length === 0 ? (
+                    <div className="py-3 px-4 text-sm text-muted text-center">No tags available</div>
+                  ) : (
+                    (tags ?? []).map((tag) => (
+                      <button
+                        key={tag.id}
+                        onClick={() => handleBulkTagAssign(tag.id)}
+                        className="w-full text-left px-4 py-2 text-sm text-body hover:bg-cream-light transition-colors"
+                      >
+                        {tag.name}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Bulk delete */}
+          <button
+            onClick={handleBulkDelete}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 transition-colors"
+          >
+            <TrashIcon className="h-4 w-4" />
+            Delete selected
+          </button>
+
+          {/* Clear selection */}
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-muted hover:text-body hover:bg-cream-light transition-colors"
+          >
+            Clear selection
+          </button>
         </div>
       )}
     </div>

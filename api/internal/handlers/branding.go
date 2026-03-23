@@ -182,7 +182,7 @@ func (h *Handler) UploadBrandingLogo(c echo.Context) error {
 
 	// Upload to S3 at {org_id}/branding/logo.{ext}
 	s3Key := fmt.Sprintf("%s/branding/logo%s", orgID, ext)
-	if uploadErr := h.S3.Upload(c.Request().Context(), s3Key, io.Reader(src), contentType); uploadErr != nil {
+	if uploadErr := h.S3.UploadPublic(c.Request().Context(), s3Key, io.Reader(src), contentType); uploadErr != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to upload logo"})
 	}
 

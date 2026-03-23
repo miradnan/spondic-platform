@@ -10,6 +10,13 @@ import (
 	"time"
 )
 
+// TokenUsage tracks LLM token consumption from the AI service.
+type TokenUsage struct {
+	PromptTokens     int `json:"prompt_tokens"`
+	CompletionTokens int `json:"completion_tokens"`
+	TotalTokens      int `json:"total_tokens"`
+}
+
 // AIClient communicates with the Python AI service.
 type AIClient struct {
 	baseURL    string
@@ -72,9 +79,10 @@ type ParsedQuestion struct {
 
 // ParseRFPResponse is the response from the AI /parse endpoint.
 type ParseRFPResponse struct {
-	Status    string           `json:"status"`
-	Questions []ParsedQuestion `json:"questions"`
-	Error     string           `json:"error,omitempty"`
+	Status     string           `json:"status"`
+	Questions  []ParsedQuestion `json:"questions"`
+	Error      string           `json:"error,omitempty"`
+	TokensUsed *TokenUsage      `json:"tokens_used,omitempty"`
 }
 
 // ParseRFP sends an RFP document for question extraction.
@@ -124,9 +132,10 @@ type DraftCitation struct {
 
 // DraftResponse is the response from the AI /draft endpoint.
 type DraftResponse struct {
-	Status  string          `json:"status"`
-	Answers []DraftedAnswer `json:"answers"`
-	Error   string          `json:"error,omitempty"`
+	Status     string          `json:"status"`
+	Answers    []DraftedAnswer `json:"answers"`
+	Error      string          `json:"error,omitempty"`
+	TokensUsed *TokenUsage     `json:"tokens_used,omitempty"`
 }
 
 // DraftAnswers generates AI answers for multiple questions.
@@ -166,9 +175,10 @@ type ChatCitation struct {
 
 // ChatResponse is the response from the AI /chat endpoint.
 type ChatResponse struct {
-	Response  string         `json:"response"`
-	Citations []ChatCitation `json:"citations"`
-	Error     string         `json:"error,omitempty"`
+	Response   string         `json:"response"`
+	Citations  []ChatCitation `json:"citations"`
+	Error      string         `json:"error,omitempty"`
+	TokensUsed *TokenUsage    `json:"tokens_used,omitempty"`
 }
 
 // Chat sends a message with history and returns the AI response.

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@clerk/react";
 import { useTranslation } from "react-i18next";
@@ -13,8 +13,11 @@ import {
   SparklesIcon,
   ArrowRightIcon,
   InformationCircleIcon,
+  EyeIcon,
+  EyeSlashIcon,
 } from "@heroicons/react/24/outline";
 import { useToast } from "../components/Toast.tsx";
+import { usePlanLimits } from "../hooks/usePlanLimits.ts";
 import { DatePicker } from "../components/ui/date-picker.tsx";
 import { Button } from "../components/ui/button.tsx";
 import { Input } from "../components/ui/input.tsx";
@@ -34,6 +37,15 @@ const ACCEPTED_TYPES = [
 const ACCEPTED_EXTENSIONS = ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+
+const DRAFT_STORAGE_KEY = "spondic_rfp_draft";
+
+interface DraftData {
+  name: string;
+  description: string;
+  deadline: string | null;
+  pastedText: string;
+}
 
 function addFiles(
   current: File[],
@@ -99,6 +111,7 @@ export function RfpNew() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   useWalkthrough({ key: "rfp-new", steps: RFP_NEW_STEPS });
+  const { canCreateRfp, rfpsUsed, rfpsRemaining, limits } = usePlanLimits();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [paste, setPaste] = useState("");
@@ -111,11 +124,74 @@ export function RfpNew() {
   >(null);
   const [error, setError] = useState<string | null>(null);
 
+  // #14: Paste text preview toggle
+  const [showPastePreview, setShowPastePreview] = useState(false);
+
+  // #15: Draft restored message
+  const [draftRestored, setDraftRestored] = useState(false);
+
+  // #17: Touched state for inline validation
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
   const hasContent = paste.trim().length > 0 || files.length > 0;
+
+  // #15: Restore draft from sessionStorage on mount
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(DRAFT_STORAGE_KEY);
+      if (saved) {
+        const draft: DraftData = JSON.parse(saved);
+        if (draft.name) setName(draft.name);
+        if (draft.description) setDescription(draft.description);
+        if (draft.deadline) setDeadline(new Date(draft.deadline));
+        if (draft.pastedText) setPaste(draft.pastedText);
+        setDraftRestored(true);
+        setTimeout(() => setDraftRestored(false), 4000);
+      }
+    } catch {
+      // Ignore parse errors
+    }
+  }, []);
+
+  // #15: Auto-save draft to sessionStorage (debounced)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveDraft = useCallback(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      const draft: DraftData = {
+        name,
+        description,
+        deadline: deadline ? deadline.toISOString() : null,
+        pastedText: paste,
+      };
+      try {
+        sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+      } catch {
+        // Ignore storage errors
+      }
+    }, 500);
+  }, [name, description, deadline, paste]);
+
+  useEffect(() => {
+    saveDraft();
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [saveDraft]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // #17: Mark name as touched on submit attempt
+    setTouched((prev) => ({ ...prev, name: true }));
+
+    if (!canCreateRfp) {
+      setError(
+        `You've reached the ${limits.maxRfpsPerMonth} RFP limit for this month on your plan. Upgrade to create more.`,
+      );
+      return;
+    }
     if (!name.trim()) {
       setError(t("rfp.new.errorName"));
       return;
@@ -183,6 +259,9 @@ export function RfpNew() {
         }
       }
 
+      // #15: Clear draft on successful submission
+      sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+
       toast(
         "success",
         t("rfp.new.success") || "RFP project created successfully!",
@@ -232,8 +311,19 @@ export function RfpNew() {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // #17: Inline validation helpers
+  const nameError = touched.name && !name.trim();
+
   return (
     <div className="w-full max-w-7xl mx-auto pb-24">
+      {/* #15: Draft restored notification */}
+      {draftRestored && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-brand-blue/20 bg-brand-blue/5 px-4 py-2.5 text-sm text-brand-blue animate-in fade-in slide-in-from-top-2 duration-300">
+          <CheckIcon className="h-4 w-4 shrink-0" />
+          <span>Draft restored from your previous session.</span>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
@@ -276,9 +366,22 @@ export function RfpNew() {
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="mt-1.5"
+                  onBlur={() => setTouched((prev) => ({ ...prev, name: true }))}
+                  className={`mt-1.5 ${
+                    nameError
+                      ? "border-red-400 focus:border-red-500 focus:ring-red-500"
+                      : touched.name && name.trim()
+                        ? "border-green-400 focus:border-green-500 focus:ring-green-500"
+                        : ""
+                  }`}
                   placeholder={t("rfp.new.projectNamePlaceholder")}
                 />
+                {/* #17: Inline validation message */}
+                {nameError && (
+                  <p className="mt-1 text-xs text-red-600">
+                    Required — please enter a project name.
+                  </p>
+                )}
               </div>
               <div data-tour="rfp-deadline">
                 <Label>
@@ -321,8 +424,8 @@ export function RfpNew() {
             </h2>
           </div>
           <p className="text-xs text-muted mb-5 ml-[34px]">
-            {t("rfp.new.rfpContentHint") ||
-              "Upload your RFP document or paste the questions directly"}
+            {/* #16: Clarify upload OR paste */}
+            You can upload files, paste text, or both.
           </p>
 
           {/* File Upload */}
@@ -386,34 +489,50 @@ export function RfpNew() {
                 {files.map((file, index) => (
                   <div
                     key={`${file.name}-${index}`}
-                    className="flex items-center gap-3 rounded-lg border border-border bg-cream-lighter px-4 py-2.5 group/file"
+                    className="rounded-lg border border-border bg-cream-lighter group/file"
                   >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white border border-border">
-                      {getFileIcon(file.name)}
+                    <div className="flex items-center gap-3 px-4 py-2.5">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white border border-border">
+                        {getFileIcon(file.name)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-heading truncate">
+                          {file.name}
+                        </p>
+                        <p className="text-xs text-muted">
+                          {getFileTypeLabel(file.name)} &middot;{" "}
+                          {formatFileSize(file.size)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {!isSubmitting && (
+                          <CheckIcon className="h-4 w-4 text-green-500" />
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeFile(index);
+                          }}
+                          className="rounded-lg p-1.5 text-muted opacity-0 group-hover/file:opacity-100 hover:text-red-600 hover:bg-red-50 transition-all"
+                          aria-label={`Remove ${file.name}`}
+                        >
+                          <XMarkIcon className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-heading truncate">
-                        {file.name}
-                      </p>
-                      <p className="text-xs text-muted">
-                        {getFileTypeLabel(file.name)} &middot;{" "}
-                        {formatFileSize(file.size)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckIcon className="h-4 w-4 text-green-500" />
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeFile(index);
-                        }}
-                        className="rounded-lg p-1.5 text-muted opacity-0 group-hover/file:opacity-100 hover:text-red-600 hover:bg-red-50 transition-all"
-                        aria-label={`Remove ${file.name}`}
-                      >
-                        <XMarkIcon className="h-4 w-4" />
-                      </button>
-                    </div>
+                    {/* #13: Per-file upload progress bar */}
+                    {isSubmitting && submittingStep === "upload" && (
+                      <div className="h-1 w-full overflow-hidden rounded-b-lg bg-brand-blue/10">
+                        <div
+                          className="h-full w-1/3 rounded-full bg-brand-blue animate-[shimmer_1.5s_ease-in-out_infinite]"
+                          style={{
+                            animation: `shimmer 1.5s ease-in-out infinite`,
+                            animationDelay: `${index * 0.2}s`,
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
                 ))}
                 <p className="text-xs text-muted pl-1">
@@ -426,11 +545,11 @@ export function RfpNew() {
             )}
           </div>
 
-          {/* OR Divider */}
+          {/* #16: OR Divider — clarified */}
           <div className="flex items-center gap-4 my-5">
             <div className="h-px flex-1 bg-border" />
-            <span className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-cream-lighter text-[10px] font-semibold text-muted uppercase">
-              {t("common.or")}
+            <span className="text-xs font-medium text-muted uppercase tracking-wide px-2">
+              Or paste your RFP content directly
             </span>
             <div className="h-px flex-1 bg-border" />
           </div>
@@ -439,11 +558,33 @@ export function RfpNew() {
           <div data-tour="rfp-paste">
             <div className="flex items-center justify-between mb-1.5">
               <Label htmlFor="paste">{t("rfp.new.pasteText")}</Label>
-              {paste.length > 0 && (
-                <span className="text-xs text-muted tabular-nums">
-                  {paste.length.toLocaleString()} chars
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {paste.length > 0 && (
+                  <span className="text-xs text-muted tabular-nums">
+                    {paste.length.toLocaleString()} chars
+                  </span>
+                )}
+                {/* #14: Preview toggle button */}
+                {paste.trim().length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPastePreview((prev) => !prev)}
+                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted hover:text-heading hover:bg-cream transition-colors"
+                  >
+                    {showPastePreview ? (
+                      <>
+                        <EyeSlashIcon className="h-3.5 w-3.5" />
+                        Hide preview
+                      </>
+                    ) : (
+                      <>
+                        <EyeIcon className="h-3.5 w-3.5" />
+                        Preview
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
             <textarea
               id="paste"
@@ -453,6 +594,12 @@ export function RfpNew() {
               className="w-full rounded-lg border border-border bg-white px-4 py-3 text-sm text-heading placeholder-muted focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue resize-y transition-colors font-mono leading-relaxed"
               placeholder={t("rfp.new.pastePlaceholder")}
             />
+            {/* #14: Paste text preview panel */}
+            {showPastePreview && paste.trim().length > 0 && (
+              <div className="mt-2 rounded-lg border border-border bg-cream-lighter px-4 py-3 text-sm text-heading whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">
+                {paste}
+              </div>
+            )}
           </div>
         </section>
 
@@ -534,56 +681,47 @@ export function RfpNew() {
           </div>
         )}
 
-        {/* Sticky Action Bar */}
+        {/* #17: Simplified Sticky Action Bar — just Cancel + Submit */}
         <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-white/80 backdrop-blur-lg lg:left-56">
-          <div className="w-full max-w-7xl mx-auto flex items-center justify-between px-4 lg:px-6 py-3">
-            <div className="flex items-center gap-2 text-sm text-muted">
-              {name.trim() && (
+          <div className="w-full max-w-7xl mx-auto flex items-center justify-end px-4 lg:px-6 py-3 gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate("/")}
+            >
+              {t("common.cancel")}
+            </Button>
+            {limits.maxRfpsPerMonth !== null && (
+              <span className={`text-xs tabular-nums ${!canCreateRfp ? "text-red-600 font-medium" : "text-muted"}`}>
+                {rfpsUsed}/{limits.maxRfpsPerMonth} RFPs this month
+              </span>
+            )}
+            <Button type="submit" disabled={isSubmitting || !canCreateRfp}>
+              {!canCreateRfp ? (
+                "Limit Reached"
+              ) : isSubmitting ? (
                 <>
-                  <CheckIcon className="h-4 w-4 text-green-500" />
-                  <span className="hidden sm:inline">
-                    {name.trim().length > 30
-                      ? name.trim().slice(0, 30) + "..."
-                      : name.trim()}
-                  </span>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  {t("rfp.new.creating")}
+                </>
+              ) : (
+                <>
+                  {t("rfp.new.create")}
+                  <ArrowRightIcon className="h-4 w-4" />
                 </>
               )}
-              {hasContent && (
-                <>
-                  <CheckIcon className="h-4 w-4 text-green-500" />
-                  <span className="hidden sm:inline">
-                    {files.length > 0
-                      ? `${files.length} file${files.length > 1 ? "s" : ""}`
-                      : "Text pasted"}
-                  </span>
-                </>
-              )}
-            </div>
-            <div className="flex items-center gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate("/")}
-              >
-                {t("common.cancel")}
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    {t("rfp.new.creating")}
-                  </>
-                ) : (
-                  <>
-                    {t("rfp.new.create")}
-                    <ArrowRightIcon className="h-4 w-4" />
-                  </>
-                )}
-              </Button>
-            </div>
+            </Button>
           </div>
         </div>
       </form>
+
+      {/* #13: Shimmer animation keyframes */}
+      <style>{`
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(400%); }
+        }
+      `}</style>
     </div>
   );
 }

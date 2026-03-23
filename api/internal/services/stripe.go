@@ -2,34 +2,31 @@ package services
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/stripe/stripe-go/v81"
 	"github.com/stripe/stripe-go/v81/billingportal/session"
 	checkoutsession "github.com/stripe/stripe-go/v81/checkout/session"
 	"github.com/stripe/stripe-go/v81/customer"
+	"github.com/stripe/stripe-go/v81/usagerecord"
 	"github.com/stripe/stripe-go/v81/webhook"
 )
-
-// priceIDs maps plan names to Stripe Price IDs.
-// These should be configured via environment variables in production.
-var priceIDs = map[string]string{
-	"starter":    "price_starter",
-	"growth":     "price_growth",
-	"enterprise": "price_enterprise",
-}
 
 // StripeClient wraps the Stripe SDK for billing operations.
 type StripeClient struct {
 	secretKey     string
 	webhookSecret string
+	priceIDs      map[string]string
 }
 
 // NewStripeClient creates a new Stripe client and sets the global API key.
-func NewStripeClient(secretKey, webhookSecret string) *StripeClient {
+// priceIDs maps plan names ("starter", "growth", "enterprise") to Stripe Price IDs.
+func NewStripeClient(secretKey, webhookSecret string, priceIDs map[string]string) *StripeClient {
 	stripe.Key = secretKey
 	return &StripeClient{
 		secretKey:     secretKey,
 		webhookSecret: webhookSecret,
+		priceIDs:      priceIDs,
 	}
 }
 
@@ -51,7 +48,7 @@ func (s *StripeClient) CreateCustomer(orgID, email string) (string, error) {
 // CreateCheckoutSession creates a Stripe Checkout session for subscription purchase.
 // Returns the checkout session URL.
 func (s *StripeClient) CreateCheckoutSession(customerID, plan, successURL, cancelURL string) (string, error) {
-	priceID, ok := priceIDs[plan]
+	priceID, ok := s.priceIDs[plan]
 	if !ok {
 		return "", fmt.Errorf("unknown plan: %s", plan)
 	}
@@ -89,6 +86,24 @@ func (s *StripeClient) CreatePortalSession(customerID, returnURL string) (string
 		return "", fmt.Errorf("failed to create portal session: %w", err)
 	}
 	return sess.URL, nil
+}
+
+// ReportMeteredUsage reports token overage usage to a Stripe metered subscription item.
+// subscriptionItemID is the Stripe subscription item with metered pricing.
+// quantity is the number of units (e.g., thousands of tokens).
+func (s *StripeClient) ReportMeteredUsage(subscriptionItemID string, quantity int64) error {
+	params := &stripe.UsageRecordParams{
+		SubscriptionItem: stripe.String(subscriptionItemID),
+		Quantity:         stripe.Int64(quantity),
+		Timestamp:        stripe.Int64(time.Now().Unix()),
+		Action:           stripe.String(string(stripe.UsageRecordActionIncrement)),
+	}
+
+	_, err := usagerecord.New(params)
+	if err != nil {
+		return fmt.Errorf("failed to report metered usage: %w", err)
+	}
+	return nil
 }
 
 // ConstructWebhookEvent verifies and parses a Stripe webhook event from the raw payload and signature.

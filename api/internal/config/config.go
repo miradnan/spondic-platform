@@ -11,8 +11,11 @@ type Config struct {
 	AWSRegion          string
 	AWSS3Bucket        string
 	AIServiceURL       string
-	StripeSecretKey    string
-	StripeWebhookSecret string
+	StripeSecretKey       string
+	StripeWebhookSecret   string
+	StripePriceStarter    string
+	StripePriceGrowth     string
+	StripePriceEnterprise string
 	SESRegion          string
 	SESFromEmail       string
 }
@@ -27,8 +30,11 @@ func Load() *Config {
 		AWSRegion:    getEnv("AWS_REGION", "us-east-1"),
 		AWSS3Bucket:  getEnv("AWS_S3_BUCKET", ""),
 		AIServiceURL:       getEnv("AI_SERVICE_URL", "http://localhost:8000"),
-		StripeSecretKey:    getEnv("STRIPE_SECRET_KEY", ""),
-		StripeWebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET", ""),
+		StripeSecretKey:       getEnv("STRIPE_SECRET_KEY", ""),
+		StripeWebhookSecret:   getEnv("STRIPE_WEBHOOK_SECRET", ""),
+		StripePriceStarter:    getEnv("STRIPE_PRICE_STARTER", ""),
+		StripePriceGrowth:     getEnv("STRIPE_PRICE_GROWTH", ""),
+		StripePriceEnterprise: getEnv("STRIPE_PRICE_ENTERPRISE", ""),
 		SESRegion:          getEnv("SES_AWS_REGION", "ap-south-1"),
 		SESFromEmail:       getEnv("SES_FROM_EMAIL", ""),
 	}

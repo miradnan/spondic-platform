@@ -13,14 +13,17 @@ import {
   BookOpenIcon,
   CheckCircleIcon,
   RocketLaunchIcon,
+  TrashIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import {
   createColumnHelper,
   type ColumnDef,
 } from "@tanstack/react-table";
-import { useProjects, useDocuments } from "../hooks/useApi.ts";
+import { useProjects, useDocuments, useDeleteProject } from "../hooks/useApi.ts";
 import { useWalkthrough, DASHBOARD_STEPS } from "../hooks/useWalkthrough.ts";
 import { DataTable } from "../components/DataTable.tsx";
+import { ConfirmDialog } from "../components/ConfirmDialog.tsx";
 import { PaginationBar } from "../components/ui/pagination-bar.tsx";
 import { Tooltip } from "../components/ui/tooltip.tsx";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select.tsx";
@@ -82,8 +85,8 @@ function useDeadlineOptions() {
   return [
     { value: "" as const, label: "All deadlines" },
     { value: "overdue" as const, label: "Overdue" },
-    { value: "this_week" as const, label: "Due this week" },
-    { value: "this_month" as const, label: "Due this month" },
+    { value: "this_week" as const, label: "Next 7 days" },
+    { value: "this_month" as const, label: "Next 30 days" },
     { value: "no_deadline" as const, label: "No deadline" },
   ];
 }
@@ -120,16 +123,49 @@ function SkeletonCard() {
 
 type ViewMode = "cards" | "table";
 
+type CardSortOption = "updated" | "name" | "deadline" | "progress";
+
 const projectColumnHelper = createColumnHelper<Project>();
+
+function sortProjects(projects: Project[], sortBy: CardSortOption): Project[] {
+  const sorted = [...projects];
+  switch (sortBy) {
+    case "name":
+      sorted.sort((a, b) => a.name.localeCompare(b.name));
+      break;
+    case "deadline":
+      sorted.sort((a, b) => {
+        if (!a.deadline && !b.deadline) return 0;
+        if (!a.deadline) return 1;
+        if (!b.deadline) return -1;
+        return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+      });
+      break;
+    case "progress":
+      sorted.sort((a, b) => {
+        const pctA = a.question_count > 0 ? a.approved_count / a.question_count : 0;
+        const pctB = b.question_count > 0 ? b.approved_count / b.question_count : 0;
+        return pctB - pctA;
+      });
+      break;
+    case "updated":
+    default:
+      sorted.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+      break;
+  }
+  return sorted;
+}
 
 // ── Onboarding Checklist ──────────────────────────────────────────────────────
 
 function OnboardingChecklist({
   hasDocuments,
   hasProjects,
+  onDismissed,
 }: {
   hasDocuments: boolean;
   hasProjects: boolean;
+  onDismissed: () => void;
 }) {
   const { t } = useTranslation();
   const [dismissed, setDismissed] = useState(() => {
@@ -139,6 +175,11 @@ function OnboardingChecklist({
       return false;
     }
   });
+  const [confirmingDismiss, setConfirmingDismiss] = useState(false);
+
+  useEffect(() => {
+    if (dismissed) onDismissed();
+  }, [dismissed, onDismissed]);
 
   if (dismissed) return null;
 
@@ -168,6 +209,15 @@ function OnboardingChecklist({
 
   const completedCount = steps.filter((s) => s.done).length;
 
+  const handleDismiss = () => {
+    setDismissed(true);
+    try {
+      localStorage.setItem("spondic_onboarding_dismissed", "true");
+    } catch {
+      // ignore
+    }
+  };
+
   return (
     <div className="mb-6 rounded-xl border border-brand-blue/20 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4">
@@ -184,19 +234,30 @@ function OnboardingChecklist({
             </p>
           </div>
         </div>
-        <button
-          onClick={() => {
-            setDismissed(true);
-            try {
-              localStorage.setItem("spondic_onboarding_dismissed", "true");
-            } catch {
-              // ignore
-            }
-          }}
-          className="text-xs text-muted hover:text-body transition-colors"
-        >
-          {t("common.dismiss")}
-        </button>
+        {confirmingDismiss ? (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-muted">Are you sure?</span>
+            <button
+              onClick={handleDismiss}
+              className="font-medium text-red-600 hover:text-red-700 transition-colors"
+            >
+              Yes
+            </button>
+            <button
+              onClick={() => setConfirmingDismiss(false)}
+              className="font-medium text-muted hover:text-body transition-colors"
+            >
+              No
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmingDismiss(true)}
+            className="text-xs text-muted hover:text-body transition-colors"
+          >
+            {t("common.dismiss")}
+          </button>
+        )}
       </div>
 
       {/* Progress bar */}
@@ -278,6 +339,24 @@ export function Dashboard() {
 
   const [debouncedSearch, setDebouncedSearch] = useState(search);
 
+  // Card view sorting
+  const [cardSort, setCardSort] = useState<CardSortOption>("updated");
+
+  // Multi-select state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Onboarding re-enable state
+  const [onboardingWasDismissed, setOnboardingWasDismissed] = useState(() => {
+    try {
+      return localStorage.getItem("spondic_onboarding_dismissed") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const deleteProject = useDeleteProject();
+
   // Debounce search
   useEffect(() => {
     const timeout = setTimeout(() => setDebouncedSearch(search), 300);
@@ -317,8 +396,14 @@ export function Dashboard() {
   const total = deadlineFilter ? projects.length : (data?.pagination?.total ?? 0);
   const totalPages = deadlineFilter ? Math.max(1, Math.ceil(total / pagination.pageSize)) : (data?.pagination?.total_pages ?? Math.max(1, Math.ceil(total / pagination.pageSize)));
 
+  // Sorted projects for card view
+  const sortedProjects = useMemo(() => sortProjects(projects, cardSort), [projects, cardSort]);
+
   const hasDocuments = (docsData?.pagination?.total ?? 0) > 0;
   const hasProjects = (data?.pagination?.total ?? 0) > 0;
+
+  // Check if all onboarding steps are incomplete (for re-enable link)
+  const allStepsIncomplete = !hasDocuments && !hasProjects;
 
   useWalkthrough({ key: "dashboard", steps: DASHBOARD_STEPS });
 
@@ -330,8 +415,57 @@ export function Dashboard() {
     onPaginationChange({ pageIndex: 0, pageSize: size });
   }, [onPaginationChange]);
 
+  // Multi-select helpers
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleBulkDelete = useCallback(async () => {
+    const ids = Array.from(selectedIds);
+    for (const id of ids) {
+      await deleteProject.mutateAsync(id);
+    }
+    setSelectedIds(new Set());
+    setShowDeleteConfirm(false);
+  }, [selectedIds, deleteProject]);
+
+  const handleReEnableOnboarding = useCallback(() => {
+    try {
+      localStorage.removeItem("spondic_onboarding_dismissed");
+    } catch {
+      // ignore
+    }
+    setOnboardingWasDismissed(false);
+  }, []);
+
   const tableColumns = useMemo(
     () => [
+      projectColumnHelper.display({
+        id: "select",
+        header: () => null,
+        cell: (info) => (
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-gray-300 text-brand-blue focus:ring-brand-blue cursor-pointer"
+            checked={selectedIds.has(info.row.original.id)}
+            onChange={(e) => {
+              e.stopPropagation();
+              toggleSelect(info.row.original.id);
+            }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        ),
+        size: 40,
+      }),
       projectColumnHelper.accessor("name", {
         header: "Name",
         enableSorting: true,
@@ -384,7 +518,7 @@ export function Dashboard() {
                   style={{ width: `${pct}%` }}
                 />
               </div>
-              <span className="text-xs text-muted shrink-0">{pct}%</span>
+              <span className="text-xs text-muted shrink-0">{approved}/{total} ({pct}%)</span>
             </div>
           );
         },
@@ -392,10 +526,17 @@ export function Dashboard() {
       projectColumnHelper.accessor("updated_at", {
         header: "Updated",
         enableSorting: true,
-        cell: (info) => <span className="text-muted">{relativeTime(info.getValue())}</span>,
+        cell: (info) => {
+          const val = info.getValue();
+          return (
+            <Tooltip content={new Date(val).toLocaleString()}>
+              <span className="text-muted">{relativeTime(val)}</span>
+            </Tooltip>
+          );
+        },
       }),
     ] as ColumnDef<Project>[],
-    [],
+    [selectedIds, toggleSelect],
   );
 
   return (
@@ -421,12 +562,26 @@ export function Dashboard() {
       </div>
 
       {/* Onboarding Checklist */}
-      {!isLoading && (
+      {!isLoading && !onboardingWasDismissed && (
         <div className="mt-6" data-tour="onboarding-checklist">
           <OnboardingChecklist
             hasDocuments={hasDocuments}
             hasProjects={hasProjects}
+            onDismissed={() => setOnboardingWasDismissed(true)}
           />
+        </div>
+      )}
+
+      {/* Re-enable onboarding link */}
+      {!isLoading && onboardingWasDismissed && allStepsIncomplete && (
+        <div className="mt-6">
+          <button
+            onClick={handleReEnableOnboarding}
+            className="inline-flex items-center gap-1.5 text-xs text-brand-blue hover:text-brand-blue-hover transition-colors"
+          >
+            <RocketLaunchIcon className="h-3.5 w-3.5" />
+            Show setup guide
+          </button>
         </div>
       )}
 
@@ -472,6 +627,24 @@ export function Dashboard() {
             ))}
           </SelectContent>
         </Select>
+
+        {/* Card Sort (only in card view) */}
+        {viewMode === "cards" && (
+          <Select
+            value={cardSort}
+            onValueChange={(val) => setCardSort(val as CardSortOption)}
+          >
+            <SelectTrigger className="min-w-[140px]">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="updated">Last updated</SelectItem>
+              <SelectItem value="name">Name A-Z</SelectItem>
+              <SelectItem value="deadline">Deadline</SelectItem>
+              <SelectItem value="progress">Progress</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
 
         {/* View Toggle */}
         <div className="flex items-center rounded-lg border border-border bg-white">
@@ -557,63 +730,82 @@ export function Dashboard() {
       {!isLoading && !isError && projects.length > 0 && viewMode === "cards" && (
         <>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {projects.map((project) => {
+            {sortedProjects.map((project) => {
               const progress =
                 project.question_count > 0
                   ? Math.round(
                       (project.approved_count / project.question_count) * 100
                     )
                   : 0;
+              const isSelected = selectedIds.has(project.id);
 
               return (
-                <Link
+                <div
                   key={project.id}
-                  to={`/rfp/${project.id}`}
-                  className="group rounded-xl border border-border bg-white p-6 transition-all hover:shadow-md hover:border-brand-blue/30"
+                  className={`group relative rounded-xl border bg-white p-6 transition-all hover:shadow-md hover:border-brand-blue/30 ${
+                    isSelected ? "border-brand-blue ring-1 ring-brand-blue/30" : "border-border"
+                  }`}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-display text-lg font-semibold text-heading group-hover:text-brand-blue transition-colors line-clamp-1">
-                      {project.name}
-                    </h3>
-                    <StatusBadge status={project.status} />
+                  {/* Selection checkbox */}
+                  <div className="absolute top-3 left-3 z-10">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 text-brand-blue focus:ring-brand-blue cursor-pointer"
+                      checked={isSelected}
+                      onChange={() => toggleSelect(project.id)}
+                    />
                   </div>
 
-                  {project.description && (
-                    <p className="mt-2 text-sm text-muted line-clamp-2">{project.description}</p>
-                  )}
-
-                  {/* Deadline */}
-                  <div className="mt-3">
-                    <DaysLeftBadge deadline={project.deadline} />
-                  </div>
-
-                  {/* Progress bar */}
-                  {project.question_count > 0 && (
-                    <div className="mt-3">
-                      <div className="flex items-center justify-between text-xs text-muted mb-1">
-                        <span>{project.approved_count}/{project.question_count} approved</span>
-                        <span>{progress}%</span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-green-500 transition-all"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
+                  <Link
+                    to={`/rfp/${project.id}`}
+                    className="block pl-5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-display text-lg font-semibold text-heading group-hover:text-brand-blue transition-colors line-clamp-1">
+                        {project.name}
+                      </h3>
+                      <StatusBadge status={project.status} />
                     </div>
-                  )}
 
-                  <div className="mt-3 flex items-center gap-4 text-xs text-muted">
-                    <span>{t("dashboard.questions", { count: project.question_count })}</span>
-                    {project.draft_count > 0 && (
-                      <span>{t("dashboard.drafted", { count: project.draft_count })}</span>
+                    {project.description && (
+                      <p className="mt-2 text-sm text-muted line-clamp-2">{project.description}</p>
                     )}
-                  </div>
 
-                  <p className="mt-2 text-xs text-muted">
-                    {t("dashboard.updated", { time: relativeTime(project.updated_at) })}
-                  </p>
-                </Link>
+                    {/* Deadline */}
+                    <div className="mt-3">
+                      <DaysLeftBadge deadline={project.deadline} />
+                    </div>
+
+                    {/* Progress bar */}
+                    {project.question_count > 0 && (
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between text-xs text-muted mb-1">
+                          <span>{project.approved_count}/{project.question_count} approved</span>
+                          <span>{progress}%</span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-green-500 transition-all"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mt-3 flex items-center gap-4 text-xs text-muted">
+                      <span>{t("dashboard.questions", { count: project.question_count })}</span>
+                      {project.draft_count > 0 && (
+                        <span>{t("dashboard.drafted", { count: project.draft_count })}</span>
+                      )}
+                    </div>
+
+                    <Tooltip content={new Date(project.updated_at).toLocaleString()}>
+                      <p className="mt-2 text-xs text-muted inline-block">
+                        {t("dashboard.updated", { time: relativeTime(project.updated_at) })}
+                      </p>
+                    </Tooltip>
+                  </Link>
+                </div>
               );
             })}
           </div>
@@ -664,6 +856,43 @@ export function Dashboard() {
           />
         </div>
       )}
+
+      {/* Floating bulk action bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-xl border border-border bg-white px-5 py-3 shadow-lg">
+          <span className="text-sm font-medium text-heading">
+            {selectedIds.size} selected
+          </span>
+          <div className="h-5 w-px bg-border" />
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 transition-colors"
+          >
+            <TrashIcon className="h-4 w-4" />
+            Delete selected
+          </button>
+          <button
+            onClick={clearSelection}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-body hover:bg-cream-light transition-colors"
+          >
+            <XMarkIcon className="h-4 w-4" />
+            Clear selection
+          </button>
+        </div>
+      )}
+
+      {/* Bulk delete confirmation dialog */}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onConfirm={() => void handleBulkDelete()}
+        onCancel={() => setShowDeleteConfirm(false)}
+        title={`Delete ${selectedIds.size} project${selectedIds.size === 1 ? "" : "s"}?`}
+        description={`This will permanently delete the selected project${selectedIds.size === 1 ? "" : "s"} and all associated data. This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        loading={deleteProject.isPending}
+      />
     </div>
   );
 }

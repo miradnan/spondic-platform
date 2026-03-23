@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useTranslation } from "react-i18next";
 
 export default function Footer() {
@@ -9,37 +10,100 @@ export default function Footer() {
 
   return (
     <footer className="border-t border-white/10 bg-navy">
-      <div className="mx-auto max-w-[1200px] px-4 py-10 sm:px-8 sm:py-12">
-        <div className="flex flex-col items-center gap-8 sm:flex-row sm:items-start sm:justify-between">
-          <Link
-            href="/"
-            className="font-logo text-[27px] font-bold tracking-tight uppercase text-white hover:text-white/90 transition-colors"
-          >
-            {businessName}
-          </Link>
-          <nav className="flex flex-wrap items-center justify-center gap-6 text-[14px] font-medium text-white/80">
-            <Link href="/#how-it-works" className="hover:text-white transition-colors">
-              {t("nav.howItWorks")}
+      <div className="mx-auto max-w-[1200px] px-4 py-12 sm:px-8 sm:py-16">
+        {/* Top: Logo + Nav columns */}
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Brand column */}
+          <div className="sm:col-span-2 lg:col-span-1">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2.5 group"
+            >
+              <Image
+                src="/logo.png"
+                alt={businessName}
+                width={32}
+                height={32}
+                className="rounded-lg"
+              />
+              <span className="font-logo text-[22px] font-bold tracking-tight uppercase text-white group-hover:text-white/90 transition-colors">
+                {businessName}
+              </span>
             </Link>
-            <Link href="/product" className="hover:text-white transition-colors">
-              {t("nav.product")}
-            </Link>
-            <Link href="/#pricing" className="hover:text-white transition-colors">
-              {t("nav.pricing")}
-            </Link>
-            <Link href="/contact" className="hover:text-white transition-colors">
-              {t("nav.contact")}
-            </Link>
-            <Link href="/blog" className="hover:text-white transition-colors">
-              Blog
-            </Link>
-          </nav>
+            <p className="mt-4 text-[13px] leading-[1.7] text-white/50 max-w-[260px]">
+              AI-powered RFP response platform for enterprise sales teams. Draft winning proposals faster.
+            </p>
+          </div>
+
+          {/* Product column */}
+          <div>
+            <h4 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-white/40 mb-4">
+              {t("footer.product")}
+            </h4>
+            <nav className="flex flex-col gap-2.5 text-[14px] text-white/70">
+              <Link href="/#how-it-works" className="hover:text-white transition-colors w-fit">
+                {t("nav.howItWorks")}
+              </Link>
+              <Link href="/product" className="hover:text-white transition-colors w-fit">
+                {t("footer.product")}
+              </Link>
+              <Link href="/#pricing" className="hover:text-white transition-colors w-fit">
+                {t("footer.pricing")}
+              </Link>
+            </nav>
+          </div>
+
+          {/* Company column */}
+          <div>
+            <h4 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-white/40 mb-4">
+              {t("footer.company")}
+            </h4>
+            <nav className="flex flex-col gap-2.5 text-[14px] text-white/70">
+              <Link href="/contact" className="hover:text-white transition-colors w-fit">
+                {t("footer.contact")}
+              </Link>
+              <Link href="/blog" className="hover:text-white transition-colors w-fit">
+                {t("footer.blog")}
+              </Link>
+            </nav>
+          </div>
+
+          {/* Legal column */}
+          <div>
+            <h4 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-white/40 mb-4">
+              {t("footer.legal")}
+            </h4>
+            <nav className="flex flex-col gap-2.5 text-[14px] text-white/70">
+              <Link href="/terms" className="hover:text-white transition-colors w-fit">
+                {t("footer.termsOfService")}
+              </Link>
+              <Link href="/privacy" className="hover:text-white transition-colors w-fit">
+                {t("footer.privacyPolicy")}
+              </Link>
+            </nav>
+          </div>
         </div>
-        <div className="mt-8 border-t border-white/10 pt-8 text-center text-[13px] text-white/50">
-          &copy; {new Date().getFullYear()} {businessName}. {t("footer.rights")}{" "}
-          <Link href="/terms" className="hover:text-white/70 transition-colors">{t("footer.termsOfService")}</Link>
-          {" \u00B7 "}
-          <Link href="/privacy" className="hover:text-white/70 transition-colors">{t("footer.privacyPolicy")}</Link>
+
+        {/* Divider */}
+        <div className="mt-12 border-t border-white/10" />
+
+        {/* Bottom: Copyright + Made with love */}
+        <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
+          <p className="text-[13px] text-white/40">
+            &copy; {new Date().getFullYear()} {businessName} Inc. {t("footer.rights")}
+          </p>
+
+          <div className="flex items-center gap-2 text-[13px] text-white/50">
+            <span>{t("footer.madeWithLove")}</span>
+            <span className="inline-flex items-center gap-1">
+              <svg viewBox="0 0 36 36" className="h-4 w-4" aria-label="Canadian flag">
+                <rect fill="#FF0000" x="0" y="0" width="9" height="36" />
+                <rect fill="#FFFFFF" x="9" y="0" width="18" height="36" />
+                <rect fill="#FF0000" x="27" y="0" width="9" height="36" />
+                <path fill="#FF0000" d="M18 6l-1.5 4.5L13 9l1.5 3-3-0.5 1 2.5H9l3 3-1 1.5h2l-1 3h2l1-2 1 2h2l-1-3h2L19 21.5l3-3h-3.5l1-2.5-3 0.5L18 13.5l-3.5 1.5L16 10.5z"/>
+              </svg>
+            </span>
+          </div>
         </div>
       </div>
     </footer>

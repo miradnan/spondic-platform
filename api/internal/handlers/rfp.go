@@ -261,6 +261,11 @@ func (h *Handler) DraftRFP(c echo.Context) error {
 	orgID := getOrgID(c)
 	projectID := c.Param("id")
 
+	// Check token limit before making AI calls
+	if err := h.checkTokenLimit(orgID); err != nil {
+		return c.JSON(http.StatusForbidden, map[string]string{"error": err.Error()})
+	}
+
 	// Get all questions for this project
 	rows, err := h.DB.Query(
 		`SELECT id, question_text, section, word_limit
@@ -301,6 +306,11 @@ func (h *Handler) DraftRFP(c echo.Context) error {
 	}
 	if resp.Error != "" {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": resp.Error})
+	}
+
+	// Record token usage
+	if resp.TokensUsed != nil {
+		h.recordTokenUsage(orgID, resp.TokensUsed.TotalTokens)
 	}
 
 	// Save answers and citations
@@ -355,6 +365,14 @@ func (h *Handler) DraftRFP(c echo.Context) error {
 				log.Printf("error inserting citation: %v", err)
 			}
 		}
+
+		// Log drafted activity
+		h.DB.Exec(
+			`INSERT INTO rfp_answer_history (answer_id, action, new_text, edited_by)
+			 VALUES ($1, 'drafted', $2, 'ai')`,
+			answerID, a.DraftText,
+		)
+
 		answersCreated++
 	}
 
@@ -407,6 +425,11 @@ func (h *Handler) RedraftQuestion(c echo.Context) error {
 	projectID := c.Param("id")
 	questionID := c.Param("qid")
 
+	// Check token limit
+	if err := h.checkTokenLimit(orgID); err != nil {
+		return c.JSON(http.StatusForbidden, map[string]string{"error": err.Error()})
+	}
+
 	// Get the question
 	var q services.DraftQuestion
 	var section *string
@@ -437,6 +460,11 @@ func (h *Handler) RedraftQuestion(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "redraft returned no answers"})
 	}
 
+	// Record token usage
+	if resp.TokensUsed != nil {
+		h.recordTokenUsage(orgID, resp.TokensUsed.TotalTokens)
+	}
+
 	a := resp.Answers[0]
 
 	// Delete old citations and update/insert answer
@@ -462,8 +490,8 @@ func (h *Handler) RedraftQuestion(c echo.Context) error {
 		h.DB.QueryRow(`SELECT draft_text FROM rfp_answers WHERE id = $1`, answerID).Scan(&prevText)
 		if prevText != nil {
 			h.DB.Exec(
-				`INSERT INTO rfp_answer_history (answer_id, previous_text, new_text, edited_by)
-				 VALUES ($1, $2, $3, $4)`,
+				`INSERT INTO rfp_answer_history (answer_id, action, previous_text, new_text, edited_by)
+				 VALUES ($1, 'redrafted', $2, $3, $4)`,
 				answerID, *prevText, a.DraftText, getUserID(c),
 			)
 		}

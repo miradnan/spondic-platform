@@ -18,6 +18,7 @@ import {
   ListBulletIcon,
   XMarkIcon,
   QuestionMarkCircleIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { CheckCircleIcon as CheckCircleSolid } from "@heroicons/react/24/solid";
 import {
@@ -41,6 +42,7 @@ import {
   useApprovalStages,
   useAnswerApprovals,
   useStageApprove,
+  useAnswerHistory,
 } from "../hooks/useApi.ts";
 import { useToast } from "../components/Toast.tsx";
 import { DataTable } from "../components/DataTable.tsx";
@@ -48,10 +50,11 @@ import { ConfirmDialog } from "../components/ConfirmDialog.tsx";
 import { Tooltip } from "../components/ui/tooltip.tsx";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs.tsx";
 import { useWalkthrough, RFP_VIEW_STEPS } from "../hooks/useWalkthrough.ts";
-import type { RFPQuestion, RFPAnswer, AnswerApproval, StageApproveRequest } from "../lib/types.ts";
+import type { RFPQuestion, RFPAnswer, AnswerApproval, StageApproveRequest, AnswerActivity } from "../lib/types.ts";
 import { StatusBadge } from "../components/ui/status-badge.tsx";
 import { RichTextEditor } from "../components/ui/rich-text-editor.tsx";
 import { ProjectCRMLinkPanel } from "../components/ProjectCRMLink.tsx";
+import { TokenLimitDialog, isTokenLimitError } from "../components/TokenLimitDialog.tsx";
 
 function relativeTime(dateStr: string): string {
   const now = Date.now();
@@ -117,6 +120,7 @@ export function RfpView() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<Tab>("questions");
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
+  const [showTokenLimit, setShowTokenLimit] = useState(false);
   useWalkthrough({ key: "rfp-view", steps: RFP_VIEW_STEPS, delay: 1200 });
 
   const { data: project, isLoading: projectLoading } = useProject(id);
@@ -158,7 +162,13 @@ export function RfpView() {
     if (!id) return;
     draftAll.mutate(id, {
       onSuccess: (data) => toast("success", `Drafted ${data.answers_created} answers.`),
-      onError: (err) => toast("error", err.message),
+      onError: (err) => {
+        if (isTokenLimitError(err)) {
+          setShowTokenLimit(true);
+        } else {
+          toast("error", err.message);
+        }
+      },
     });
   };
 
@@ -195,6 +205,8 @@ export function RfpView() {
 
   return (
     <div className="flex flex-col min-h-0 flex-1">
+      <TokenLimitDialog open={showTokenLimit} onClose={() => setShowTokenLimit(false)} />
+
       {/* Header */}
       <div className="flex flex-wrap items-center gap-4">
         <Link to="/" className="rounded-lg p-2 hover:bg-cream-light transition-colors text-body">
@@ -298,6 +310,7 @@ export function RfpView() {
             isLoading={questionsLoading || answersLoading}
             selectedQuestionId={selectedQuestionId}
             onSelectQuestion={setSelectedQuestionId}
+            onTokenLimit={() => setShowTokenLimit(true)}
           />
         </TabsContent>
 
@@ -342,11 +355,81 @@ function QuestionsTab({
   onSelectQuestion: (id: string) => void;
 }) {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 25,
   });
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const approveAnswer = useApproveAnswer();
+
+  const toggleSelect = useCallback((id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === questions.length) return new Set();
+      return new Set(questions.map((q) => q.id));
+    });
+  }, [questions]);
+
+  const handleBatchApprove = useCallback(() => {
+    let completed = 0;
+    const total = selectedIds.size;
+    selectedIds.forEach((qId) => {
+      const ans = answerMap.get(qId);
+      if (!ans) { completed++; return; }
+      approveAnswer.mutate(
+        { projectId: ans.project_id, answerId: ans.id, body: { status: "approved" } },
+        {
+          onSuccess: () => {
+            completed++;
+            if (completed === total) {
+              toast("success", `${total} answer(s) approved.`);
+              setSelectedIds(new Set());
+            }
+          },
+          onError: (err) => {
+            completed++;
+            toast("error", err.message);
+          },
+        },
+      );
+    });
+  }, [selectedIds, answerMap, approveAnswer, toast]);
+
+  const handleBatchMarkReview = useCallback(() => {
+    let completed = 0;
+    const total = selectedIds.size;
+    selectedIds.forEach((qId) => {
+      const ans = answerMap.get(qId);
+      if (!ans) { completed++; return; }
+      approveAnswer.mutate(
+        { projectId: ans.project_id, answerId: ans.id, body: { status: "in_review" } },
+        {
+          onSuccess: () => {
+            completed++;
+            if (completed === total) {
+              toast("success", `${total} answer(s) marked for review.`);
+              setSelectedIds(new Set());
+            }
+          },
+          onError: (err) => {
+            completed++;
+            toast("error", err.message);
+          },
+        },
+      );
+    });
+  }, [selectedIds, answerMap, approveAnswer, toast]);
 
   const rows = useMemo<QuestionRow[]>(
     () =>
@@ -359,6 +442,27 @@ function QuestionsTab({
 
   const columns = useMemo(
     () => [
+      questionColumnHelper.display({
+        id: "select",
+        size: 40,
+        header: () => (
+          <input
+            type="checkbox"
+            checked={selectedIds.size === questions.length && questions.length > 0}
+            onChange={toggleSelectAll}
+            className="h-4 w-4 rounded border-gray-300 text-brand-blue focus:ring-brand-blue cursor-pointer"
+          />
+        ),
+        cell: (info) => (
+          <input
+            type="checkbox"
+            checked={selectedIds.has(info.row.original.id)}
+            onClick={(e) => toggleSelect(info.row.original.id, e)}
+            onChange={() => {}}
+            className="h-4 w-4 rounded border-gray-300 text-brand-blue focus:ring-brand-blue cursor-pointer"
+          />
+        ),
+      }),
       questionColumnHelper.accessor("question_number", {
         header: "#",
         size: 64,
@@ -393,15 +497,27 @@ function QuestionsTab({
       }),
       questionColumnHelper.accessor("_resolvedStatus", {
         header: "Status",
-        size: 112,
+        size: 128,
         enableSorting: true,
         cell: (info) => {
           const status = info.getValue();
-          return <StatusBadge status={status} />;
+          const qId = info.row.original.id;
+          const ans = answerMap.get(qId);
+          const hasAiDraft = !!(ans && ans.draft_text);
+          return (
+            <span className="inline-flex items-center gap-1.5">
+              <StatusBadge status={status} />
+              {hasAiDraft && (
+                <Tooltip content="Has AI draft">
+                  <SparklesIcon className="h-3.5 w-3.5 text-brand-blue shrink-0" />
+                </Tooltip>
+              )}
+            </span>
+          );
         },
       }),
     ] as ColumnDef<QuestionRow>[],
-    [],
+    [answerMap, selectedIds, questions.length, toggleSelectAll, toggleSelect],
   );
 
   if (isLoading) {
@@ -483,6 +599,36 @@ function QuestionsTab({
         onRowClick={(row) => onSelectQuestion(row.original.id)}
         emptyMessage="No questions found."
       />
+
+      {/* Floating batch action bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl border border-border bg-white px-5 py-3 shadow-lg">
+          <span className="text-sm font-medium text-heading">{selectedIds.size} selected</span>
+          <button
+            onClick={handleBatchApprove}
+            disabled={approveAnswer.isPending}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 transition-colors disabled:opacity-50"
+          >
+            <CheckCircleIcon className="h-4 w-4" />
+            Approve selected
+          </button>
+          <button
+            onClick={handleBatchMarkReview}
+            disabled={approveAnswer.isPending}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-yellow-300 bg-yellow-50 px-3 py-1.5 text-sm font-medium text-yellow-700 hover:bg-yellow-100 transition-colors disabled:opacity-50"
+          >
+            <ClockIcon className="h-4 w-4" />
+            Mark for review
+          </button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-body hover:bg-cream-light transition-colors"
+          >
+            <XMarkIcon className="h-4 w-4" />
+            Clear selection
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -496,6 +642,7 @@ function ReviewTab({
   isLoading,
   selectedQuestionId,
   onSelectQuestion,
+  onTokenLimit,
 }: {
   projectId: string;
   questions: RFPQuestion[];
@@ -503,6 +650,7 @@ function ReviewTab({
   isLoading: boolean;
   selectedQuestionId: string | null;
   onSelectQuestion: (id: string | null) => void;
+  onTokenLimit: () => void;
 }) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -559,7 +707,7 @@ function ReviewTab({
     setIsEditing(true);
   }, [answer]);
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = useCallback(() => {
     if (!answer) return;
     updateAnswer.mutate(
       { projectId, answerId: answer.id, body: { edited_text: editText } },
@@ -571,18 +719,41 @@ function ReviewTab({
         onError: (err) => toast("error", err.message),
       },
     );
-  };
+  }, [answer, updateAnswer, projectId, editText, toast]);
 
   const handleApprove = useCallback((status: "approved" | "in_review" | "rejected") => {
     if (!answer) return;
     approveAnswer.mutate(
       { projectId, answerId: answer.id, body: { status } },
       {
-        onSuccess: () => toast("success", `Answer marked as ${status.replace("_", " ")}.`),
+        onSuccess: () => {
+          toast("success", `Answer marked as ${status.replace("_", " ")}.`);
+          // Auto-advance to next unapproved question after approval
+          if (status === "approved") {
+            setTimeout(() => {
+              const nextIdx = questions.findIndex((q, i) => {
+                if (i <= currentIndex) return false;
+                const a = answerMap.get(q.id);
+                return !a || a.status !== "approved";
+              });
+              // If nothing after current, wrap around and check before current
+              const wrapIdx = nextIdx >= 0 ? nextIdx : questions.findIndex((q, i) => {
+                if (i >= currentIndex) return false;
+                const a = answerMap.get(q.id);
+                return !a || a.status !== "approved";
+              });
+              if (wrapIdx >= 0) {
+                onSelectQuestion(questions[wrapIdx].id);
+                setIsEditing(false);
+                setCommentText("");
+              }
+            }, 500);
+          }
+        },
         onError: (err) => toast("error", err.message),
       },
     );
-  }, [answer, approveAnswer, projectId, toast]);
+  }, [answer, approveAnswer, projectId, toast, questions, currentIndex, answerMap, onSelectQuestion]);
 
   const handleRedraft = () => {
     if (!question) return;
@@ -596,7 +767,10 @@ function ReviewTab({
       { projectId, questionId: question.id },
       {
         onSuccess: () => toast("success", "Answer re-generated."),
-        onError: (err) => toast("error", err.message),
+        onError: (err) => {
+          if (isTokenLimitError(err)) onTokenLimit();
+          else toast("error", err.message);
+        },
       },
     );
   };
@@ -618,6 +792,15 @@ function ReviewTab({
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd+S / Ctrl+S to save when editing (works from any context including contenteditable)
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        if (isEditing) {
+          e.preventDefault();
+          handleSaveEdit();
+        }
+        return;
+      }
+
       const target = e.target as HTMLElement;
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -654,7 +837,7 @@ function ReviewTab({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentIndex, answer, isEditing, goToQuestion, handleApprove, handleStartEdit]);
+  }, [currentIndex, answer, isEditing, goToQuestion, handleApprove, handleStartEdit, handleSaveEdit]);
 
   if (isLoading) {
     return (
@@ -886,7 +1069,10 @@ function ReviewTab({
                       { projectId, questionId: question.id },
                       {
                         onSuccess: () => toast("success", "Answer generated."),
-                        onError: (err) => toast("error", err.message),
+                        onError: (err) => {
+                          if (isTokenLimitError(err)) onTokenLimit();
+                          else toast("error", err.message);
+                        },
                       },
                     );
                   }}
@@ -1040,48 +1226,135 @@ function ReviewTab({
             )}
           </div>
 
-          {/* RIGHT: Citations */}
-          <div className="rounded-xl border border-border bg-white p-5 shadow-sm">
-            <h3 className="text-xs font-medium text-muted uppercase tracking-wide mb-3">{t("rfp.view.sourceCitations")}</h3>
-            {answer?.citations && answer.citations.length > 0 ? (
-              <ul className="space-y-3">
-                {answer.citations.map((c, idx) => (
-                  <li
-                    key={c.id}
-                    id={`citation-${idx + 1}`}
-                    className="rounded-lg border border-border bg-cream-light p-3 scroll-mt-4 transition-colors target:ring-2 target:ring-brand-blue/30"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-brand-blue text-[10px] font-semibold text-white">
-                          {idx + 1}
-                        </span>
-                        <span className="text-xs font-medium text-brand-blue truncate">
-                          {c.document_title}
+          {/* RIGHT: Citations + History */}
+          <div className="space-y-4">
+            <div className="rounded-xl border border-border bg-white p-5 shadow-sm">
+              <h3 className="text-xs font-medium text-muted uppercase tracking-wide mb-3">{t("rfp.view.sourceCitations")}</h3>
+              {answer?.citations && answer.citations.length > 0 ? (
+                <ul className="space-y-3">
+                  {answer.citations.map((c, idx) => (
+                    <li
+                      key={c.id}
+                      id={`citation-${idx + 1}`}
+                      className="rounded-lg border border-border bg-cream-light p-3 scroll-mt-4 transition-colors target:ring-2 target:ring-brand-blue/30"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-brand-blue text-[10px] font-semibold text-white">
+                            {idx + 1}
+                          </span>
+                          <span className="text-xs font-medium text-brand-blue truncate">
+                            {c.document_title}
+                          </span>
+                        </div>
+                        <span className={`text-xs font-medium shrink-0 ml-2 ${c.relevance_score >= 0.8 ? "text-green-600" : c.relevance_score >= 0.5 ? "text-yellow-600" : "text-red-500"}`}>
+                          {(c.relevance_score * 100).toFixed(0)}%
                         </span>
                       </div>
-                      <span className={`text-xs font-medium shrink-0 ml-2 ${c.relevance_score >= 0.8 ? "text-green-600" : c.relevance_score >= 0.5 ? "text-yellow-600" : "text-red-500"}`}>
-                        {(c.relevance_score * 100).toFixed(0)}%
-                      </span>
-                    </div>
-                    <div className="h-1 rounded-full bg-gray-200 overflow-hidden mb-2">
-                      <div
-                        className={`h-full rounded-full transition-all ${c.relevance_score >= 0.8 ? "bg-green-500" : c.relevance_score >= 0.5 ? "bg-yellow-400" : "bg-red-400"}`}
-                        style={{ width: `${(c.relevance_score * 100).toFixed(0)}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-body leading-relaxed line-clamp-4">
-                      {c.citation_text}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-xs text-muted">{t("rfp.view.noCitations")}</p>
+                      <div className="h-1 rounded-full bg-gray-200 overflow-hidden mb-2">
+                        <div
+                          className={`h-full rounded-full transition-all ${c.relevance_score >= 0.8 ? "bg-green-500" : c.relevance_score >= 0.5 ? "bg-yellow-400" : "bg-red-400"}`}
+                          style={{ width: `${(c.relevance_score * 100).toFixed(0)}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-body leading-relaxed line-clamp-4">
+                        {c.citation_text}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-muted">{t("rfp.view.noCitations")}</p>
+              )}
+            </div>
+
+            {/* History */}
+            {answer && (
+              <AnswerHistoryPanel projectId={projectId} answerId={answer.id} />
             )}
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Answer History Panel ──────────────────────────────────────────────────────
+
+const ACTION_CONFIG: Record<string, { label: string; color: string; icon: typeof CheckCircleIcon }> = {
+  drafted:    { label: "AI drafted answer",    color: "text-brand-blue",  icon: DocumentTextIcon },
+  edited:     { label: "Edited answer",        color: "text-amber-600",   icon: DocumentTextIcon },
+  approved:   { label: "Approved answer",      color: "text-green-600",   icon: CheckCircleIcon },
+  rejected:   { label: "Rejected answer",      color: "text-red-600",     icon: XMarkIcon },
+  in_review:  { label: "Sent to review",       color: "text-yellow-600",  icon: ClockIcon },
+  commented:  { label: "Added a comment",      color: "text-blue-600",    icon: ChatBubbleLeftIcon },
+  redrafted:  { label: "Re-generated answer",  color: "text-purple-600",  icon: ArrowPathIcon },
+};
+
+function AnswerHistoryPanel({
+  projectId,
+  answerId,
+}: {
+  projectId: string;
+  answerId: string;
+}) {
+  const { data, isLoading } = useAnswerHistory(projectId, answerId);
+  const history = data?.history ?? [];
+
+  return (
+    <div className="rounded-xl border border-border bg-white p-5 shadow-sm">
+      <h3 className="text-xs font-medium text-muted uppercase tracking-wide mb-3">
+        History
+      </h3>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <SkeletonBlock key={i} className="h-8" />
+          ))}
+        </div>
+      ) : history.length === 0 ? (
+        <p className="text-xs text-muted">No activity yet.</p>
+      ) : (
+        <div className="relative">
+          {/* Timeline line */}
+          <div className="absolute left-[9px] top-2 bottom-2 w-px bg-border" />
+
+          <ul className="space-y-3">
+            {history.map((entry) => {
+              const config = ACTION_CONFIG[entry.action] ?? {
+                label: entry.action,
+                color: "text-muted",
+                icon: ClockIcon,
+              };
+              const Icon = config.icon;
+
+              return (
+                <li key={entry.id} className="relative flex items-start gap-3 pl-6">
+                  {/* Dot */}
+                  <div className={`absolute left-0 top-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-white border border-border`}>
+                    <Icon className={`h-3 w-3 ${config.color}`} />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-medium text-heading">
+                        {entry.edited_by === "ai" ? "Spondic AI" : entry.edited_by.slice(0, 12)}
+                      </span>
+                      <span className={`text-xs ${config.color}`}>
+                        {config.label}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-muted">
+                      {relativeTime(entry.edited_at)}
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

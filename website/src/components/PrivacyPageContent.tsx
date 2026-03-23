@@ -3,9 +3,32 @@
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <>
+      <h2 className="mt-12 mb-4 font-display text-xl font-bold italic text-[#141413]">{title}</h2>
+      {children}
+    </>
+  );
+}
+
+function P({ children }: { children: React.ReactNode }) {
+  return <p className="text-[15px] leading-[1.7] text-[#4a4a48] mb-6">{children}</p>;
+}
+
+function BulletList({ items }: { items: string[] }) {
+  return (
+    <ul className="list-disc pl-6 space-y-2 text-[15px] leading-[1.7] text-[#4a4a48] mb-6">
+      {items.map((item, i) => (
+        <li key={i}>{item}</li>
+      ))}
+    </ul>
+  );
+}
+
 export default function PrivacyPageContent() {
   const { t } = useTranslation();
-  const businessName = process.env.NEXT_PUBLIC_BUSINESS_NAME || "Spondic";
+  const bn = process.env.NEXT_PUBLIC_BUSINESS_NAME || "Spondic";
 
   return (
     <main className="min-h-[60vh]">
@@ -16,95 +39,103 @@ export default function PrivacyPageContent() {
             {t("privacy.title")}
           </h1>
           <p className="mt-6 text-[15px] leading-[1.7] text-[#4a4a48]">
-            {t("privacy.lastUpdated", { date: new Date().toLocaleDateString("en-US") })}
+            {t("privacy.lastUpdated", { date: "March 23, 2026" })}
           </p>
         </div>
       </section>
 
       <section className="py-16 lg:py-24">
         <div className="mx-auto max-w-[720px] px-8 prose prose-[#141413]">
-          <p className="text-[15px] leading-[1.7] text-[#4a4a48] mb-10">
-            {t("privacy.intro", { businessName })}
-          </p>
+          <P>{t("privacy.intro", { businessName: bn })}</P>
 
-          <h2 className="mt-12 mb-4 font-display text-xl font-bold italic text-[#141413]">
-            {t("privacy.infoWeCollectTitle")}
-          </h2>
-          <p className="text-[15px] leading-[1.7] text-[#4a4a48] mb-6">
-            {t("privacy.infoWeCollectDesc")}
-          </p>
+          <Section title={t("privacy.infoWeCollectTitle")}>
+            <P>{t("privacy.infoWeCollectDesc")}</P>
+            <BulletList items={[
+              t("privacy.infoAccount"),
+              t("privacy.infoContent"),
+              t("privacy.infoUsage"),
+              t("privacy.infoDevice"),
+              t("privacy.infoBilling"),
+            ]} />
+          </Section>
 
-          <h2 className="mt-12 mb-4 font-display text-xl font-bold italic text-[#141413]">
-            {t("privacy.trackingTitle")}
-          </h2>
-          <p className="text-[15px] leading-[1.7] text-[#4a4a48] mb-6">
-            {t("privacy.trackingDesc")}
-          </p>
+          <Section title={t("privacy.trackingTitle")}>
+            <P>{t("privacy.trackingDesc")}</P>
+          </Section>
 
-          <h2 className="mt-12 mb-4 font-display text-xl font-bold italic text-[#141413]">
-            {t("privacy.analyticsTitle")}
-          </h2>
-          <p className="text-[15px] leading-[1.7] text-[#4a4a48] mb-4">
-            {t("privacy.analyticsDesc")}
-          </p>
-          <p className="text-[15px] leading-[1.7] text-[#4a4a48] mb-2">
-            {t("privacy.analyticsDataIntro")}
-          </p>
-          <ul className="list-disc pl-6 space-y-2 text-[15px] leading-[1.7] text-[#4a4a48] mb-4">
-            <li>{t("privacy.analyticsData1")}</li>
-            <li>{t("privacy.analyticsData2")}</li>
-            <li>{t("privacy.analyticsData3")}</li>
-            <li>{t("privacy.analyticsData4")}</li>
-          </ul>
-          <p className="text-[15px] leading-[1.7] text-[#4a4a48] mb-6">
-            {t("privacy.analyticsTransmit")}{" "}
-            <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-[#2d5fa0] hover:underline">
-              https://policies.google.com/privacy
-            </a>
-          </p>
+          <Section title={t("privacy.analyticsTitle")}>
+            <P>{t("privacy.analyticsDesc")}</P>
+          </Section>
 
-          <h2 className="mt-12 mb-4 font-display text-xl font-bold italic text-[#141413]">
-            {t("privacy.thirdPartyTitle")}
-          </h2>
-          <p className="text-[15px] leading-[1.7] text-[#4a4a48] mb-4">
-            {t("privacy.thirdPartyDesc", { businessName })}
-          </p>
-          <ul className="list-disc pl-6 space-y-2 text-[15px] leading-[1.7] text-[#4a4a48] mb-6">
-            <li>{t("privacy.thirdParty1")}</li>
-            <li>{t("privacy.thirdParty2")}</li>
-            <li>{t("privacy.thirdParty3")}</li>
-          </ul>
-          <p className="text-[15px] leading-[1.7] text-[#4a4a48] mb-6">
-            {t("privacy.thirdPartyMore")}
-          </p>
+          <Section title={t("privacy.aiTitle")}>
+            <P>{t("privacy.aiDesc")}</P>
+            <BulletList items={[
+              t("privacy.ai1"),
+              t("privacy.ai2"),
+              t("privacy.ai3"),
+              t("privacy.ai4"),
+            ]} />
+          </Section>
 
-          <h2 className="mt-12 mb-4 font-display text-xl font-bold italic text-[#141413]">
-            {t("privacy.howWeUseTitle")}
-          </h2>
-          <p className="text-[15px] leading-[1.7] text-[#4a4a48] mb-6">
-            {t("privacy.howWeUseDesc")}
-          </p>
+          <Section title={t("privacy.thirdPartyTitle")}>
+            <P>{t("privacy.thirdPartyDesc")}</P>
+            <BulletList items={[
+              t("privacy.thirdParty1"),
+              t("privacy.thirdParty2"),
+              t("privacy.thirdParty3"),
+              t("privacy.thirdParty4"),
+            ]} />
+            <P>{t("privacy.thirdPartyMore")}</P>
+          </Section>
 
-          <h2 className="mt-12 mb-4 font-display text-xl font-bold italic text-[#141413]">
-            {t("privacy.dataSecurityTitle")}
-          </h2>
-          <p className="text-[15px] leading-[1.7] text-[#4a4a48] mb-6">
-            {t("privacy.dataSecurityDesc")}
-          </p>
+          <Section title={t("privacy.howWeUseTitle")}>
+            <P>{t("privacy.howWeUseDesc")}</P>
+          </Section>
 
-          <h2 className="mt-12 mb-4 font-display text-xl font-bold italic text-[#141413]">
-            {t("privacy.changesTitle")}
-          </h2>
-          <p className="text-[15px] leading-[1.7] text-[#4a4a48] mb-6">
-            {t("privacy.changesDesc")}
-          </p>
+          <Section title={t("privacy.dataRetentionTitle")}>
+            <P>{t("privacy.dataRetentionDesc")}</P>
+          </Section>
 
-          <h2 className="mt-12 mb-4 font-display text-xl font-bold italic text-[#141413]">
-            {t("privacy.contactTitle")}
-          </h2>
-          <p className="text-[15px] leading-[1.7] text-[#4a4a48] mb-6">
-            {t("privacy.contactDesc")} <Link href="/contact" className="text-[#2d5fa0] hover:underline">{t("privacy.contactPage")}</Link>.
-          </p>
+          <Section title={t("privacy.dataSecurityTitle")}>
+            <P>{t("privacy.dataSecurityDesc")}</P>
+          </Section>
+
+          <Section title={t("privacy.dataResidencyTitle")}>
+            <P>{t("privacy.dataResidencyDesc")}</P>
+          </Section>
+
+          <Section title={t("privacy.yourRightsTitle")}>
+            <P>{t("privacy.yourRightsDesc")}</P>
+            <BulletList items={[
+              t("privacy.right1"),
+              t("privacy.right2"),
+              t("privacy.right3"),
+              t("privacy.right4"),
+              t("privacy.right5"),
+              t("privacy.right6"),
+            ]} />
+            <P>{t("privacy.yourRightsHow")}</P>
+          </Section>
+
+          <Section title={t("privacy.gdprTitle")}>
+            <P>{t("privacy.gdprDesc")}</P>
+          </Section>
+
+          <Section title={t("privacy.ccpaTitle")}>
+            <P>{t("privacy.ccpaDesc")}</P>
+          </Section>
+
+          <Section title={t("privacy.changesTitle")}>
+            <P>{t("privacy.changesDesc")}</P>
+          </Section>
+
+          <Section title={t("privacy.contactTitle")}>
+            <P>
+              {t("privacy.contactDesc")}{" "}
+              <Link href="/contact" className="text-[#2d5fa0] hover:underline">{t("privacy.contactPage")}</Link>.
+            </P>
+            <P>{t("privacy.contactExtra")}</P>
+          </Section>
         </div>
       </section>
     </main>

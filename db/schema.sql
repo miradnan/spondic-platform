@@ -295,13 +295,15 @@ CREATE INDEX idx_rfp_answer_comments_answer ON rfp_answer_comments(answer_id);
 CREATE TABLE rfp_answer_history (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   answer_id     UUID NOT NULL REFERENCES rfp_answers(id) ON DELETE CASCADE,
+  action        VARCHAR(50) DEFAULT 'edited',
   previous_text TEXT,
-  new_text      TEXT NOT NULL,
+  new_text      TEXT,
   edited_by     VARCHAR(255) NOT NULL,
   edited_at     TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_rfp_answer_history_answer ON rfp_answer_history(answer_id);
+CREATE INDEX idx_rfp_answer_history_edited_at ON rfp_answer_history(answer_id, edited_at DESC);
 
 -- ---------------------------------------------------------------------------
 -- Subscriptions (billing, multi-tenant)
@@ -352,7 +354,7 @@ CREATE INDEX idx_invoices_stripe_invoice_id ON invoices(stripe_invoice_id);
 CREATE TABLE usage_records (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id VARCHAR(255) NOT NULL REFERENCES organizations(clerk_org_id) ON DELETE CASCADE,
-  metric          VARCHAR(100) NOT NULL CHECK (metric IN ('rfps_processed', 'documents_uploaded', 'questions_drafted', 'users')),
+  metric          VARCHAR(100) NOT NULL CHECK (metric IN ('rfps_processed', 'documents_uploaded', 'questions_drafted', 'users', 'ai_tokens_used', 'ai_tokens_overage')),
   count           INTEGER NOT NULL DEFAULT 0,
   period_start    DATE NOT NULL,
   period_end      DATE NOT NULL,
@@ -373,7 +375,9 @@ CREATE TABLE plan_limits (
   max_documents         INTEGER,
   max_users             INTEGER,
   max_questions_per_rfp INTEGER,
-  ai_review_enabled     BOOLEAN DEFAULT false,
+  max_tokens_per_month       BIGINT,
+  overage_rate_cents_per_1k  INTEGER,
+  ai_review_enabled          BOOLEAN DEFAULT false,
   compliance_enabled    BOOLEAN DEFAULT false,
   template_library      BOOLEAN DEFAULT false,
   analytics_enabled     BOOLEAN DEFAULT false
@@ -381,10 +385,10 @@ CREATE TABLE plan_limits (
 
 -- Aligned with website pricing: Free (testing), Starter ($299/mo), Growth ($799/mo), Enterprise (Custom)
 INSERT INTO plan_limits VALUES
-  ('free',       3,    10,   1,    25,   false, false, false, false),
-  ('starter',    10,   100,  5,    200,  false, false, true,  true),
-  ('growth',     NULL, 500,  20,   500,  true,  true,  true,  true),
-  ('enterprise', NULL, NULL, NULL, NULL, true,  true,  true,  true);
+  ('free',       3,    10,   1,    25,   100000,   NULL, false, false, false, false),
+  ('starter',    10,   100,  5,    200,  1000000,  50,   false, false, true,  true),
+  ('growth',     NULL, 500,  20,   500,  5000000,  30,   true,  true,  true,  true),
+  ('enterprise', NULL, NULL, NULL, NULL, NULL,     20,   true,  true,  true,  true);
 
 -- ---------------------------------------------------------------------------
 -- Notifications (multi-tenant)

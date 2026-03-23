@@ -10,7 +10,13 @@ import {
   ClipboardIcon,
   CheckIcon,
   TrashIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  PaperClipIcon,
+  XMarkIcon,
+  PencilIcon,
 } from "@heroicons/react/24/outline";
+import { marked } from "marked";
 import { Streamdown } from "streamdown";
 import "streamdown/styles.css";
 import { Tooltip } from "../components/ui/tooltip.tsx";
@@ -33,33 +39,100 @@ import { sendMessageStream, type StreamChatCitation } from "../lib/api.ts";
 import { useToast } from "../components/Toast.tsx";
 import type { ChatMessage } from "../lib/types.ts";
 
-function useSuggestedPrompts() {
-  const { t } = useTranslation();
-  return [
-    {
-      title: t("chat.suggestedPrompts.security"),
-      subtitle: t("chat.suggestedPrompts.securitySub"),
-      fullPrompt: "Summarize our security certifications for an RFP",
-    },
-    {
-      title: t("chat.suggestedPrompts.compliance"),
-      subtitle: t("chat.suggestedPrompts.complianceSub"),
-      fullPrompt: "Explain our compliance requirements like data residency and audits",
-    },
-    {
-      title: t("chat.suggestedPrompts.team"),
-      subtitle: t("chat.suggestedPrompts.teamSub"),
-      fullPrompt: "Draft a response about our team for an RFP introduction section",
-    },
-    {
-      title: t("chat.suggestedPrompts.sla"),
-      subtitle: t("chat.suggestedPrompts.slaSub"),
-      fullPrompt: "What is our uptime SLA? Find from the knowledge base.",
-    },
-  ];
+const ALL_PROMPTS = [
+  {
+    titleKey: "chat.suggestedPrompts.security",
+    subtitleKey: "chat.suggestedPrompts.securitySub",
+    fullPrompt: "Summarize our security certifications for an RFP",
+  },
+  {
+    titleKey: "chat.suggestedPrompts.compliance",
+    subtitleKey: "chat.suggestedPrompts.complianceSub",
+    fullPrompt: "Explain our compliance requirements like data residency and audits",
+  },
+  {
+    titleKey: "chat.suggestedPrompts.team",
+    subtitleKey: "chat.suggestedPrompts.teamSub",
+    fullPrompt: "Draft a response about our team for an RFP introduction section",
+  },
+  {
+    titleKey: "chat.suggestedPrompts.sla",
+    subtitleKey: "chat.suggestedPrompts.slaSub",
+    fullPrompt: "What is our uptime SLA? Find from the knowledge base.",
+  },
+  {
+    titleKey: "chat.suggestedPrompts.certifications",
+    subtitleKey: "chat.suggestedPrompts.certificationsSub",
+    fullPrompt: "What are our compliance certifications?",
+  },
+  {
+    titleKey: "chat.suggestedPrompts.securityCapabilities",
+    subtitleKey: "chat.suggestedPrompts.securityCapabilitiesSub",
+    fullPrompt: "Summarize our security capabilities",
+  },
+  {
+    titleKey: "chat.suggestedPrompts.differentiators",
+    subtitleKey: "chat.suggestedPrompts.differentiatorsSub",
+    fullPrompt: "What differentiates us from competitors?",
+  },
+  {
+    titleKey: "chat.suggestedPrompts.references",
+    subtitleKey: "chat.suggestedPrompts.referencesSub",
+    fullPrompt: "List our key client references",
+  },
+  {
+    titleKey: "chat.suggestedPrompts.timeline",
+    subtitleKey: "chat.suggestedPrompts.timelineSub",
+    fullPrompt: "What is our implementation timeline?",
+  },
+  {
+    titleKey: "chat.suggestedPrompts.pricing",
+    subtitleKey: "chat.suggestedPrompts.pricingSub",
+    fullPrompt: "Summarize our pricing model",
+  },
+];
+
+// Fallback labels when translation keys aren't defined yet
+const PROMPT_FALLBACKS: Record<string, string> = {
+  "chat.suggestedPrompts.certifications": "Compliance Certifications",
+  "chat.suggestedPrompts.certificationsSub": "List all our compliance certifications",
+  "chat.suggestedPrompts.securityCapabilities": "Security Capabilities",
+  "chat.suggestedPrompts.securityCapabilitiesSub": "Overview of our security posture",
+  "chat.suggestedPrompts.differentiators": "Competitive Differentiators",
+  "chat.suggestedPrompts.differentiatorsSub": "What sets us apart from competitors",
+  "chat.suggestedPrompts.references": "Client References",
+  "chat.suggestedPrompts.referencesSub": "Key client references and case studies",
+  "chat.suggestedPrompts.timeline": "Implementation Timeline",
+  "chat.suggestedPrompts.timelineSub": "Standard implementation and onboarding timeline",
+  "chat.suggestedPrompts.pricing": "Pricing Model",
+  "chat.suggestedPrompts.pricingSub": "Summary of our pricing structure",
+};
+
+function shuffleAndPick<T>(arr: T[], count: number): T[] {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled.slice(0, count);
 }
 
-function CopyButton({ text }: { text: string }) {
+function useSuggestedPrompts() {
+  const { t } = useTranslation();
+  // Pick 4 random prompts once (stable across renders via useMemo with empty deps)
+  const selected = useMemo(() => shuffleAndPick(ALL_PROMPTS, 4), []);
+  return selected.map((p) => {
+    const title = t(p.titleKey);
+    const subtitle = t(p.subtitleKey);
+    return {
+      title: title === p.titleKey ? (PROMPT_FALLBACKS[p.titleKey] ?? p.titleKey) : title,
+      subtitle: subtitle === p.subtitleKey ? (PROMPT_FALLBACKS[p.subtitleKey] ?? p.subtitleKey) : subtitle,
+      fullPrompt: p.fullPrompt,
+    };
+  });
+}
+
+function CopyButton({ text, className }: { text: string; className?: string }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -76,7 +149,7 @@ function CopyButton({ text }: { text: string }) {
     <Tooltip content={copied ? "Copied!" : "Copy to clipboard"}>
       <button
         onClick={handleCopy}
-        className="rounded-lg p-1.5 text-muted hover:text-body hover:bg-cream transition-colors opacity-0 group-hover:opacity-100"
+        className={`rounded-lg p-1.5 text-muted hover:text-body hover:bg-cream transition-colors opacity-0 group-hover:opacity-100 ${className ?? ""}`}
       >
         {copied ? (
           <CheckIcon className="h-4 w-4 text-green-600" />
@@ -147,7 +220,11 @@ export function Chat() {
   const [streamingText, setStreamingText] = useState("");
   const [streamingCitations, setStreamingCitations] = useState<StreamChatCitation[]>([]);
   const [pendingUserMessage, setPendingUserMessage] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [editingMessage, setEditingMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const createChat = useCreateChat();
   const { data: chatMessagesData, isLoading: messagesLoading } = useChatMessages(chatId);
@@ -207,6 +284,8 @@ export function Chat() {
 
     const messageText = input.trim();
     setInput("");
+    setShowPreview(false);
+    setEditingMessage(null);
 
     let activeChatId = chatId;
     if (!activeChatId) {
@@ -220,6 +299,13 @@ export function Chat() {
         toast("error", err instanceof Error ? err.message : "Failed to create chat.");
         return;
       }
+    }
+
+    // If there's an attached file, include it via FormData approach
+    // The API may not support files yet, but we include it for future compatibility
+    if (attachedFile) {
+      // Clear the attachment after sending
+      setAttachedFile(null);
     }
 
     await doStreamSend(activeChatId, messageText);
@@ -253,6 +339,25 @@ export function Chat() {
       })();
     }, 100);
   };
+
+  const handleEditMessage = (messageText: string) => {
+    setInput(messageText);
+    setEditingMessage(messageText);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAttachedFile(file);
+    }
+    // Reset the input so the same file can be re-selected
+    e.target.value = "";
+  };
+
+  const renderedPreview = useMemo(() => {
+    if (!showPreview || !input.trim()) return null;
+    return marked(input);
+  }, [showPreview, input]);
 
   return (
     <div className="flex flex-1 min-h-0 w-full max-w-4xl mx-auto flex-col">
@@ -359,10 +464,25 @@ export function Chat() {
                     <div className="whitespace-pre-wrap">{msg.message}</div>
                   )}
 
-                  {/* Copy button for assistant messages */}
+                  {/* Action buttons for assistant messages */}
                   {msg.role === "assistant" && (
                     <div className="absolute -top-2 -right-2">
                       <CopyButton text={msg.message} />
+                    </div>
+                  )}
+
+                  {/* Action buttons for user messages */}
+                  {msg.role === "user" && (
+                    <div className="absolute -top-2 -right-2 flex items-center gap-0.5">
+                      <Tooltip content="Edit & resubmit">
+                        <button
+                          onClick={() => handleEditMessage(msg.message)}
+                          className="rounded-lg p-1.5 text-white/70 hover:text-white hover:bg-white/20 transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                        </button>
+                      </Tooltip>
+                      <CopyButton text={msg.message} className="!text-white/70 !hover:text-white !hover:bg-white/20" />
                     </div>
                   )}
 
@@ -461,6 +581,52 @@ export function Chat() {
 
         {/* Input */}
         <form onSubmit={handleFormSubmit} className="shrink-0 px-4 py-5" data-tour="chat-input">
+          {/* Markdown preview panel */}
+          {showPreview && input.trim() && (
+            <div className="mb-2 rounded-xl bg-cream-light border border-border px-4 py-3 max-h-40 overflow-y-auto">
+              <p className="text-[10px] font-medium text-muted uppercase tracking-wider mb-1.5">Preview</p>
+              <div
+                className="prose prose-sm max-w-none prose-headings:text-heading prose-p:text-body prose-a:text-brand-blue prose-strong:text-heading prose-code:text-brand-blue prose-code:bg-cream prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs"
+                dangerouslySetInnerHTML={{ __html: renderedPreview as string }}
+              />
+            </div>
+          )}
+
+          {/* Attached file chip */}
+          {attachedFile && (
+            <div className="mb-2 flex items-center gap-1.5">
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-cream-light border border-border px-2.5 py-1 text-xs text-heading">
+                <PaperClipIcon className="h-3.5 w-3.5 text-muted" />
+                <span className="truncate max-w-[200px]">{attachedFile.name}</span>
+                <button
+                  type="button"
+                  onClick={() => setAttachedFile(null)}
+                  className="text-muted hover:text-red-500 transition-colors"
+                >
+                  <XMarkIcon className="h-3.5 w-3.5" />
+                </button>
+              </span>
+            </div>
+          )}
+
+          {/* Editing indicator */}
+          {editingMessage && (
+            <div className="mb-2 flex items-center gap-1.5 text-xs text-muted">
+              <PencilIcon className="h-3.5 w-3.5" />
+              <span>(editing)</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingMessage(null);
+                  setInput("");
+                }}
+                className="text-muted hover:text-red-500 transition-colors ml-1"
+              >
+                <XMarkIcon className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+
           <div className="flex items-end gap-2 rounded-xl bg-cream-light border border-border shadow-sm focus-within:border-brand-blue/40 focus-within:bg-cream-lighter transition-colors px-4 py-3 min-h-[56px]">
             <ChatBubbleLeftEllipsisIcon className="h-5 w-5 text-muted shrink-0 mb-2" />
             <AutoResizeTextarea
@@ -470,6 +636,41 @@ export function Chat() {
               disabled={isLoading}
               placeholder={t("chat.placeholder")}
             />
+
+            {/* Preview toggle */}
+            <Tooltip content={showPreview ? "Hide preview" : "Preview markdown"}>
+              <button
+                type="button"
+                onClick={() => setShowPreview((v) => !v)}
+                className="flex items-center justify-center rounded-lg p-2 text-muted hover:text-body hover:bg-cream transition-colors mb-0.5"
+                aria-label="Toggle markdown preview"
+              >
+                {showPreview ? (
+                  <EyeSlashIcon className="h-4 w-4" />
+                ) : (
+                  <EyeIcon className="h-4 w-4" />
+                )}
+              </button>
+            </Tooltip>
+
+            {/* File attachment */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <Tooltip content="Attach file">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center justify-center rounded-lg p-2 text-muted hover:text-body hover:bg-cream transition-colors mb-0.5"
+                aria-label="Attach file"
+              >
+                <PaperClipIcon className="h-5 w-5" />
+              </button>
+            </Tooltip>
+
             <button
               type="submit"
               disabled={!input.trim() || isLoading}

@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Layout } from "./components/Layout.tsx";
 import { OrgGate } from "./components/OrgGate.tsx";
 // import { PlanGate } from "./components/PlanGate.tsx"; // Disabled — let free users in directly
+import { PlanGuard } from "./components/PlanGuard.tsx";
 import { AdminGuard } from "./components/AdminGuard.tsx";
 import { AdminLayout } from "./components/AdminLayout.tsx";
 import { ToastProvider } from "./components/Toast.tsx";
@@ -31,8 +32,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     <>
       <Show when="signed-in">
         <OrgGate>
-          {/* PlanGate disabled — free users go straight to app. Upgrade prompts shown on limit hit. */}
-          {children}
+          <PlanGuard>
+            {children}
+          </PlanGuard>
         </OrgGate>
       </Show>
       <Show when="signed-out">

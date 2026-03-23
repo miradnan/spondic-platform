@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 // S3Client wraps the AWS S3 SDK for document storage.
@@ -37,6 +38,25 @@ func (s *S3Client) Upload(ctx context.Context, key string, body io.Reader, conte
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(key),
 		Body:   body,
+	}
+	if contentType != "" {
+		input.ContentType = aws.String(contentType)
+	}
+
+	_, err := s.client.PutObject(ctx, input)
+	if err != nil {
+		return fmt.Errorf("failed to upload to S3: %w", err)
+	}
+	return nil
+}
+
+// UploadPublic uploads a file to S3 with public-read ACL.
+func (s *S3Client) UploadPublic(ctx context.Context, key string, body io.Reader, contentType string) error {
+	input := &s3.PutObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(key),
+		Body:   body,
+		ACL:    types.ObjectCannedACLPublicRead,
 	}
 	if contentType != "" {
 		input.ContentType = aws.String(contentType)

@@ -493,3 +493,51 @@ func (h *Handler) GetUsage(c echo.Context) error {
 		"period":      period,
 	})
 }
+
+// GetTokenUsage handles GET /api/billing/token-usage
+// Returns the current month's AI token usage, allowance, and overage.
+func (h *Handler) GetTokenUsage(c echo.Context) error {
+	orgID := getOrgID(c)
+	now := time.Now()
+	periodStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	ps := periodStart.Format("2006-01-02")
+
+	var tokensUsed, tokensOverage int64
+	var maxTokens *int64
+	var overageRate *int
+	var plan string
+
+	// Get plan info
+	err := h.DB.QueryRow(
+		`SELECT s.plan, pl.max_tokens_per_month, pl.overage_rate_cents_per_1k
+		 FROM subscriptions s
+		 JOIN plan_limits pl ON pl.plan = s.plan
+		 WHERE s.organization_id = $1 AND s.status IN ('active', 'trialing')`,
+		orgID,
+	).Scan(&plan, &maxTokens, &overageRate)
+	if err != nil && err != sql.ErrNoRows {
+		log.Printf("error fetching plan for token usage: %v", err)
+	}
+
+	// Get current usage
+	_ = h.DB.QueryRow(
+		`SELECT COALESCE(count, 0) FROM usage_records
+		 WHERE organization_id = $1 AND metric = 'ai_tokens_used' AND period_start = $2`,
+		orgID, ps,
+	).Scan(&tokensUsed)
+
+	_ = h.DB.QueryRow(
+		`SELECT COALESCE(count, 0) FROM usage_records
+		 WHERE organization_id = $1 AND metric = 'ai_tokens_overage' AND period_start = $2`,
+		orgID, ps,
+	).Scan(&tokensOverage)
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"tokens_used":              tokensUsed,
+		"tokens_overage":           tokensOverage,
+		"max_tokens_per_month":     maxTokens,
+		"overage_rate_cents_per_1k": overageRate,
+		"plan":                     plan,
+		"period_start":             ps,
+	})
+}

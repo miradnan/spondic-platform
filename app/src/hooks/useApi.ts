@@ -6,6 +6,7 @@ import {
   type UseQueryOptions,
 } from "@tanstack/react-query";
 import * as api from "../lib/api.ts";
+import type { SubscriptionResponse, TokenUsageResponse } from "../lib/api.ts";
 import type {
   Project,
   Document,
@@ -49,6 +50,7 @@ import type {
   Notification,
   NotificationPreference,
   UpdateNotificationPreferenceRequest,
+  AnswerActivity,
 } from "../lib/types.ts";
 
 // ── Helper: get token from Clerk ─────────────────────────────────────────────
@@ -301,6 +303,7 @@ export function useUpdateAnswer() {
     },
     onSuccess: (_data, vars) => {
       void qc.invalidateQueries({ queryKey: ["answers", vars.projectId] });
+      void qc.invalidateQueries({ queryKey: ["answer-history", vars.projectId, vars.answerId] });
     },
   });
 }
@@ -315,6 +318,7 @@ export function useApproveAnswer() {
     },
     onSuccess: (_data, vars) => {
       void qc.invalidateQueries({ queryKey: ["answers", vars.projectId] });
+      void qc.invalidateQueries({ queryKey: ["answer-history", vars.projectId, vars.answerId] });
       void qc.invalidateQueries({ queryKey: ["project", vars.projectId] });
     },
   });
@@ -330,6 +334,7 @@ export function useAddComment() {
     },
     onSuccess: (_data, vars) => {
       void qc.invalidateQueries({ queryKey: ["answers", vars.projectId] });
+      void qc.invalidateQueries({ queryKey: ["answer-history", vars.projectId, vars.answerId] });
     },
   });
 }
@@ -344,7 +349,20 @@ export function useRedraftAnswer() {
     },
     onSuccess: (_data, vars) => {
       void qc.invalidateQueries({ queryKey: ["answers", vars.projectId] });
+      void qc.invalidateQueries({ queryKey: ["answer-history"] });
     },
+  });
+}
+
+export function useAnswerHistory(projectId: string | undefined, answerId: string | undefined) {
+  const getToken = useToken();
+  return useQuery<{ history: AnswerActivity[] }>({
+    queryKey: ["answer-history", projectId, answerId],
+    queryFn: async () => {
+      const token = await getToken();
+      return api.listAnswerHistory(token, projectId!, answerId!);
+    },
+    enabled: !!projectId && !!answerId,
   });
 }
 
@@ -989,5 +1007,51 @@ export function useUpdateNotificationPreference() {
   return useMutation<NotificationPreference, Error, UpdateNotificationPreferenceRequest>({
     mutationFn: async (body) => { const token = await getToken(); return api.updateNotificationPreference(token, body); },
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ["notificationPreferences"] }); },
+  });
+}
+
+// ── Billing ───────────────────────────────────────────────────────────────
+
+export function useSubscription() {
+  const getToken = useToken();
+  return useQuery<SubscriptionResponse>({
+    queryKey: ["subscription"],
+    queryFn: async () => {
+      const token = await getToken();
+      return api.getSubscription(token);
+    },
+    retry: false,
+  });
+}
+
+export function useTokenUsage() {
+  const getToken = useToken();
+  return useQuery<TokenUsageResponse>({
+    queryKey: ["token-usage"],
+    queryFn: async () => {
+      const token = await getToken();
+      return api.getTokenUsage(token);
+    },
+    retry: false,
+  });
+}
+
+export function useCreateCheckout() {
+  const getToken = useToken();
+  return useMutation<{ checkout_url: string }, Error, { plan: string; success_url: string; cancel_url: string }>({
+    mutationFn: async (body) => {
+      const token = await getToken();
+      return api.createCheckout(token, body);
+    },
+  });
+}
+
+export function useCreatePortalSession() {
+  const getToken = useToken();
+  return useMutation<{ portal_url: string }, Error, { return_url: string }>({
+    mutationFn: async (body) => {
+      const token = await getToken();
+      return api.createPortalSession(token, body);
+    },
   });
 }

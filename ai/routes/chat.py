@@ -9,8 +9,9 @@ import logging
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
-from models import ChatCitation, ChatRequest, ChatResponse
+from models import ChatCitation, ChatRequest, ChatResponse, TokenUsageResponse
 from services import embedder, llm, rag, vectorstore
+from services.llm import TokenUsage
 
 logger = logging.getLogger(__name__)
 
@@ -27,12 +28,14 @@ async def chat(req: ChatRequest):
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
     try:
+        usage = TokenUsage()
         history = [{"role": m.role, "content": m.content} for m in req.chat_history]
 
         result = await rag.chat(
             organization_id=req.organization_id,
             message=req.message,
             chat_history=history,
+            usage=usage,
         )
 
         citations = [
@@ -44,7 +47,11 @@ async def chat(req: ChatRequest):
             for c in result["citations"]
         ]
 
-        return ChatResponse(response=result["response"], citations=citations)
+        return ChatResponse(
+            response=result["response"],
+            citations=citations,
+            tokens_used=TokenUsageResponse(**usage.to_dict()),
+        )
 
     except Exception as exc:
         logger.error("Chat failed (org=%s): %s", req.organization_id, exc)
@@ -67,6 +74,7 @@ async def chat_stream(req: ChatRequest):
             limit=5,
         )
 
+        usage = TokenUsage()
         history = [{"role": m.role, "content": m.content} for m in req.chat_history]
 
         # 2. Build citations (send before streaming text)
@@ -90,11 +98,12 @@ async def chat_stream(req: ChatRequest):
                     message=req.message,
                     context_passages=search_results,
                     chat_history=history,
+                    usage=usage,
                 ):
                     yield f"data: {json.dumps({'type': 'text', 'content': chunk})}\n\n"
 
-                # Final event: done
-                yield f"data: {json.dumps({'type': 'done'})}\n\n"
+                # Final event: done with token usage
+                yield f"data: {json.dumps({'type': 'done', 'tokens_used': usage.to_dict()})}\n\n"
 
             except Exception as exc:
                 logger.error("Stream error (org=%s): %s", req.organization_id, exc)

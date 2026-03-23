@@ -9,6 +9,7 @@ import logging
 import os
 
 from services import chunker, embedder, llm, parser, s3, vectorstore
+from services.llm import TokenUsage
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +85,7 @@ async def parse_rfp(
     organization_id: str,
     document_id: str,
     s3_key: str,
+    usage: TokenUsage | None = None,
 ) -> list[dict]:
     """
     Parse an RFP document and extract structured questions.
@@ -101,7 +103,7 @@ async def parse_rfp(
             logger.warning("RFP document is empty: %s", s3_key)
             return []
 
-        questions = llm.extract_questions(text)
+        questions = llm.extract_questions(text, usage=usage)
         logger.info("Extracted %d questions from RFP %s", len(questions), document_id)
         return questions
 
@@ -119,6 +121,7 @@ async def parse_rfp(
 async def draft_answers(
     organization_id: str,
     questions: list[dict],
+    usage: TokenUsage | None = None,
 ) -> list[dict]:
     """
     Draft answers for a list of questions using RAG.
@@ -149,7 +152,7 @@ async def draft_answers(
 
             # 3. Generate answer
             if search_results:
-                draft_text = llm.generate_answer(question_text, search_results)
+                draft_text = llm.generate_answer(question_text, search_results, usage=usage)
             else:
                 draft_text = (
                     "Insufficient information found in the knowledge base to answer this question. "
@@ -201,6 +204,7 @@ async def chat(
     organization_id: str,
     message: str,
     chat_history: list[dict] | None = None,
+    usage: TokenUsage | None = None,
 ) -> dict:
     """
     RAG-powered chat: embed query, retrieve context, generate response.
@@ -225,6 +229,7 @@ async def chat(
         message=message,
         context_passages=search_results,
         chat_history=chat_history,
+        usage=usage,
     )
 
     # 4. Build citations

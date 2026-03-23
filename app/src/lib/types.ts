@@ -237,6 +237,16 @@ export interface AddCommentRequest {
   comment_text: string;
 }
 
+export interface AnswerActivity {
+  id: string;
+  answer_id: string;
+  action: "drafted" | "edited" | "approved" | "rejected" | "commented" | "redrafted" | "in_review";
+  previous_text: string | null;
+  new_text: string | null;
+  edited_by: string;
+  edited_at: string;
+}
+
 export interface CreateTagRequest {
   name: string;
 }

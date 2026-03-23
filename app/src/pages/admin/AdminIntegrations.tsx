@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useAuth } from "@clerk/react";
+import { getPlanLimits } from "../../lib/planLimits.ts";
 import {
   ArrowPathIcon,
   LinkIcon,
@@ -9,6 +11,7 @@ import {
   PaperAirplaneIcon,
   InformationCircleIcon,
   ExclamationTriangleIcon,
+  LockClosedIcon,
 } from "@heroicons/react/24/outline";
 import {
   useCRMConnections,
@@ -58,10 +61,15 @@ const CRM_PLATFORMS = [
 // ── Main Component ───────────────────────────────────────────────────────────
 
 export function AdminIntegrations() {
+  const { sessionClaims } = useAuth();
   const { toast } = useToast();
   const { data, isLoading } = useCRMConnections();
   const connectCRM = useConnectCRM();
   const disconnectCRM = useDisconnectCRM();
+
+  const planClaim = (sessionClaims as Record<string, unknown>)?.pla as string | undefined;
+  const currentPlan = planClaim?.replace("o:", "") || "free_org";
+  const { crmEnabled: hasCRM } = getPlanLimits(currentPlan);
 
   const [disconnectTarget, setDisconnectTarget] = useState<CRMConnection | null>(null);
 
@@ -116,8 +124,10 @@ export function AdminIntegrations() {
         <div className="flex items-center gap-2 mb-4">
           <LinkIcon className="h-5 w-5 text-brand-blue" />
           <h2 className="text-lg font-semibold text-heading">CRM Connections</h2>
+          {!hasCRM && <Badge variant="secondary">Growth+</Badge>}
         </div>
 
+        {hasCRM ? (
         <div className="rounded-lg border border-border bg-white shadow-sm">
           <div className="p-4 border-b border-border">
             <p className="text-sm text-muted">
@@ -218,6 +228,28 @@ export function AdminIntegrations() {
             </div>
           )}
         </div>
+        ) : (
+        <div className="rounded-lg border border-border bg-white shadow-sm p-6">
+          <div className="flex items-start gap-3">
+            <LockClosedIcon className="h-5 w-5 text-muted mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-heading">
+                Available on Growth and Enterprise plans
+              </p>
+              <p className="text-xs text-muted mt-1">
+                Connect Salesforce, HubSpot, and other CRMs to sync RFP projects
+                with deals and opportunities automatically.
+              </p>
+              <a
+                href="/admin/billing#change-plan"
+                className="inline-flex items-center gap-1 mt-3 text-sm font-medium text-brand-blue hover:text-brand-blue/80 transition-colors"
+              >
+                Upgrade your plan
+              </a>
+            </div>
+          </div>
+        </div>
+        )}
       </section>
 
       {/* ── Webhook Integrations Section ──────────────────────────────────── */}

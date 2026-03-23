@@ -6,8 +6,9 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
-from models import Citation, DraftAnswer, DraftRequest, DraftResponse
+from models import Citation, DraftAnswer, DraftRequest, DraftResponse, TokenUsageResponse
 from services import rag
+from services.llm import TokenUsage
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ async def draft_answers(req: DraftRequest):
         raise HTTPException(status_code=400, detail="No questions provided")
 
     try:
+        usage = TokenUsage()
         questions = [
             {"id": q.id, "question_text": q.question_text, "section": q.section}
             for q in req.questions
@@ -32,6 +34,7 @@ async def draft_answers(req: DraftRequest):
         raw_answers = await rag.draft_answers(
             organization_id=req.organization_id,
             questions=questions,
+            usage=usage,
         )
 
         answers = [
@@ -52,7 +55,10 @@ async def draft_answers(req: DraftRequest):
             for a in raw_answers
         ]
 
-        return DraftResponse(answers=answers)
+        return DraftResponse(
+            answers=answers,
+            tokens_used=TokenUsageResponse(**usage.to_dict()),
+        )
 
     except Exception as exc:
         logger.error("Drafting failed for project %s: %s", req.project_id, exc)

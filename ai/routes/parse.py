@@ -6,8 +6,9 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
-from models import ExtractedQuestion, ParseRequest, ParseResponse
+from models import ExtractedQuestion, ParseRequest, ParseResponse, TokenUsageResponse
 from services import rag
+from services.llm import TokenUsage
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +22,12 @@ async def parse_rfp(req: ParseRequest):
     every question/requirement that needs a response.
     """
     try:
+        usage = TokenUsage()
         raw_questions = await rag.parse_rfp(
             organization_id=req.organization_id,
             document_id=req.document_id,
             s3_key=req.s3_key,
+            usage=usage,
         )
 
         questions = [
@@ -39,7 +42,10 @@ async def parse_rfp(req: ParseRequest):
             if q.get("question_text")
         ]
 
-        return ParseResponse(questions=questions)
+        return ParseResponse(
+            questions=questions,
+            tokens_used=TokenUsageResponse(**usage.to_dict()),
+        )
 
     except Exception as exc:
         logger.error("RFP parsing failed for document %s: %s", req.document_id, exc)
