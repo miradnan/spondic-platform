@@ -25,7 +25,7 @@ import { PaginationBar } from "../components/ui/pagination-bar.tsx";
 import { Tooltip } from "../components/ui/tooltip.tsx";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select.tsx";
 import { StatusBadge } from "../components/ui/status-badge.tsx";
-import { relativeTime, shortDate } from "../lib/date.ts";
+import { relativeTime } from "../lib/date.ts";
 import type { Project } from "../lib/types.ts";
 
 function useStatusOptions() {
@@ -40,21 +40,68 @@ function useStatusOptions() {
 }
 
 
-// Re-export shortDate as formatDate for deadline display
-const formatDate = shortDate;
-
-function deadlineInfo(deadline: string | null): { label: string; className: string } | null {
+function getDaysLeft(deadline: string | null): { text: string; variant: "red" | "amber" | "green" | "gray" } | null {
   if (!deadline) return null;
   const now = new Date();
-  const dl = new Date(deadline);
-  const daysLeft = Math.ceil((dl.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  if (daysLeft < 0)
-    return { label: "Overdue", className: "text-red-600 bg-red-50 border-red-200" };
-  if (daysLeft <= 3)
-    return { label: `${daysLeft}d left`, className: "text-red-600 bg-red-50 border-red-200" };
-  if (daysLeft <= 7)
-    return { label: `${daysLeft}d left`, className: "text-amber-600 bg-amber-50 border-amber-200" };
-  return { label: formatDate(deadline), className: "text-muted bg-cream-light border-border" };
+  const due = new Date(deadline);
+  const diffMs = due.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) return { text: `${Math.abs(diffDays)}d overdue`, variant: "red" };
+  if (diffDays === 0) return { text: "Due today", variant: "red" };
+  if (diffDays === 1) return { text: "1 day left", variant: "red" };
+  if (diffDays <= 3) return { text: `${diffDays} days left`, variant: "red" };
+  if (diffDays <= 7) return { text: `${diffDays} days left`, variant: "amber" };
+  if (diffDays <= 14) return { text: `${diffDays} days left`, variant: "amber" };
+  return { text: `${diffDays} days left`, variant: "green" };
+}
+
+const daysLeftColors = {
+  red: "bg-red-50 text-red-700 border-red-200",
+  amber: "bg-amber-50 text-amber-700 border-amber-200",
+  green: "bg-green-50 text-green-700 border-green-200",
+  gray: "bg-gray-50 text-gray-500 border-gray-200",
+};
+
+function DaysLeftBadge({ deadline }: { deadline: string | null }) {
+  const info = getDaysLeft(deadline);
+  if (!info) return <span className="text-xs text-muted">No deadline</span>;
+
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${daysLeftColors[info.variant]}`}>
+      <ClockIcon className="h-3 w-3" />
+      {info.text}
+    </span>
+  );
+}
+
+type DeadlineFilter = "" | "overdue" | "this_week" | "this_month" | "no_deadline";
+
+function useDeadlineOptions() {
+  const { t: _t } = useTranslation();
+  return [
+    { value: "" as const, label: "All deadlines" },
+    { value: "overdue" as const, label: "Overdue" },
+    { value: "this_week" as const, label: "Due this week" },
+    { value: "this_month" as const, label: "Due this month" },
+    { value: "no_deadline" as const, label: "No deadline" },
+  ];
+}
+
+function filterByDeadline(projects: Project[], filter: DeadlineFilter): Project[] {
+  if (!filter) return projects;
+  const now = new Date();
+  return projects.filter((p) => {
+    if (filter === "no_deadline") return !p.deadline;
+    if (!p.deadline) return false;
+    const due = new Date(p.deadline);
+    const diffMs = due.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    if (filter === "overdue") return diffDays < 0;
+    if (filter === "this_week") return diffDays >= 0 && diffDays <= 7;
+    if (filter === "this_month") return diffDays >= 0 && diffDays <= 30;
+    return true;
+  });
 }
 
 function SkeletonCard() {
@@ -211,12 +258,14 @@ export function Dashboard() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const STATUS_OPTIONS = useStatusOptions();
+  const DEADLINE_OPTIONS = useDeadlineOptions();
 
   const { sorting, onSortingChange, pagination, onPaginationChange, resetPage, updateParams, searchParams } = useTableParams();
 
   // Read filters from URL
   const search = searchParams.get("q") ?? "";
   const statusFilter = searchParams.get("status") ?? "";
+  const deadlineFilter = (searchParams.get("deadline") ?? "") as DeadlineFilter;
   const viewMode = (searchParams.get("view") as ViewMode) || "cards";
 
   const [debouncedSearch, setDebouncedSearch] = useState(search);
@@ -237,6 +286,11 @@ export function Dashboard() {
     resetPage();
   }, [updateParams, resetPage]);
 
+  const setDeadlineFilter = useCallback((val: string) => {
+    updateParams({ deadline: val || null });
+    resetPage();
+  }, [updateParams, resetPage]);
+
   const setViewMode = useCallback((val: ViewMode) => {
     updateParams({ view: val === "cards" ? null : val });
   }, [updateParams]);
@@ -251,12 +305,13 @@ export function Dashboard() {
   // Fetch documents count for onboarding
   const { data: docsData } = useDocuments({ page: 1, limit: 1 });
 
-  const projects = data?.data ?? [];
-  const total = data?.pagination?.total ?? 0;
-  const totalPages = data?.pagination?.total_pages ?? Math.max(1, Math.ceil(total / pagination.pageSize));
+  const allProjects = data?.data ?? [];
+  const projects = useMemo(() => filterByDeadline(allProjects, deadlineFilter), [allProjects, deadlineFilter]);
+  const total = deadlineFilter ? projects.length : (data?.pagination?.total ?? 0);
+  const totalPages = deadlineFilter ? Math.max(1, Math.ceil(total / pagination.pageSize)) : (data?.pagination?.total_pages ?? Math.max(1, Math.ceil(total / pagination.pageSize)));
 
   const hasDocuments = (docsData?.pagination?.total ?? 0) > 0;
-  const hasProjects = total > 0;
+  const hasProjects = (data?.pagination?.total ?? 0) > 0;
 
   useWalkthrough({ key: "dashboard", steps: DASHBOARD_STEPS });
 
@@ -299,15 +354,7 @@ export function Dashboard() {
       projectColumnHelper.accessor("deadline", {
         header: "Deadline",
         enableSorting: true,
-        cell: (info) => {
-          const dl = deadlineInfo(info.getValue());
-          if (!dl) return <span className="text-muted">-</span>;
-          return (
-            <span className={`inline-block rounded-full border px-2 py-0.5 text-xs font-medium ${dl.className}`}>
-              {dl.label}
-            </span>
-          );
-        },
+        cell: (info) => <DaysLeftBadge deadline={info.getValue()} />,
       }),
       projectColumnHelper.accessor("question_count", {
         header: "Questions",
@@ -398,6 +445,21 @@ export function Dashboard() {
             ))}
           </SelectContent>
         </Select>
+        <Select
+          value={deadlineFilter || "__all__"}
+          onValueChange={(val) => setDeadlineFilter(val === "__all__" ? "" : val)}
+        >
+          <SelectTrigger icon={<ClockIcon className="h-4 w-4" />} className="min-w-[150px]">
+            <SelectValue placeholder="All deadlines" />
+          </SelectTrigger>
+          <SelectContent>
+            {DEADLINE_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value || "__all__"} value={opt.value || "__all__"}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {/* View Toggle */}
         <div className="flex items-center rounded-lg border border-border bg-white">
@@ -473,7 +535,6 @@ export function Dashboard() {
         <>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {projects.map((project) => {
-              const dl = deadlineInfo(project.deadline);
               const progress =
                 project.question_count > 0
                   ? Math.round(
@@ -499,14 +560,9 @@ export function Dashboard() {
                   )}
 
                   {/* Deadline */}
-                  {dl && (
-                    <div className="mt-3 flex items-center gap-1.5">
-                      <ClockIcon className="h-3.5 w-3.5 shrink-0 text-muted" />
-                      <span className={`inline-block rounded-full border px-2 py-0.5 text-xs font-medium ${dl.className}`}>
-                        {dl.label}
-                      </span>
-                    </div>
-                  )}
+                  <div className="mt-3">
+                    <DaysLeftBadge deadline={project.deadline} />
+                  </div>
 
                   {/* Progress bar */}
                   {project.question_count > 0 && (
