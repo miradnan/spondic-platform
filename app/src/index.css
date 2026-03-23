@@ -282,6 +282,13 @@ button:disabled,
   animation: citation-pulse 1.5s ease-out;
 }
 
+/* Chat citation highlight when badge is clicked */
+.chat-cit-highlight {
+  background: rgba(45, 95, 160, 0.08);
+  border-color: var(--blue, #2d5fa0) !important;
+  animation: citation-pulse 1.5s ease-out;
+}
+
 /* Editable placeholder highlights for [ENTER: ...] markers */
 .enter-placeholder {
   display: inline;

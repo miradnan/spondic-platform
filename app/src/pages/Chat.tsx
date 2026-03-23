@@ -161,6 +161,36 @@ function CopyButton({ text, className }: { text: string; className?: string }) {
   );
 }
 
+/** Convert markdown to HTML, then turn [Source N] markers into citation badges */
+function renderAssistantHtml(text: string, msgId: string): string {
+  if (!text) return "";
+  let html = /<[a-z][\s\S]*>/i.test(text)
+    ? text
+    : (marked.parse(text, { async: false, breaks: true }) as string);
+
+  // Convert [Source N] / [Source N, Source M] into clickable badges
+  // The badge dispatches a custom event so React can show a popover
+  const badge = (n: string) =>
+    `<button type="button" class="citation-badge" data-citation="${n}" data-msg-id="${msgId}" onclick="this.dispatchEvent(new CustomEvent('show-citation',{bubbles:true,detail:{num:${n},msgId:'${msgId}',rect:this.getBoundingClientRect()}}))">[${n}]</button>`;
+
+  html = html.replace(
+    /\[Source\s*(\d+)(?:,\s*Source\s*(\d+))?\]/gi,
+    (_m, n1: string, n2?: string) => badge(n1) + (n2 ? badge(n2) : ""),
+  );
+  html = html.replace(
+    /(?<!data-citation=")(?<!">)\[(\d+)\]/g,
+    (_m, n: string) => badge(n),
+  );
+  return html;
+}
+
+/** Popover state for citation preview */
+interface CitationPopover {
+  msgId: string;
+  index: number; // 1-based
+  rect: DOMRect;
+}
+
 function AutoResizeTextarea({
   value,
   onChange,
@@ -224,8 +254,10 @@ export function Chat() {
   const [showPreview, setShowPreview] = useState(false);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [editingMessage, setEditingMessage] = useState<string | null>(null);
+  const [citPopover, setCitPopover] = useState<CitationPopover | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const chatAreaRef = useRef<HTMLDivElement>(null);
 
   const createChat = useCreateChat();
   const { data: chatMessagesData, isLoading: messagesLoading } = useChatMessages(chatId);
@@ -237,6 +269,40 @@ export function Chat() {
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
+
+  // Listen for citation badge clicks and show popover
+  useEffect(() => {
+    const area = chatAreaRef.current;
+    if (!area) return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setCitPopover((prev) =>
+        prev?.msgId === detail.msgId && prev?.index === detail.num
+          ? null // toggle off if same badge clicked
+          : { msgId: detail.msgId, index: detail.num, rect: detail.rect },
+      );
+    };
+    area.addEventListener("show-citation", handler);
+    return () => area.removeEventListener("show-citation", handler);
+  }, []);
+
+  // Close popover on scroll or outside click
+  useEffect(() => {
+    if (!citPopover) return;
+    const close = () => setCitPopover(null);
+    window.addEventListener("scroll", close, true);
+    const clickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest(".citation-popover") && !target.closest(".citation-badge")) {
+        close();
+      }
+    };
+    window.addEventListener("mousedown", clickOutside);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("mousedown", clickOutside);
+    };
+  }, [citPopover]);
 
   useEffect(() => {
     scrollToBottom();
@@ -407,7 +473,7 @@ export function Chat() {
       </Dialog>
       <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
         {/* Messages area */}
-        <div className="flex-1 overflow-y-auto min-h-0 flex flex-col">
+        <div ref={chatAreaRef} className="flex-1 overflow-y-auto min-h-0 flex flex-col relative">
           <div className="flex flex-col flex-1 min-h-full px-4 pt-8 pb-4">
             {/* Empty state */}
             {!chatId && messages.length === 0 && !messagesLoading && (
@@ -458,9 +524,10 @@ export function Chat() {
                   }`}
                 >
                   {msg.role === "assistant" ? (
-                    <div className="prose prose-sm max-w-none prose-headings:text-heading prose-p:text-body prose-a:text-brand-blue prose-strong:text-heading prose-code:text-brand-blue prose-code:bg-cream prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs">
-                      <Streamdown>{msg.message}</Streamdown>
-                    </div>
+                    <div
+                      className="prose prose-sm max-w-none prose-headings:text-heading prose-p:text-body prose-a:text-brand-blue prose-strong:text-heading prose-code:text-brand-blue prose-code:bg-cream prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs"
+                      dangerouslySetInnerHTML={{ __html: renderAssistantHtml(msg.message, msg.id) }}
+                    />
                   ) : (
                     <div className="whitespace-pre-wrap">{msg.message}</div>
                   )}
@@ -472,21 +539,29 @@ export function Chat() {
                         <DocumentTextIcon className="h-3.5 w-3.5" />
                         {t("chat.sources")}
                       </p>
-                      <ul className="space-y-1">
+                      <ul className="space-y-1.5">
                         {msg.citations.map((c, idx) => (
                           <li
                             key={c.id || idx}
-                            className="rounded bg-surface/80 px-2 py-1 text-xs text-body"
+                            id={`chat-cit-${msg.id}-${idx + 1}`}
+                            className="rounded-lg bg-surface/80 border border-transparent px-2.5 py-1.5 text-xs text-body transition-all chat-cit-item"
                           >
-                            <span className="font-medium text-brand-blue">
-                              {c.document_title}
-                            </span>
-                            {c.citation_text && (
-                              <span className="text-muted ml-1">
-                                — {c.citation_text.slice(0, 120)}
-                                {c.citation_text.length > 120 ? "..." : ""}
+                            <div className="flex items-start gap-2">
+                              <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-brand-blue text-[9px] font-semibold text-white mt-0.5">
+                                {idx + 1}
                               </span>
-                            )}
+                              <div className="min-w-0">
+                                <span className="font-medium text-brand-blue">
+                                  {c.document_title}
+                                </span>
+                                {c.citation_text && (
+                                  <p className="text-muted mt-0.5 line-clamp-2">
+                                    {c.citation_text.slice(0, 200)}
+                                    {c.citation_text.length > 200 ? "..." : ""}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
                           </li>
                         ))}
                       </ul>
@@ -522,22 +597,34 @@ export function Chat() {
 
             {/* Streaming assistant response */}
             {isStreaming && (
-              <div className="flex justify-start mb-4">
-                <div className="relative max-w-[85%] rounded-xl px-4 py-3 text-sm leading-relaxed bg-cream-light text-heading border border-border">
-                  {streamingText ? (
+              <div className="flex flex-col items-start gap-1 mb-4">
+                {/* Thinking indicator — shown before streaming text arrives */}
+                {!streamingText && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 text-muted">
+                    <svg className="h-4 w-4 animate-[spin_3s_linear_infinite]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7Z" />
+                      <path d="M10 21h4" />
+                      <path d="M12 8v4" />
+                      <path d="M9.5 10h5" />
+                    </svg>
+                    <span className="text-xs font-medium animate-pulse">Thinking</span>
+                    <span className="flex gap-0.5">
+                      <span className="w-1 h-1 rounded-full bg-muted animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <span className="w-1 h-1 rounded-full bg-muted animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <span className="w-1 h-1 rounded-full bg-muted animate-bounce" style={{ animationDelay: "300ms" }} />
+                    </span>
+                  </div>
+                )}
+
+                {/* Streaming response bubble */}
+                {streamingText && (
+                <div className="max-w-[85%] rounded-xl px-4 py-3 text-sm leading-relaxed bg-cream-light text-heading border border-border">
+                  {streamingText && (
                     <div className="prose prose-sm max-w-none prose-headings:text-heading prose-p:text-body prose-a:text-brand-blue prose-strong:text-heading prose-code:text-brand-blue prose-code:bg-cream prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs">
                       <Streamdown>{streamingText}</Streamdown>
                     </div>
-                  ) : (
-                    <span className="inline-flex gap-1">
-                      <span className="w-2 h-2 rounded-full bg-muted animate-bounce" style={{ animationDelay: "0ms" }} />
-                      <span className="w-2 h-2 rounded-full bg-muted animate-bounce" style={{ animationDelay: "150ms" }} />
-                      <span className="w-2 h-2 rounded-full bg-muted animate-bounce" style={{ animationDelay: "300ms" }} />
-                    </span>
                   )}
-                  {streamingText && (
-                    <span className="inline-block w-1.5 h-4 bg-brand-blue animate-pulse ml-0.5 align-middle" />
-                  )}
+                  <span className="inline-block w-1.5 h-4 bg-brand-blue animate-pulse ml-0.5 align-middle" />
 
                   {/* Streaming citations */}
                   {streamingCitations.length > 0 && (
@@ -546,31 +633,88 @@ export function Chat() {
                         <DocumentTextIcon className="h-3.5 w-3.5" />
                         {t("chat.sources")}
                       </p>
-                      <ul className="space-y-1">
+                      <ul className="space-y-1.5">
                         {streamingCitations.map((c, idx) => (
                           <li
                             key={idx}
-                            className="rounded bg-surface/80 px-2 py-1 text-xs text-body"
+                            className="rounded-lg bg-surface/80 border border-transparent px-2.5 py-1.5 text-xs text-body"
                           >
-                            <span className="font-medium text-brand-blue">
-                              {c.document_title}
-                            </span>
-                            {c.citation_text && (
-                              <span className="text-muted ml-1">
-                                — {c.citation_text.slice(0, 120)}
-                                {c.citation_text.length > 120 ? "..." : ""}
+                            <div className="flex items-start gap-2">
+                              <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-brand-blue text-[9px] font-semibold text-white mt-0.5">
+                                {idx + 1}
                               </span>
-                            )}
+                              <div className="min-w-0">
+                                <span className="font-medium text-brand-blue">
+                                  {c.document_title}
+                                </span>
+                                {c.citation_text && (
+                                  <p className="text-muted mt-0.5 line-clamp-2">
+                                    {c.citation_text.slice(0, 200)}
+                                    {c.citation_text.length > 200 ? "..." : ""}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
                           </li>
                         ))}
                       </ul>
                     </div>
                   )}
                 </div>
+                )}
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
+
+          {/* Citation popover */}
+          {citPopover && (() => {
+            const msg = messages.find((m) => m.id === citPopover.msgId);
+            const cit = msg?.citations?.[citPopover.index - 1];
+            if (!cit || !chatAreaRef.current) return null;
+            const containerRect = chatAreaRef.current.getBoundingClientRect();
+            const top = citPopover.rect.bottom - containerRect.top + chatAreaRef.current.scrollTop + 6;
+            const left = Math.max(8, Math.min(
+              citPopover.rect.left - containerRect.left,
+              containerRect.width - 340,
+            ));
+            return (
+              <div
+                className="citation-popover absolute z-50 w-80 rounded-xl border border-border bg-surface shadow-lg animate-in fade-in slide-in-from-top-1 duration-150"
+                style={{ top, left }}
+              >
+                <div className="px-4 py-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-brand-blue text-[10px] font-semibold text-white">
+                      {citPopover.index}
+                    </span>
+                    <span className="text-xs font-medium text-brand-blue truncate">
+                      {cit.document_title}
+                    </span>
+                  </div>
+                  {cit.citation_text && (
+                    <p className="text-xs text-body leading-relaxed line-clamp-6">
+                      {cit.citation_text}
+                    </p>
+                  )}
+                  {cit.relevance_score != null && (
+                    <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
+                      <span className="text-[10px] text-muted">Relevance</span>
+                      <div className="flex-1 h-1 rounded-full bg-surface-inset overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${cit.relevance_score >= 0.8 ? "bg-green-500" : cit.relevance_score >= 0.5 ? "bg-yellow-400" : "bg-red-400"}`}
+                          style={{ width: `${(cit.relevance_score * 100).toFixed(0)}%` }}
+                        />
+                      </div>
+                      <span className={`text-[10px] font-medium ${cit.relevance_score >= 0.8 ? "text-green-600" : cit.relevance_score >= 0.5 ? "text-yellow-600" : "text-red-500"}`}>
+                        {(cit.relevance_score * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Input */}

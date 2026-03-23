@@ -95,7 +95,6 @@ export function ChatLayout() {
                       onClick={() => setSidebarOpen(false)}
                       className="flex items-center gap-2 flex-1 min-w-0"
                     >
-                      <ChatBubbleLeftEllipsisIcon className="h-4 w-4 shrink-0 text-muted" />
                       <span className="truncate">{chat.title || "Untitled chat"}</span>
                     </Link>
                     <button
