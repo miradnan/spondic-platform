@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"net/http"
@@ -319,6 +320,31 @@ func (h *Handler) DeleteProject(c echo.Context) error {
 	rows, _ := result.RowsAffected()
 	if rows == 0 {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "project not found"})
+	}
+
+	// Remove approved answers from Weaviate for this project
+	if h.AI != nil {
+		go func() {
+			answerRows, err := h.DB.Query(
+				`SELECT a.id FROM rfp_answers a
+				 JOIN rfp_questions q ON q.id = a.question_id
+				 WHERE q.project_id = $1 AND a.organization_id = $2 AND a.status = 'approved'`,
+				projectID, orgID,
+			)
+			if err != nil {
+				log.Printf("error fetching approved answers for project %s cleanup: %v", projectID, err)
+				return
+			}
+			defer answerRows.Close()
+			for answerRows.Next() {
+				var answerID string
+				if answerRows.Scan(&answerID) == nil {
+					ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+					_ = h.AI.RemoveAnswer(ctx, orgID, answerID)
+					cancel()
+				}
+			}
+		}()
 	}
 
 	return c.NoContent(http.StatusNoContent)

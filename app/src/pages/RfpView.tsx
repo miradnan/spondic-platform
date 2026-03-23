@@ -772,7 +772,7 @@ function ReviewTab({
     );
   }, [answer, updateAnswer, projectId, editText, toast]);
 
-  const handleApprove = useCallback((status: "approved" | "in_review" | "rejected") => {
+  const handleApprove = useCallback((status: "approved" | "in_review" | "rejected" | "draft") => {
     if (!answer) return;
     approveAnswer.mutate(
       { projectId, answerId: answer.id, body: { status } },
@@ -1325,36 +1325,7 @@ function ReviewTab({
   );
 }
 
-// ── Right Panel: Collapsible Citations + History ─────────────────────────────
-
-function CollapsibleSection({
-  title,
-  badge,
-  defaultOpen = true,
-  children,
-}: {
-  title: string;
-  badge?: React.ReactNode;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="rounded-xl border border-border bg-surface shadow-sm overflow-hidden">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-cream-light/50 transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          <h3 className="text-xs font-medium text-muted uppercase tracking-wide">{title}</h3>
-          {badge}
-        </div>
-        <ChevronRightIcon className={`h-4 w-4 text-muted transition-transform ${open ? "rotate-90" : ""}`} />
-      </button>
-      {open && <div className="px-5 pb-5">{children}</div>}
-    </div>
-  );
-}
+// ── Right Panel: Citations + History ──────────────────────────────────────────
 
 function RightPanel({ answer, projectId }: { answer: RFPAnswer | null | undefined; projectId: string }) {
   const { t } = useTranslation();

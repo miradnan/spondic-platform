@@ -236,7 +236,7 @@ export interface UpdateAnswerRequest {
 }
 
 export interface ApproveAnswerRequest {
-  status: "approved" | "rejected" | "in_review";
+  status: "approved" | "rejected" | "in_review" | "draft";
 }
 
 export interface AddCommentRequest {

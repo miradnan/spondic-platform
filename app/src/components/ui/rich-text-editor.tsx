@@ -25,10 +25,11 @@ const CitationBadge = Mark.create({
   },
 });
 
-function EnterPlaceholderView({ node, editor, getPos }: { node: any; editor: any; getPos: () => number }) {
+function EnterPlaceholderView({ node, editor, getPos }: { node: any; editor: any; getPos: () => number | undefined }) {
   const handleClick = useCallback(() => {
     if (!editor.isEditable) return;
     const pos = getPos();
+    if (pos == null) return;
     const end = pos + node.nodeSize;
     // Replace the placeholder atom with a highlighted empty space,
     // then place the cursor inside so the user can start typing immediately.
