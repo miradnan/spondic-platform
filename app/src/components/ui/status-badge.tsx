@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 const STATUS_MAP: Record<string, { label: string; className: string; icon?: typeof CheckCircleIcon; spin?: boolean }> = {
   // Project statuses
-  draft: { label: "Draft", className: "bg-gray-100 text-gray-700" },
+  draft: { label: "Draft", className: "bg-surface-inset text-muted" },
   in_progress: { label: "In Progress", className: "bg-blue-100 text-blue-700" },
   completed: { label: "Completed", className: "bg-green-100 text-green-700" },
   submitted: { label: "Submitted", className: "bg-purple-100 text-purple-700" },
@@ -33,7 +33,7 @@ const STATUS_MAP: Record<string, { label: string; className: string; icon?: type
   product_doc: { label: "Product Doc", className: "bg-purple-100 text-purple-700" },
   compliance: { label: "Compliance", className: "bg-green-100 text-green-700" },
   case_study: { label: "Case Study", className: "bg-orange-100 text-orange-700" },
-  other: { label: "Other", className: "bg-gray-100 text-gray-700" },
+  other: { label: "Other", className: "bg-surface-inset text-muted" },
 };
 
 interface StatusBadgeProps {
@@ -47,7 +47,7 @@ export function StatusBadge({ status, label, className }: StatusBadgeProps) {
   let config = STATUS_MAP[status];
   if (!config) {
     const key = Object.keys(STATUS_MAP).find((k) => status.toLowerCase().includes(k));
-    config = key ? STATUS_MAP[key] : { label: status, className: "bg-gray-100 text-gray-700" };
+    config = key ? STATUS_MAP[key] : { label: status, className: "bg-surface-inset text-muted" };
   }
 
   const displayLabel = label ?? config.label;

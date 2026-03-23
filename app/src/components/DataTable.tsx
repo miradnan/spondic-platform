@@ -50,7 +50,7 @@ function SkeletonRow({ columns }: { columns: number }) {
     <tr className="animate-pulse">
       {Array.from({ length: columns }).map((_, i) => (
         <td key={i} className="px-4 py-3">
-          <div className="h-4 rounded bg-gray-200" style={{ width: `${60 + Math.random() * 40}%` }} />
+          <div className="h-4 rounded bg-surface-inset" style={{ width: `${60 + Math.random() * 40}%` }} />
         </td>
       ))}
     </tr>
@@ -126,7 +126,7 @@ export function DataTable<TData>({
   return (
     <div>
       {/* Table wrapper */}
-      <div className="rounded-xl border border-border bg-white shadow-sm overflow-x-auto">
+      <div className="rounded-xl border border-border bg-surface shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           {/* Header */}
           <thead>

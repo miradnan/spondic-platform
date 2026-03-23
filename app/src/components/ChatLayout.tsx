@@ -130,7 +130,7 @@ export function ChatLayout() {
   return (
     <div className="flex flex-1 min-h-0 -m-4 lg:-m-6">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-80 shrink-0 flex-col border-r border-border bg-white">
+      <aside className="hidden md:flex w-80 shrink-0 flex-col border-r border-border bg-surface">
         {chatList}
       </aside>
 
@@ -141,7 +141,7 @@ export function ChatLayout() {
             className="absolute inset-0 bg-black/40"
             onClick={() => setSidebarOpen(false)}
           />
-          <aside className="relative flex w-72 max-w-[80vw] h-full flex-col bg-white shadow-xl">
+          <aside className="relative flex w-72 max-w-[80vw] h-full flex-col bg-surface shadow-xl">
             <button
               onClick={() => setSidebarOpen(false)}
               className="absolute right-3 top-3 z-10 rounded-lg p-1 text-muted hover:text-body hover:bg-cream-light transition-colors"
@@ -156,7 +156,7 @@ export function ChatLayout() {
       {/* Main chat area */}
       <div className="flex flex-1 flex-col min-w-0 min-h-0">
         {/* Mobile header bar */}
-        <div className="flex md:hidden items-center gap-2 px-4 py-2 border-b border-border bg-white">
+        <div className="flex md:hidden items-center gap-2 px-4 py-2 border-b border-border bg-surface">
           {activeChatId ? (
             <button
               onClick={() => navigate("/chat")}
@@ -177,7 +177,7 @@ export function ChatLayout() {
           </span>
         </div>
 
-        <div className="flex flex-1 min-h-0 p-4 lg:p-6">
+        <div className="flex flex-1 min-h-0">
           <Outlet />
         </div>
       </div>

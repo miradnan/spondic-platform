@@ -578,7 +578,7 @@ export function Analytics() {
   const pipelineLost = winLoss?.total_lost ?? 0;
 
   return (
-    <div className="pb-12">
+    <div className="pb-12 max-w-7xl mx-auto w-full">
       {/* Page Header + Date Filter */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-3">

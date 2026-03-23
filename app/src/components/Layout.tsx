@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   UserButton,
   useOrganization,
@@ -368,6 +368,7 @@ const commandItems: CommandItem[] = [
 ];
 
 function CommandPaletteInner({ onClose }: { onClose: () => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const navigate = useNavigate();
@@ -427,7 +428,8 @@ function CommandPaletteInner({ onClose }: { onClose: () => void }) {
             onChange={(e) => handleQueryChange(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search pages..."
-            className="flex-1 bg-transparent text-sm text-heading placeholder:text-muted outline-none"
+            style={{ boxShadow: "none" }}
+            className="flex-1 bg-transparent text-base text-heading placeholder:text-muted outline-none ring-0 border-none shadow-none focus:outline-none focus:ring-0 focus:shadow-none"
           />
           <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border border-border bg-cream-light px-1.5 py-0.5 text-[10px] font-medium text-muted">
             ESC
@@ -709,9 +711,7 @@ export function Layout() {
         </header>
 
         <main className="flex flex-1 flex-col min-h-0 p-4 lg:p-6 bg-cream-lighter">
-          <div className="mx-auto w-full max-w-7xl flex flex-1 flex-col min-h-0">
-            <Outlet />
-          </div>
+          <Outlet />
         </main>
       </div>
 

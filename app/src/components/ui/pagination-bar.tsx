@@ -32,12 +32,12 @@ export function PaginationBar({
   const isLastPage = currentPage >= totalPages;
 
   const btnBase =
-    "inline-flex items-center justify-center border border-gray-300 rounded px-2 py-1 text-sm transition-colors";
-  const btnEnabled = "hover:bg-gray-100 text-body";
+    "inline-flex items-center justify-center border border-border rounded px-2 py-1 text-sm transition-colors";
+  const btnEnabled = "hover:bg-cream-light text-body";
   const btnDisabled = "opacity-50 cursor-not-allowed text-muted";
 
   return (
-    <div className="border-t border-gray-200 bg-white px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
+    <div className="border-t border-border bg-surface px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
       {/* LEFT: Showing X-Y of Z */}
       <p className="text-sm text-muted whitespace-nowrap">
         Showing {formatNumber(from)}&ndash;{formatNumber(to)} of{" "}

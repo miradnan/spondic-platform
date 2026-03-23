@@ -410,20 +410,20 @@ export function Chat() {
           <div className="flex flex-col flex-1 min-h-full px-4 pt-8 pb-4">
             {/* Empty state */}
             {!chatId && messages.length === 0 && !messagesLoading && (
-              <div className="flex flex-col flex-1 min-h-full justify-center items-start text-left">
+              <div className="flex flex-col flex-1 min-h-full justify-center items-center text-center">
                 <p className="font-display text-3xl font-bold text-heading">
                   {firstName ? t("chat.greeting", { name: firstName }) : t("chat.greetingDefault")}
                 </p>
-                <p className="mt-1.5 text-base text-muted">
+                <p className="mt-2 text-base text-muted max-w-md">
                   {t("chat.subtitle")}
                 </p>
-                <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-xl" data-tour="chat-prompts">
+                <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-2xl" data-tour="chat-prompts">
                   {suggestedPrompts.map((prompt) => (
                     <button
                       key={prompt.fullPrompt}
                       type="button"
                       onClick={() => handleSelectPrompt(prompt.fullPrompt)}
-                      className="rounded-xl bg-cream-light border border-border px-4 py-3 text-left transition-all hover:shadow-md hover:border-brand-blue/30"
+                      className="rounded-xl bg-white border border-border px-4 py-3.5 text-left transition-all hover:shadow-md hover:border-brand-blue/30"
                     >
                       <p className="text-sm font-medium text-heading">{prompt.title}</p>
                       <p className="mt-0.5 text-xs text-muted">{prompt.subtitle}</p>
@@ -580,7 +580,7 @@ export function Chat() {
         </div>
 
         {/* Input */}
-        <form onSubmit={handleFormSubmit} className="shrink-0 px-4 py-5" data-tour="chat-input">
+        <form onSubmit={handleFormSubmit} className="shrink-0 px-4 pb-4 pt-2" data-tour="chat-input">
           {/* Markdown preview panel */}
           {showPreview && input.trim() && (
             <div className="mb-2 rounded-xl bg-cream-light border border-border px-4 py-3 max-h-40 overflow-y-auto">

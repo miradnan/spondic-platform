@@ -16,9 +16,9 @@ function Calendar({ className, classNames, ...props }: CalendarProps) {
         caption_label: "text-sm font-semibold text-heading",
         nav: "absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none z-10",
         button_previous:
-          "pointer-events-auto inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-white text-body shadow-sm hover:bg-cream hover:text-heading transition-colors",
+          "pointer-events-auto inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface text-body shadow-sm hover:bg-cream hover:text-heading transition-colors",
         button_next:
-          "pointer-events-auto inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-white text-body shadow-sm hover:bg-cream hover:text-heading transition-colors",
+          "pointer-events-auto inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface text-body shadow-sm hover:bg-cream hover:text-heading transition-colors",
         month_grid: "w-full border-collapse",
         weekdays: "flex",
         weekday:

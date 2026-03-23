@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useOrganization } from "@clerk/react";
 import {
   EnvelopeIcon,
@@ -6,20 +6,84 @@ import {
   ClockIcon,
   XMarkIcon,
   UsersIcon,
+  ArrowUpTrayIcon,
+  ChevronDownIcon,
+  CheckIcon,
+  XMarkIcon as XMarkIconSolid,
+  ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
+import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/solid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { useTeams } from "../../hooks/useApi.ts";
+import { useToast } from "../../components/Toast.tsx";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type RoleOption = "org:admin" | "org:member";
 
+interface CsvRow {
+  email: string;
+  role: string;
+  valid: boolean;
+  error?: string;
+}
+
 const ROLE_LABELS: Record<string, string> = {
   "org:admin": "Admin",
   "org:member": "Member",
 };
+
+const PLACEHOLDER_TEAMS = ["Engineering", "Sales", "Marketing", "Support"];
+
+// ── Permission Matrix Data ──────────────────────────────────────────────────
+
+const PERMISSIONS = [
+  { label: "View projects", member: true, admin: true },
+  { label: "Create projects", member: true, admin: true },
+  { label: "Edit answers", member: true, admin: true },
+  { label: "Approve answers", member: false, admin: true },
+  { label: "Manage members", member: false, admin: true },
+  { label: "View audit log", member: false, admin: true },
+  { label: "Manage billing", member: false, admin: true },
+];
+
+// ── CSV parsing ─────────────────────────────────────────────────────────────
+
+function parseCsv(text: string): CsvRow[] {
+  const lines = text.trim().split("\n");
+  const rows: CsvRow[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    // Skip header row
+    if (i === 0 && /^email/i.test(line)) continue;
+
+    const parts = line.split(",").map((s) => s.trim().replace(/^["']|["']$/g, ""));
+    const email = parts[0] ?? "";
+    const role = (parts[1] ?? "member").toLowerCase();
+
+    const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    const roleValid = role === "member" || role === "admin";
+
+    rows.push({
+      email,
+      role: roleValid ? role : "member",
+      valid: emailValid && roleValid,
+      error: !emailValid
+        ? "Invalid email"
+        : !roleValid
+          ? `Invalid role "${parts[1]}" — using "member"`
+          : undefined,
+    });
+  }
+
+  return rows;
+}
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
@@ -34,6 +98,9 @@ export function AdminMembers() {
     invitations: { pageSize: 50 },
   });
 
+  const { data: teamsData } = useTeams();
+  const { toast } = useToast();
+
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<RoleOption>("org:member");
   const [inviting, setInviting] = useState(false);
@@ -44,6 +111,33 @@ export function AdminMembers() {
   const [actionError, setActionError] = useState("");
 
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
+
+  // Bulk import state
+  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [csvRows, setCsvRows] = useState<CsvRow[]>([]);
+  const [bulkInviting, setBulkInviting] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Team assignments (local state — placeholder for API)
+  const [teamAssignments, setTeamAssignments] = useState<Record<string, string>>({});
+
+  // Permission matrix collapse
+  const [permissionsOpen, setPermissionsOpen] = useState(false);
+
+  const teamNames =
+    teamsData?.teams && teamsData.teams.length > 0
+      ? teamsData.teams.map((t) => t.name)
+      : PLACEHOLDER_TEAMS;
+
+  // ── Team assignment handler ───────────────────────────────────────────
+  const handleTeamChange = useCallback(
+    (userId: string, team: string) => {
+      setTeamAssignments((prev) => ({ ...prev, [userId]: team }));
+      toast("success", "Team updated");
+    },
+    [toast],
+  );
 
   if (!isLoaded || !organization) {
     return (
@@ -94,6 +188,63 @@ export function AdminMembers() {
       setInviteError(message);
     } finally {
       setInviting(false);
+    }
+  }
+
+  // ── Bulk import handlers ──────────────────────────────────────────────
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const rows = parseCsv(text);
+      setCsvRows(rows);
+    };
+    reader.readAsText(file);
+
+    // Reset input so same file can be re-selected
+    e.target.value = "";
+  }
+
+  async function handleBulkInvite() {
+    if (!organization || csvRows.length === 0) return;
+
+    const validRows = csvRows.filter((r) => r.valid);
+    if (validRows.length === 0) return;
+
+    setBulkInviting(true);
+    setBulkProgress({ done: 0, total: validRows.length });
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < validRows.length; i++) {
+      const row = validRows[i];
+      try {
+        await organization.inviteMembers({
+          emailAddresses: [row.email],
+          role: row.role === "admin" ? "org:admin" : "org:member",
+        });
+        successCount++;
+      } catch {
+        failCount++;
+      }
+      setBulkProgress({ done: i + 1, total: validRows.length });
+    }
+
+    invitations?.revalidate?.();
+    setBulkInviting(false);
+    setBulkProgress(null);
+    setCsvRows([]);
+    setShowBulkImport(false);
+
+    if (failCount === 0) {
+      toast("success", `${successCount} invitation${successCount !== 1 ? "s" : ""} sent successfully`);
+    } else {
+      toast("error", `${successCount} sent, ${failCount} failed`);
     }
   }
 
@@ -232,12 +383,126 @@ export function AdminMembers() {
               "Send Invite"
             )}
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setShowBulkImport(!showBulkImport)}
+          >
+            <ArrowUpTrayIcon className="h-4 w-4 mr-1.5" />
+            Bulk Import
+          </Button>
         </form>
         {inviteError && (
           <p className="mt-2 text-sm text-red-600">{inviteError}</p>
         )}
         {inviteSuccess && (
           <p className="mt-2 text-sm text-green-600">{inviteSuccess}</p>
+        )}
+
+        {/* ── Bulk Import Panel ──────────────────────────────────────────── */}
+        {showBulkImport && (
+          <div className="mt-4 rounded-lg border border-border bg-cream-light/30 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-semibold text-heading">Bulk Import via CSV</h4>
+              <button
+                onClick={() => {
+                  setShowBulkImport(false);
+                  setCsvRows([]);
+                }}
+                className="text-muted hover:text-heading transition-colors"
+              >
+                <XMarkIcon className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-xs text-muted mb-3">
+              Upload a CSV file with columns: <strong>email, role</strong> (member/admin).
+              The first row is treated as a header if it starts with "email".
+            </p>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={bulkInviting}
+            >
+              <ArrowUpTrayIcon className="h-4 w-4 mr-1.5" />
+              Choose CSV File
+            </Button>
+
+            {/* Preview table */}
+            {csvRows.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs font-medium text-heading mb-2">
+                  Preview ({csvRows.filter((r) => r.valid).length} valid of {csvRows.length} rows)
+                </p>
+                <div className="max-h-48 overflow-y-auto rounded-lg border border-border bg-white">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-gray-50">
+                        <th className="px-3 py-2 text-left text-xs font-medium text-muted">Email</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-muted">Role</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-muted">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {csvRows.map((row, i) => (
+                        <tr key={i} className={row.valid ? "" : "bg-red-50/50"}>
+                          <td className="px-3 py-1.5 text-heading">{row.email}</td>
+                          <td className="px-3 py-1.5 capitalize text-body">{row.role}</td>
+                          <td className="px-3 py-1.5">
+                            {row.valid ? (
+                              <span className="inline-flex items-center gap-1 text-xs text-green-600">
+                                <CheckIcon className="h-3.5 w-3.5" />
+                                Valid
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-xs text-red-600">
+                                <XMarkIconSolid className="h-3.5 w-3.5" />
+                                {row.error}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="mt-3 flex items-center gap-3">
+                  <Button
+                    type="button"
+                    disabled={bulkInviting || csvRows.filter((r) => r.valid).length === 0}
+                    onClick={handleBulkInvite}
+                  >
+                    {bulkInviting ? (
+                      <>
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        Sending {bulkProgress?.done}/{bulkProgress?.total}...
+                      </>
+                    ) : (
+                      `Send ${csvRows.filter((r) => r.valid).length} Invite${csvRows.filter((r) => r.valid).length !== 1 ? "s" : ""}`
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={bulkInviting}
+                    onClick={() => setCsvRows([])}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -248,6 +513,16 @@ export function AdminMembers() {
             Active Members ({memberList.length})
           </h3>
         </div>
+
+        {/* Column headers for team */}
+        <div className="hidden sm:flex items-center gap-4 px-5 py-2 border-b border-border bg-gray-50/50 text-xs font-medium text-muted uppercase tracking-wider">
+          <div className="w-10" />
+          <div className="flex-1">Member</div>
+          <div className="w-20 text-center">Role</div>
+          <div className="w-32 text-center">Team</div>
+          <div className="w-48 text-center">Actions</div>
+        </div>
+
         <div className="divide-y divide-border">
           {memberList.map((member) => {
             const userData = member.publicUserData;
@@ -259,6 +534,7 @@ export function AdminMembers() {
             const avatarUrl = userData?.imageUrl;
             const initial = (firstName || email || "?").charAt(0).toUpperCase();
             const isCurrentAction = actionLoading === member.publicUserData?.userId;
+            const userId = member.publicUserData?.userId ?? "";
 
             return (
               <div
@@ -294,6 +570,22 @@ export function AdminMembers() {
                 >
                   {ROLE_LABELS[member.role] ?? member.role}
                 </Badge>
+
+                {/* Team select */}
+                <div className="w-32">
+                  <select
+                    value={teamAssignments[userId] ?? ""}
+                    onChange={(e) => handleTeamChange(userId, e.target.value)}
+                    className="w-full rounded-md border border-border bg-white px-2 py-1 text-xs text-heading focus:outline-none focus:ring-2 focus:ring-brand-blue focus:ring-offset-1"
+                  >
+                    <option value="">No team</option>
+                    {teamNames.map((team) => (
+                      <option key={team} value={team}>
+                        {team}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
                 {/* Actions */}
                 <div className="flex items-center gap-2">
@@ -368,7 +660,7 @@ export function AdminMembers() {
 
       {/* ── Pending Invitations ────────────────────────────────────────── */}
       {invitationList.length > 0 && (
-        <div className="rounded-xl border border-border bg-white overflow-hidden">
+        <div className="rounded-xl border border-border bg-white overflow-hidden mb-6">
           <div className="px-5 py-4 border-b border-border">
             <h3 className="text-sm font-semibold text-heading flex items-center gap-2">
               <ClockIcon className="h-4 w-4 text-muted" />
@@ -417,6 +709,70 @@ export function AdminMembers() {
           </div>
         </div>
       )}
+
+      {/* ── Role Permissions Matrix ──────────────────────────────────── */}
+      <div className="rounded-xl border border-border bg-white overflow-hidden">
+        <button
+          onClick={() => setPermissionsOpen(!permissionsOpen)}
+          className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-cream-light/30 transition-colors"
+        >
+          <h3 className="text-sm font-semibold text-heading flex items-center gap-2">
+            <ShieldCheckIcon className="h-4 w-4 text-brand-blue" />
+            Role Permissions
+          </h3>
+          <ChevronDownIcon
+            className={`h-4 w-4 text-muted transition-transform duration-200 ${
+              permissionsOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+
+        {permissionsOpen && (
+          <div className="border-t border-border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-gray-50/50">
+                  <th className="px-5 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">
+                    Permission
+                  </th>
+                  <th className="px-5 py-3 text-center text-xs font-medium text-muted uppercase tracking-wider w-28">
+                    Member
+                  </th>
+                  <th className="px-5 py-3 text-center text-xs font-medium text-muted uppercase tracking-wider w-28">
+                    Admin
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {PERMISSIONS.map((perm) => (
+                  <tr key={perm.label}>
+                    <td className="px-5 py-3 text-heading">{perm.label}</td>
+                    <td className="px-5 py-3 text-center">
+                      {perm.member ? (
+                        <CheckCircleIcon className="h-5 w-5 text-green-500 inline-block" />
+                      ) : (
+                        <XCircleIcon className="h-5 w-5 text-gray-300 inline-block" />
+                      )}
+                    </td>
+                    <td className="px-5 py-3 text-center">
+                      {perm.admin ? (
+                        <CheckCircleIcon className="h-5 w-5 text-green-500 inline-block" />
+                      ) : (
+                        <XCircleIcon className="h-5 w-5 text-gray-300 inline-block" />
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="px-5 py-3 border-t border-border bg-gray-50/30">
+              <p className="text-xs text-muted">
+                This matrix is informational only. Role permissions are enforced server-side.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

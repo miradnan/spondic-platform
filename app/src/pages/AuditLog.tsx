@@ -3,6 +3,7 @@ import {
   ArrowPathIcon,
   XMarkIcon,
   ClipboardDocumentListIcon,
+  ArrowDownTrayIcon,
 } from "@heroicons/react/24/outline";
 import { useTableParams } from "../hooks/useTableParams.ts";
 import { useOrganization } from "@clerk/react";
@@ -171,16 +172,53 @@ export function AuditLog() {
     [resolveUserName],
   );
 
+  function handleExportCsv() {
+    if (!logs.length) return;
+
+    const headers = ["Timestamp", "User", "Action", "Entity Type", "Entity ID"];
+    const csvRows = [
+      headers.join(","),
+      ...logs.map((log) => {
+        const timestamp = log.created_at ? format(new Date(log.created_at), "yyyy-MM-dd HH:mm:ss") : "";
+        const user = resolveUserName(log.user_id, log.user_name).replace(/,/g, " ");
+        const action = log.action ?? "";
+        const entityType = log.entity_type ? log.entity_type.replace(/_/g, " ") : "";
+        const entityId = log.entity_id ?? "";
+        return [timestamp, `"${user}"`, action, entityType, entityId].join(",");
+      }),
+    ];
+
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `audit-log-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
   return (
-    <div>
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-blue/10">
-          <ClipboardDocumentListIcon className="h-5 w-5 text-brand-blue" />
+    <div className="max-w-7xl mx-auto w-full">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-blue/10">
+            <ClipboardDocumentListIcon className="h-5 w-5 text-brand-blue" />
+          </div>
+          <div>
+            <h1 className="font-display text-2xl font-bold text-heading">Audit Log</h1>
+            <p className="text-sm text-body">Complete record of all actions in your organization.</p>
+          </div>
         </div>
-        <div>
-          <h1 className="font-display text-2xl font-bold text-heading">Audit Log</h1>
-          <p className="text-sm text-body">Complete record of all actions in your organization.</p>
-        </div>
+        <button
+          onClick={handleExportCsv}
+          disabled={!logs.length}
+          className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-heading shadow-sm hover:bg-cream-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <ArrowDownTrayIcon className="h-4 w-4" />
+          Export CSV
+        </button>
       </div>
 
       {/* Filters */}

@@ -63,7 +63,7 @@ const daysLeftColors = {
   red: "bg-red-50 text-red-700 border-red-200",
   amber: "bg-amber-50 text-amber-700 border-amber-200",
   green: "bg-green-50 text-green-700 border-green-200",
-  gray: "bg-gray-50 text-gray-500 border-gray-200",
+  gray: "bg-surface-inset text-muted border-border",
 };
 
 function DaysLeftBadge({ deadline }: { deadline: string | null }) {
@@ -109,14 +109,14 @@ function filterByDeadline(projects: Project[], filter: DeadlineFilter): Project[
 
 function SkeletonCard() {
   return (
-    <div className="rounded-xl border border-border bg-white p-6 animate-pulse">
-      <div className="h-5 w-3/4 rounded bg-gray-200" />
-      <div className="mt-3 h-4 w-1/2 rounded bg-gray-200" />
+    <div className="rounded-xl border border-border bg-surface p-6 animate-pulse">
+      <div className="h-5 w-3/4 rounded bg-surface-inset" />
+      <div className="mt-3 h-4 w-1/2 rounded bg-surface-inset" />
       <div className="mt-4 flex gap-3">
-        <div className="h-6 w-16 rounded-full bg-gray-200" />
-        <div className="h-6 w-20 rounded-full bg-gray-200" />
+        <div className="h-6 w-16 rounded-full bg-surface-inset" />
+        <div className="h-6 w-20 rounded-full bg-surface-inset" />
       </div>
-      <div className="mt-4 h-3 w-1/3 rounded bg-gray-200" />
+      <div className="mt-4 h-3 w-1/3 rounded bg-surface-inset" />
     </div>
   );
 }
@@ -143,8 +143,8 @@ function sortProjects(projects: Project[], sortBy: CardSortOption): Project[] {
       break;
     case "progress":
       sorted.sort((a, b) => {
-        const pctA = a.question_count > 0 ? a.approved_count / a.question_count : 0;
-        const pctB = b.question_count > 0 ? b.approved_count / b.question_count : 0;
+        const pctA = (a.question_count ?? 0) > 0 ? (a.approved_count ?? 0) / a.question_count : 0;
+        const pctB = (b.question_count ?? 0) > 0 ? (b.approved_count ?? 0) / b.question_count : 0;
         return pctB - pctA;
       });
       break;
@@ -219,7 +219,7 @@ function OnboardingChecklist({
   };
 
   return (
-    <div className="mb-6 rounded-xl border border-brand-blue/20 bg-white p-5 shadow-sm">
+    <div className="mb-6 rounded-xl border border-brand-blue/20 bg-surface p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="rounded-lg bg-brand-blue/10 p-2.5">
@@ -261,7 +261,7 @@ function OnboardingChecklist({
       </div>
 
       {/* Progress bar */}
-      <div className="mt-4 h-2 rounded-full bg-gray-100 overflow-hidden">
+      <div className="mt-4 h-2 rounded-full bg-surface-inset overflow-hidden">
         <div
           className="h-full rounded-full bg-brand-blue transition-all duration-500"
           style={{ width: `${(completedCount / steps.length) * 100}%` }}
@@ -276,7 +276,7 @@ function OnboardingChecklist({
               className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
                 step.done
                   ? "bg-green-100 border-green-500"
-                  : "bg-white border-border"
+                  : "bg-surface border-border"
               }`}
             >
               {step.done ? (
@@ -507,12 +507,12 @@ export function Dashboard() {
         enableSorting: true,
         cell: (info) => {
           const project = info.row.original;
-          const total = project.question_count;
-          const approved = project.approved_count;
+          const total = project.question_count ?? 0;
+          const approved = project.approved_count ?? 0;
           const pct = total > 0 ? Math.round((approved / total) * 100) : 0;
           return (
             <div className="flex items-center gap-2 min-w-[100px]">
-              <div className="flex-1 h-1.5 rounded-full bg-gray-200 overflow-hidden">
+              <div className="flex-1 h-1.5 rounded-full bg-surface-inset overflow-hidden">
                 <div
                   className="h-full rounded-full bg-green-500 transition-all"
                   style={{ width: `${pct}%` }}
@@ -540,7 +540,7 @@ export function Dashboard() {
   );
 
   return (
-    <div>
+    <div className="max-w-7xl mx-auto w-full">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-blue/10">
@@ -594,7 +594,7 @@ export function Dashboard() {
             placeholder={t("dashboard.searchProjects")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-border bg-white py-2 pl-10 pr-4 text-sm text-heading placeholder-muted focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+            className="w-full rounded-lg border border-border bg-surface py-2 pl-10 pr-4 text-sm text-heading placeholder-muted focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
           />
         </div>
         <Select
@@ -647,7 +647,7 @@ export function Dashboard() {
         )}
 
         {/* View Toggle */}
-        <div className="flex items-center rounded-lg border border-border bg-white">
+        <div className="flex items-center rounded-lg border border-border bg-surface">
           <Tooltip content="Card view">
             <button
               onClick={() => setViewMode("cards")}
@@ -732,9 +732,9 @@ export function Dashboard() {
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {sortedProjects.map((project) => {
               const progress =
-                project.question_count > 0
+                (project.question_count ?? 0) > 0
                   ? Math.round(
-                      (project.approved_count / project.question_count) * 100
+                      ((project.approved_count ?? 0) / project.question_count) * 100
                     )
                   : 0;
               const isSelected = selectedIds.has(project.id);
@@ -742,7 +742,7 @@ export function Dashboard() {
               return (
                 <div
                   key={project.id}
-                  className={`group relative rounded-xl border bg-white p-6 transition-all hover:shadow-md hover:border-brand-blue/30 ${
+                  className={`group relative rounded-xl border bg-surface p-6 transition-all hover:shadow-md hover:border-brand-blue/30 ${
                     isSelected ? "border-brand-blue ring-1 ring-brand-blue/30" : "border-border"
                   }`}
                 >
@@ -780,10 +780,10 @@ export function Dashboard() {
                     {project.question_count > 0 && (
                       <div className="mt-3">
                         <div className="flex items-center justify-between text-xs text-muted mb-1">
-                          <span>{project.approved_count}/{project.question_count} approved</span>
+                          <span>{project.approved_count ?? 0}/{project.question_count ?? 0} approved</span>
                           <span>{progress}%</span>
                         </div>
-                        <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                        <div className="h-1.5 rounded-full bg-surface-inset overflow-hidden">
                           <div
                             className="h-full rounded-full bg-green-500 transition-all"
                             style={{ width: `${progress}%` }}
@@ -811,7 +811,7 @@ export function Dashboard() {
           </div>
 
           {/* Card Pagination */}
-          <div className="mt-6 rounded-xl border border-border bg-white overflow-hidden">
+          <div className="mt-6 rounded-xl border border-border bg-surface overflow-hidden">
             <PaginationBar
               currentPage={pagination.pageIndex + 1}
               totalItems={total}
@@ -859,7 +859,7 @@ export function Dashboard() {
 
       {/* Floating bulk action bar */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-xl border border-border bg-white px-5 py-3 shadow-lg">
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-xl border border-border bg-surface px-5 py-3 shadow-lg">
           <span className="text-sm font-medium text-heading">
             {selectedIds.size} selected
           </span>

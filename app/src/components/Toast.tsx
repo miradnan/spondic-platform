@@ -59,8 +59,8 @@ function ToastNotification({
     <div
       className={`flex items-center gap-3 rounded-lg border px-4 py-3 shadow-lg text-sm min-w-[300px] ${
         item.type === "success"
-          ? "border-green-200 bg-green-50 text-green-800"
-          : "border-red-200 bg-red-50 text-red-800"
+          ? "border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-300"
+          : "border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-300"
       }`}
     >
       {item.type === "success" ? (

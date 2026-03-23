@@ -19,6 +19,7 @@ import { Chat } from "./pages/Chat.tsx";
 import { KnowledgeBase } from "./pages/KnowledgeBase.tsx";
 import { Analytics } from "./pages/Analytics.tsx";
 import { Settings } from "./pages/Settings.tsx";
+import { Notifications } from "./pages/Notifications.tsx";
 import { AdminMembers } from "./pages/admin/AdminMembers.tsx";
 import { AdminOrganization } from "./pages/admin/AdminOrganization.tsx";
 import { AdminTeams } from "./pages/admin/AdminTeams.tsx";
@@ -80,6 +81,7 @@ export default function App() {
             <Route path=":id" element={<Chat />} />
           </Route>
           <Route path="analytics" element={<Analytics />} />
+          <Route path="notifications" element={<Notifications />} />
           <Route path="settings" element={<Settings />} />
           {/* Redirect old /audit route to admin */}
           <Route path="audit" element={<Navigate to="/admin/audit" replace />} />

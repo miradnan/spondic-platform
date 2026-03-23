@@ -82,7 +82,7 @@ export function RichTextEditor({
   if (!editor) return null;
 
   return (
-    <div className={cn("border border-border rounded-lg overflow-hidden bg-white", className)}>
+    <div className={cn("border border-border rounded-lg overflow-hidden bg-surface", className)}>
       {editable && (
         <div className="flex flex-wrap gap-1 border-b border-border p-2 bg-cream-lighter rounded-t-lg">
           <ToolbarButton
