@@ -100,6 +100,7 @@ function AccountSection() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [initialized, setInitialized] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize form fields when profile loads
@@ -124,20 +125,40 @@ function AccountSection() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Show instant local preview
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+
     const formData = new FormData();
     formData.append("file", file);
     uploadAvatar.mutate(formData, {
-      onSuccess: () => toast("success", "Avatar updated"),
-      onError: (err) => toast("error", err.message),
+      onSuccess: () => {
+        toast("success", "Avatar updated");
+        setPreviewUrl(null);
+        URL.revokeObjectURL(objectUrl);
+      },
+      onError: (err) => {
+        toast("error", err.message);
+        setPreviewUrl(null);
+        URL.revokeObjectURL(objectUrl);
+      },
     });
+    // Reset input so the same file can be re-selected
+    e.target.value = "";
   }
 
   function handleDeleteAvatar() {
     deleteAvatar.mutate(undefined, {
-      onSuccess: () => toast("success", "Avatar removed"),
+      onSuccess: () => {
+        toast("success", "Avatar removed");
+        setPreviewUrl(null);
+      },
       onError: (err) => toast("error", err.message),
     });
   }
+
+  const isAvatarBusy = uploadAvatar.isPending || deleteAvatar.isPending;
+  const displayUrl = previewUrl ?? profile?.image_url;
 
   if (isLoading) {
     return (
@@ -170,24 +191,36 @@ function AccountSection() {
       {/* Avatar */}
       <div className="flex items-center gap-4 mb-6">
         <div className="relative group">
-          {profile?.image_url ? (
+          {displayUrl ? (
             <img
-              src={profile.image_url}
+              src={displayUrl}
               alt="Avatar"
-              className="h-16 w-16 rounded-full object-cover"
+              className={`h-16 w-16 rounded-full object-cover transition-opacity ${isAvatarBusy ? "opacity-40" : ""}`}
             />
           ) : (
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-blue text-white text-lg font-semibold">
+            <div className={`flex h-16 w-16 items-center justify-center rounded-full bg-brand-blue text-white text-lg font-semibold transition-opacity ${isAvatarBusy ? "opacity-40" : ""}`}>
               {initials}
             </div>
           )}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
-            aria-label="Change avatar"
-          >
-            <CameraIcon className="h-5 w-5 text-white" />
-          </button>
+          {/* Spinner overlay while uploading/deleting */}
+          {isAvatarBusy && (
+            <div className="absolute inset-0 flex items-center justify-center rounded-full">
+              <svg className="h-6 w-6 animate-spin text-brand-blue" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            </div>
+          )}
+          {/* Hover overlay — hidden while busy */}
+          {!isAvatarBusy && (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
+              aria-label="Change avatar"
+            >
+              <CameraIcon className="h-5 w-5 text-white" />
+            </button>
+          )}
           <input
             ref={fileInputRef}
             type="file"
@@ -204,7 +237,7 @@ function AccountSection() {
           <div className="flex items-center gap-2 mt-1">
             <button
               onClick={() => fileInputRef.current?.click()}
-              disabled={uploadAvatar.isPending}
+              disabled={isAvatarBusy}
               className="text-xs text-brand-blue hover:underline disabled:opacity-50"
             >
               {uploadAvatar.isPending ? "Uploading..." : "Change photo"}
@@ -214,10 +247,10 @@ function AccountSection() {
                 <span className="text-xs text-muted">|</span>
                 <button
                   onClick={handleDeleteAvatar}
-                  disabled={deleteAvatar.isPending}
+                  disabled={isAvatarBusy}
                   className="text-xs text-red-600 hover:underline disabled:opacity-50"
                 >
-                  Remove
+                  {deleteAvatar.isPending ? "Removing..." : "Remove"}
                 </button>
               </>
             )}

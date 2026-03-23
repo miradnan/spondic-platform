@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { format } from "date-fns";
 import {
   ChartBarIcon,
   DocumentTextIcon,
@@ -37,6 +38,7 @@ import {
   useUserPerformance,
 } from "../hooks/useApi.ts";
 import { Button } from "../components/ui/button.tsx";
+import { DatePicker } from "../components/ui/date-picker.tsx";
 import { useOrganization } from "@clerk/react";
 
 // ── CSV Export Helper ──────────────────────────────────────────────────────
@@ -504,8 +506,8 @@ function UserAvatar({ name }: { name: string }) {
 export function Analytics() {
   const { t } = useTranslation();
   const [datePreset, setDatePreset] = useState<DatePreset>("12m");
-  const [customFrom, setCustomFrom] = useState("");
-  const [customTo, setCustomTo] = useState("");
+  const [customFrom, setCustomFrom] = useState<Date | undefined>();
+  const [customTo, setCustomTo] = useState<Date | undefined>();
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const { memberships } = useOrganization({ memberships: { pageSize: 100 } });
 
@@ -542,7 +544,11 @@ export function Analytics() {
     });
   };
 
-  const range = getDateRange(datePreset, customFrom, customTo);
+  const range = getDateRange(
+    datePreset,
+    customFrom ? format(customFrom, "yyyy-MM-dd") : undefined,
+    customTo ? format(customTo, "yyyy-MM-dd") : undefined,
+  );
   const { data, isLoading, isError, refetch } = useAnalytics();
   const { data: winLoss, isLoading: winLossLoading } = useWinLossAnalytics();
   const { data: timeline, isLoading: timelineLoading } = useTimeline(
@@ -626,18 +632,20 @@ export function Analytics() {
           {datePreset === "custom" && (
             <div className="flex items-center gap-2">
               <label className="text-xs text-muted">From</label>
-              <input
-                type="date"
+              <DatePicker
                 value={customFrom}
-                onChange={(e) => setCustomFrom(e.target.value)}
-                className="rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs text-heading focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:border-brand-blue"
+                onChange={setCustomFrom}
+                placeholder="Start date"
+                maxDate={customTo}
+                className="h-8 w-40 text-xs"
               />
               <label className="text-xs text-muted">To</label>
-              <input
-                type="date"
+              <DatePicker
                 value={customTo}
-                onChange={(e) => setCustomTo(e.target.value)}
-                className="rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs text-heading focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:border-brand-blue"
+                onChange={setCustomTo}
+                placeholder="End date"
+                minDate={customFrom}
+                className="h-8 w-40 text-xs"
               />
             </div>
           )}
