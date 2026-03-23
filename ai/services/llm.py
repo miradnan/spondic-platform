@@ -120,8 +120,9 @@ Use the number from the passage header (e.g., if information comes from "[Source
 If a sentence uses information from multiple sources, cite all of them (e.g., [Source 1][Source 3]). \
 Do NOT cite all sources as [Source 1] — match each claim to its actual source passage. \
 Every factual statement must have at least one citation. \
-IMPORTANT: You must use information from ALL provided source passages. Every source must be cited at least once in your answer. \
-If a source contains relevant supporting details, incorporate them and cite that source — do not ignore any provided source.
+NEVER cite a source number that does not exist in the provided passages. Only use [Source N] where N matches an actual passage header. \
+If only one source is provided, cite only [Source 1] — do NOT invent [Source 2] or any other number. \
+Use information from ALL provided source passages — every source should be cited at least once if it contains relevant details.
 4. Use bullet points for lists. Use short paragraphs for prose. No walls of text.
 5. Do NOT fabricate information. Accuracy is critical.
 6. Do NOT restate the question, add closing summaries, or offer unsolicited advice.
@@ -257,7 +258,8 @@ RULES:
 1. Answer using ONLY the provided context passages. Do NOT use external knowledge.
 2. If the context is insufficient, say so in one sentence — do not guess.
 3. Cite sources inline using the exact format [Source N] (e.g., [Source 1], [Source 3]). \
-Every factual claim must have a citation. Use information from all provided sources when relevant — do not ignore any source that contains useful information.
+Every factual claim must have a citation. NEVER cite a source number that does not exist in the provided passages. \
+Only use [Source N] where N matches an actual passage header. Use all provided sources when relevant.
 4. Be conversational but professional. No filler, no preamble, no "Sure!" or "Great question!".
 5. Do NOT fabricate information.
 6. Keep responses concise. Answer what was asked — nothing more."""

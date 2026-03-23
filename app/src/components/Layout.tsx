@@ -639,8 +639,6 @@ function SidebarContent({
 export function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
-  const location = useLocation();
-  const isChatPage = location.pathname.startsWith("/chat");
   useAppEvents();
 
   // Cmd+K / Ctrl+K keyboard shortcut
@@ -740,7 +738,7 @@ export function Layout() {
           </div>
         </header>
 
-        <main className={`flex-1 ${isChatPage ? "overflow-hidden" : "overflow-y-auto"} bg-cream-lighter`}>
+        <main className="flex-1 overflow-y-auto bg-cream-lighter">
           <Outlet />
         </main>
       </div>

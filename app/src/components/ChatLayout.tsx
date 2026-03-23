@@ -175,9 +175,9 @@ export function ChatLayout() {
   );
 
   return (
-    <div className="flex h-full">
-      {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-80 shrink-0 flex-col border-r border-border bg-surface overflow-hidden">
+    <div className="flex min-h-full">
+      {/* Desktop sidebar — sticky so it stays visible while main scrolls */}
+      <aside className="hidden md:flex w-80 shrink-0 flex-col border-r border-border bg-surface overflow-hidden sticky top-0 self-start h-[calc(100vh-3.5rem)]">
         {chatList}
       </aside>
 
@@ -201,7 +201,7 @@ export function ChatLayout() {
       )}
 
       {/* Main chat area */}
-      <div className="flex flex-1 flex-col min-w-0 min-h-0">
+      <div className="flex flex-1 flex-col min-w-0">
         {/* Mobile header bar */}
         <div className="flex md:hidden items-center gap-2 px-4 py-2 border-b border-border bg-surface">
           {activeChatId ? (
@@ -224,7 +224,7 @@ export function ChatLayout() {
           </span>
         </div>
 
-        <div className="flex flex-1 min-h-0">
+        <div className="flex-1">
           <Outlet />
         </div>
       </div>

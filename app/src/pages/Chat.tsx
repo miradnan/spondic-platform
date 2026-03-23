@@ -350,8 +350,9 @@ export function Chat() {
   useEffect(() => {
     if (!citPopover) return;
     const close = () => setCitPopover(null);
-    const scrollArea = chatAreaRef.current;
-    if (scrollArea) scrollArea.addEventListener("scroll", close);
+    // Listen on the nearest scrollable ancestor (<main>) instead of chatAreaRef
+    const scrollParent = chatAreaRef.current?.closest("main");
+    if (scrollParent) scrollParent.addEventListener("scroll", close);
     const clickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (!target.closest(".citation-popover") && !target.closest(".citation-badge")) {
@@ -360,7 +361,7 @@ export function Chat() {
     };
     window.addEventListener("mousedown", clickOutside);
     return () => {
-      if (scrollArea) scrollArea.removeEventListener("scroll", close);
+      if (scrollParent) scrollParent.removeEventListener("scroll", close);
       window.removeEventListener("mousedown", clickOutside);
     };
   }, [citPopover]);
@@ -492,7 +493,7 @@ export function Chat() {
   }, [showPreview, input]);
 
   return (
-    <div className="flex flex-1 min-h-0 w-full max-w-4xl mx-auto flex-col">
+    <div className="w-full max-w-4xl mx-auto flex flex-col min-h-[calc(100vh-3.5rem)]">
       {/* Chat actions for existing chats */}
       {chatId && (
         <div className="flex justify-end px-4 pt-2">
@@ -561,8 +562,8 @@ export function Chat() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <div ref={chatAreaRef} className="flex flex-1 flex-col overflow-y-auto relative">
-          <div className="flex flex-col flex-1 min-h-full px-4 pt-8 pb-4">
+      <div ref={chatAreaRef} className="flex flex-1 flex-col relative">
+          <div className="flex flex-col flex-1 px-4 pt-8 pb-4">
             {/* Empty state */}
             {!chatId && messages.length === 0 && !messagesLoading && (
               <div className="flex flex-col flex-1 min-h-full justify-center items-center text-center">
@@ -791,9 +792,10 @@ export function Chat() {
               </div>
             );
           })()}
+      </div>
 
         {/* Input */}
-        <form onSubmit={handleFormSubmit} className="shrink-0 px-4 pb-4 pt-2" data-tour="chat-input">
+        <form onSubmit={handleFormSubmit} className="sticky bottom-0 z-10 px-4 pb-4 pt-2 bg-cream-lighter" data-tour="chat-input">
           {/* Markdown preview panel */}
           {showPreview && input.trim() && (
             <div className="mb-2 rounded-xl bg-cream-light border border-border px-4 py-3 max-h-40 overflow-y-auto">
@@ -894,7 +896,6 @@ export function Chat() {
             </button>
           </div>
         </form>
-      </div>
     </div>
   );
 }
