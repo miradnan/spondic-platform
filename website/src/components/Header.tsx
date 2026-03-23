@@ -12,7 +12,7 @@ export default function Header() {
   const { t } = useTranslation();
 
   return (
-    <header className="relative z-30 border-b border-[#d8d4cb]">
+    <header className="sticky top-0 z-30 border-b border-[#d8d4cb] bg-cream">
       <div className="mx-auto flex max-w-[1200px] items-center justify-between px-4 py-4 sm:px-8 sm:py-5">
         <Link
           href="/"
