@@ -3456,7 +3456,7 @@ The ROI of AI-powered RFP response tools isn't a close call. It's one of the hig
     tags: ["RFP", "RFI", "RFQ", "Procurement", "Buyer's Guide"],
     author: "Spondic Team",
     authorRole: "Product Marketing",
-    content: \`
+    content: `
 ## What's the Difference?
 
 If you work in enterprise sales, you've encountered these three acronyms — RFP, RFI, and RFQ. They're all procurement documents issued by buyers, but each serves a distinct purpose in the purchasing process. Understanding the differences is critical for crafting the right response.
@@ -3636,7 +3636,7 @@ Smart sales teams don't treat RFIs, RFPs, and RFQs as isolated events. They see 
 - **RFQ**: Close the deal — compete on value and win the business
 
 Each stage builds on the last. The content you create for an RFI informs your RFP response. Your RFP pricing section becomes the basis for your RFQ submission. And every interaction feeds back into your knowledge base, making your next response better than your last.
-    \`,
+    `,
   },
   {
     slug: "rfp-response-government-public-sector",
@@ -3648,7 +3648,7 @@ Each stage builds on the last. The content you create for an RFI informs your RF
     tags: ["Government", "Public Sector", "Compliance", "Industry Guide"],
     author: "Spondic Team",
     authorRole: "Product Marketing",
-    content: \`
+    content: `
 ## Government Procurement Is a Different Game
 
 Government and public sector RFPs operate under a fundamentally different set of rules than private sector procurement. Understanding these rules isn't just helpful — it's mandatory. Non-compliant responses are rejected outright, regardless of quality.
@@ -3860,7 +3860,7 @@ Government contracting is a relationship business played over years, not quarter
 - Invest in the certifications and clearances your target agencies require
 
 The vendors who win consistently in government contracting aren't the ones who write the best proposals — they're the ones who start preparing months before the RFP drops, with the relationships, past performance, and compliance posture already in place.
-    \`,
+    `,
   },
   {
     slug: "security-questionnaire-automation-sig-caiq",
@@ -3872,7 +3872,7 @@ The vendors who win consistently in government contracting aren't the ones who w
     tags: ["Security Questionnaire", "SIG", "CAIQ", "Automation", "Compliance"],
     author: "Spondic Team",
     authorRole: "Product Marketing",
-    content: \`
+    content: `
 ## The Security Questionnaire Problem
 
 Every enterprise vendor knows the drill: before a deal can close, you need to complete the buyer's security questionnaire. Sometimes it's a standard framework like SIG or CAIQ. Sometimes it's a custom 500-question spreadsheet the buyer's security team put together.
@@ -4069,7 +4069,7 @@ For a company closing 50 enterprise deals per year with an average deal size of 
 Plus, the ability to respond to more questionnaires means you can pursue more deals without growing your security team proportionally.
 
 Security questionnaire automation isn't just a cost savings initiative — it's a revenue acceleration strategy that removes friction from your sales process while maintaining the security rigor your enterprise buyers require.
-    \`,
+    `,
   },
   {
     slug: "executive-summary-rfp-writing-guide",
@@ -4081,7 +4081,7 @@ Security questionnaire automation isn't just a cost savings initiative — it's 
     tags: ["Executive Summary", "Proposal Writing", "Templates", "Best Practices"],
     author: "Spondic Team",
     authorRole: "Product Marketing",
-    content: \`
+    content: `
 ## Why the Executive Summary Is Your Most Important Section
 
 The executive summary is the single most important section of any RFP response. Here's why:
@@ -4232,7 +4232,7 @@ Before submitting, verify your executive summary:
 - [ ] Was written (or finalized) after the rest of the proposal
 
 A strong executive summary won't save a weak proposal. But a weak executive summary can undermine a strong one. Give it the attention it deserves — it's your first and best chance to make the case for your solution.
-    \`,
+    `,
   },
   {
     slug: "managing-multiple-rfps-simultaneously",
@@ -4244,7 +4244,7 @@ A strong executive summary won't save a weak proposal. But a weak executive summ
     tags: ["Project Management", "Team Management", "Proposal Operations", "Burnout Prevention"],
     author: "Spondic Team",
     authorRole: "Product Marketing",
-    content: \`
+    content: `
 ## The Concurrent RFP Challenge
 
 Enterprise proposal teams rarely have the luxury of working on one RFP at a time. The typical scenario:
@@ -4419,7 +4419,7 @@ Teams that manage multiple RFPs well develop a powerful compound advantage:
 After 6-12 months of systematic RFP management with AI-powered tools, teams report that new RFPs feel increasingly familiar and manageable — not because the RFPs get easier, but because their response capability keeps improving.
 
 The goal isn't to do more with less. It's to do better with the same — responding to the right opportunities with consistently high quality, without burning out the team that makes it all possible.
-    \`,
+    `,
   },
   {
     slug: "ai-hallucination-prevention-enterprise-proposals",
@@ -4431,7 +4431,7 @@ The goal isn't to do more with less. It's to do better with the same — respond
     tags: ["AI Hallucination", "Quality Control", "Accuracy", "Enterprise AI"],
     author: "Spondic Team",
     authorRole: "Product Marketing",
-    content: \`
+    content: `
 ## The Hallucination Problem
 
 AI hallucination — when an AI model generates plausible-sounding but factually incorrect information — is the primary concern enterprise teams have when considering AI-powered proposal tools.
@@ -4586,7 +4586,7 @@ Remove any element and the equation breaks:
 The most successful proposal teams embrace all three. They use AI to generate content at speed, humans to verify and refine, and citations to make every claim traceable and verifiable.
 
 This isn't about trusting AI blindly. It's about using AI intelligently — leveraging its speed and consistency while maintaining the human oversight that enterprise proposals demand. The result is proposals that are both faster to produce and more accurate than purely manual approaches.
-    \`,
+    `,
   },
   {
     slug: "onboarding-new-proposal-team-members",
@@ -4598,7 +4598,7 @@ This isn't about trusting AI blindly. It's about using AI intelligently — leve
     tags: ["Onboarding", "Team Building", "Training", "Proposal Operations"],
     author: "Spondic Team",
     authorRole: "Product Marketing",
-    content: \`
+    content: `
 ## The Onboarding Problem
 
 Proposal teams have a unique onboarding challenge. New team members need to understand not just the company's products and processes, but also:
@@ -4768,7 +4768,7 @@ Better onboarding doesn't just accelerate productivity — it improves retention
 - Reduced pressure on experienced team members means less burnout across the board
 
 The combination of AI-powered tools and structured onboarding creates a virtuous cycle: new team members ramp faster, experienced team members spend less time on supervision, and the knowledge base grows richer with every completed proposal. That's not just onboarding — it's a sustainable team development strategy.
-    \`,
+    `,
   },
   {
     slug: "proposal-team-kpis-metrics-track",
@@ -4780,7 +4780,7 @@ The combination of AI-powered tools and structured onboarding creates a virtuous
     tags: ["KPIs", "Metrics", "Performance", "Bid Management"],
     author: "Spondic Team",
     authorRole: "Product Marketing",
-    content: \`
+    content: `
 ## Why Metrics Matter for Proposal Teams
 
 Most proposal teams operate on instinct. They know when things feel busy, when quality feels good, and when they're in trouble. But feelings don't drive improvement — metrics do.
@@ -4966,7 +4966,7 @@ Metrics are only valuable if they drive action:
 - **Compliance scores below 100%?** Implement automated compliance checking before submission
 
 The goal isn't to track metrics for their own sake. It's to create a feedback loop where measurement drives targeted improvements, and improvements are validated by better metrics. That's how good proposal teams become great ones.
-    \`,
+    `,
   },
   {
     slug: "rfp-response-it-saas-companies",
@@ -4978,7 +4978,7 @@ The goal isn't to track metrics for their own sake. It's to create a feedback lo
     tags: ["SaaS", "IT", "Technical Proposals", "Industry Guide"],
     author: "Spondic Team",
     authorRole: "Product Marketing",
-    content: \`
+    content: `
 ## The SaaS RFP Challenge
 
 IT and SaaS companies face a unique paradox in RFP responses: their products are often technically superior to legacy alternatives, but enterprise buyers evaluate them against the same criteria used for traditional software — and those criteria often favor established vendors.
@@ -5153,7 +5153,7 @@ SaaS companies are natural adopters of AI-powered RFP response tools like Spondi
 4. **You understand the technology** — Your team appreciates how RAG and AI work
 
 The SaaS companies winning the most enterprise deals are the ones that combine technical excellence with enterprise-grade proposal capabilities. Your product might be cloud-native, but your proposals need to speak the language enterprise buyers understand.
-    \`,
+    `,
   },
   {
     slug: "digital-transformation-procurement-2026",
@@ -5165,7 +5165,7 @@ The SaaS companies winning the most enterprise deals are the ones that combine t
     tags: ["Digital Transformation", "Procurement", "AI Trends", "Enterprise"],
     author: "Spondic Team",
     authorRole: "Product Marketing",
-    content: \`
+    content: `
 ## Procurement Is Being Transformed on Both Sides
 
 Digital transformation in procurement isn't just about vendors using better tools to respond to RFPs. It's a fundamental shift in how both buyers and sellers approach the entire procurement process.
@@ -5322,7 +5322,7 @@ To thrive in the AI-transformed procurement landscape:
 5. **Stay current on buyer tools** — Understanding how buyers use AI helps you optimize your responses for their evaluation systems
 
 The digital transformation of procurement isn't a future trend — it's happening now. The vendors who adapt first will have a significant advantage. Those who wait will find themselves competing against AI-enabled teams with manually produced proposals — and that's a competition they'll increasingly lose.
-    \`,
+    `,
   },
   {
     slug: "using-case-studies-effectively-proposals",
@@ -5334,7 +5334,7 @@ The digital transformation of procurement isn't a future trend — it's happenin
     tags: ["Case Studies", "Social Proof", "Proposal Writing", "Customer Success"],
     author: "Spondic Team",
     authorRole: "Product Marketing",
-    content: \`
+    content: `
 ## Why Case Studies Win Deals
 
 In RFP evaluations, case studies are your most powerful weapon. They transform abstract claims into concrete evidence:
@@ -5495,7 +5495,7 @@ Don't wait until you need a case study to create one:
 Store all case studies in your knowledge base (Spondic) so AI can automatically surface the most relevant ones when generating RFP responses. The AI can match case studies to RFP questions based on industry, challenge type, and keywords — ensuring that the right evidence appears in the right context, every time.
 
 Your case studies are living proof that you deliver results. Treat them as strategic assets, maintain them carefully, and deploy them precisely — they're the most persuasive content in your entire proposal.
-    \`,
+    `,
   },
 ];
 
