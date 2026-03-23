@@ -22,7 +22,7 @@ import { relativeTime, fullDateTime } from "../lib/date.ts";
 import type { AuditLog as AuditLogType, AuditLogFilters } from "../lib/types.ts";
 
 const ENTITY_TYPES = [
-  { value: "project", label: "Project" },
+  { value: "project", label: "Proposal" },
   { value: "document", label: "Document" },
   { value: "rfp_question", label: "Question" },
   { value: "rfp_answer", label: "Answer" },

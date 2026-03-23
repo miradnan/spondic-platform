@@ -266,12 +266,12 @@ export function RfpNew() {
 
       toast(
         "success",
-        t("rfp.new.success") || "RFP project created successfully!",
+        t("rfp.new.success") || "Proposal created successfully!",
       );
       navigate(`/rfp/${project.id}`, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create RFP");
-      toast("error", "Failed to create RFP project.");
+      toast("error", "Failed to create proposal.");
     } finally {
       setIsSubmitting(false);
       setSubmittingStep(null);
@@ -351,7 +351,7 @@ export function RfpNew() {
               1
             </span>
             <h2 className="text-sm font-semibold text-heading uppercase tracking-wide">
-              {t("rfp.new.projectDetails") || "Project Details"}
+              {t("rfp.new.projectDetails") || "Proposal Details"}
             </h2>
           </div>
 
@@ -381,7 +381,7 @@ export function RfpNew() {
                 {/* #17: Inline validation message */}
                 {nameError && (
                   <p className="mt-1 text-xs text-red-600">
-                    Required — please enter a project name.
+                    Required — please enter a proposal name.
                   </p>
                 )}
               </div>
@@ -622,7 +622,7 @@ export function RfpNew() {
               {/* Step indicator */}
               <p className="text-lg font-semibold text-heading">
                 {submittingStep === "project"
-                  ? t("rfp.new.creatingProject") || "Creating project..."
+                  ? t("rfp.new.creatingProject") || "Creating proposal..."
                   : t("rfp.new.uploadingFiles") || "Uploading RFP content..."}
               </p>
               <p className="text-sm text-muted mt-1.5">
@@ -645,7 +645,7 @@ export function RfpNew() {
                       "1"
                     )}
                   </div>
-                  <span className="text-xs text-muted hidden sm:inline">Project</span>
+                  <span className="text-xs text-muted hidden sm:inline">Proposal</span>
                 </div>
                 <div className="w-8 h-px bg-border" />
                 <div className="flex items-center gap-2">

@@ -141,7 +141,7 @@ export function Notifications() {
             <p className="mt-1 text-sm text-muted">
               {filter === "unread"
                 ? "You're all caught up! Switch to 'All' to see past notifications."
-                : "When activity happens on your projects and documents, you'll see it here."}
+                : "When activity happens on your proposals and documents, you'll see it here."}
             </p>
           </div>
         ) : (

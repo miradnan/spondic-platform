@@ -745,7 +745,7 @@ export function Dashboard() {
       {!isLoading && !isError && projects.length === 0 && (statusFilter || deadlineFilter || search) && (
         <div className="mt-8 rounded-xl border border-border bg-cream-light p-8 text-center">
           <MagnifyingGlassIcon className="mx-auto h-10 w-10 text-muted" />
-          <p className="mt-4 text-body font-medium">No projects match your filters</p>
+          <p className="mt-4 text-body font-medium">No proposals match your filters</p>
           <p className="mt-1 text-sm text-muted">
             Try adjusting your search or filter criteria.
           </p>
@@ -901,7 +901,7 @@ export function Dashboard() {
             data={projects}
             loading={isLoading}
             skeletonRows={6}
-            emptyMessage="No projects found."
+            emptyMessage="No proposals found."
             sorting={sorting}
             onSortingChange={onSortingChange}
             manualPagination
@@ -922,7 +922,7 @@ export function Dashboard() {
             data={[]}
             loading
             skeletonRows={6}
-            emptyMessage="No projects found."
+            emptyMessage="No proposals found."
           />
         </div>
       )}
@@ -956,8 +956,8 @@ export function Dashboard() {
         open={showDeleteConfirm}
         onConfirm={() => void handleBulkDelete()}
         onCancel={() => setShowDeleteConfirm(false)}
-        title={`Delete ${selectedIds.size} project${selectedIds.size === 1 ? "" : "s"}?`}
-        description={`This will permanently delete the selected project${selectedIds.size === 1 ? "" : "s"} and all associated data. This action cannot be undone.`}
+        title={`Delete ${selectedIds.size} proposal${selectedIds.size === 1 ? "" : "s"}?`}
+        description={`This will permanently delete the selected proposal${selectedIds.size === 1 ? "" : "s"} and all associated data. This action cannot be undone.`}
         confirmLabel="Delete"
         cancelLabel="Cancel"
         variant="danger"

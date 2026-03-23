@@ -599,7 +599,7 @@ export function Analytics() {
           </h1>
           <p className="text-body mb-6 leading-relaxed">
             Analytics is available on Starter plans and above. Upgrade to track
-            project performance, team productivity, and AI usage.
+            proposal performance, team productivity, and AI usage.
           </p>
           <a
             href="/admin/billing#change-plan"
@@ -837,7 +837,7 @@ export function Analytics() {
                   <Area
                     type="monotone"
                     dataKey="projects_created"
-                    name="Projects Created"
+                    name="Proposals Created"
                     stroke="#2d5fa0"
                     strokeWidth={2}
                     fill="url(#gradBlue)"
@@ -857,7 +857,7 @@ export function Analytics() {
                 <ArrowTrendingUpIcon className="h-8 w-8 text-muted/30 mb-2" />
                 <p className="text-sm text-muted">No activity data yet</p>
                 <p className="text-xs text-muted mt-0.5">
-                  Create projects to see trends over time
+                  Create proposals to see trends over time
                 </p>
               </div>
             )}
@@ -917,7 +917,7 @@ export function Analytics() {
                   <TrophyIcon className="h-8 w-8 text-muted/30 mb-2" />
                   <p className="text-sm text-muted">No outcomes recorded</p>
                   <p className="text-xs text-muted mt-0.5">
-                    Record project outcomes to track your win rate
+                    Record proposal outcomes to track your win rate
                   </p>
                 </div>
               )}
@@ -1111,7 +1111,7 @@ export function Analytics() {
                       <RechartsTooltip content={<ChartTooltipContent />} />
                       <Bar
                         dataKey="projects_created"
-                        name="Projects"
+                        name="Proposals"
                         fill="#2d5fa0"
                         radius={[4, 4, 0, 0]}
                       />
@@ -1134,7 +1134,7 @@ export function Analytics() {
                           User
                         </th>
                         <th className="pb-3 text-xs font-medium text-muted uppercase tracking-wide text-right">
-                          Projects
+                          Proposals
                         </th>
                         <th className="pb-3 text-xs font-medium text-muted uppercase tracking-wide text-right">
                           Completed
@@ -1250,11 +1250,11 @@ export function Analytics() {
                                       </h4>
                                       <div className="space-y-1.5 text-sm">
                                         <p className="text-heading">
-                                          <span className="text-muted">Projects created:</span>{" "}
+                                          <span className="text-muted">Proposals created:</span>{" "}
                                           <span className="font-medium">{user.projects_created}</span>
                                         </p>
                                         <p className="text-heading">
-                                          <span className="text-muted">Projects completed:</span>{" "}
+                                          <span className="text-muted">Proposals completed:</span>{" "}
                                           <span className="font-medium">{user.projects_completed}</span>
                                         </p>
                                         <p className="text-heading">
@@ -1271,7 +1271,7 @@ export function Analytics() {
                                         href={`/projects?user=${user.user_id}`}
                                         className="inline-flex items-center gap-1.5 text-sm text-brand-blue hover:text-brand-blue/80 font-medium transition-colors"
                                       >
-                                        View {displayName}&apos;s projects
+                                        View {displayName}&apos;s proposals
                                         <ChevronDownIcon className="h-3 w-3 -rotate-90" />
                                       </a>
                                     </div>
@@ -1291,7 +1291,7 @@ export function Analytics() {
                 <UserGroupIcon className="h-8 w-8 text-muted/30 mb-2" />
                 <p className="text-sm text-muted">No user data yet</p>
                 <p className="text-xs text-muted mt-0.5">
-                  Team members will appear here as they create projects
+                  Team members will appear here as they create proposals
                 </p>
               </div>
             )}

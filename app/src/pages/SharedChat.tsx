@@ -11,6 +11,7 @@ export function SharedChat() {
 
   const chat = data?.chat;
   const messages = data?.messages ?? [];
+  const ownerName = (data as Record<string, unknown>)?.owner_name as string | undefined;
 
   if (isLoading) {
     return (
@@ -27,12 +28,14 @@ export function SharedChat() {
           <ChatBubbleLeftEllipsisIcon className="mx-auto h-12 w-12 text-muted/30" />
           <p className="mt-4 text-body font-medium">Chat not found</p>
           <p className="mt-1 text-sm text-muted">
-            This shared chat may have been removed or you don't have access.
+            This shared chat may have been removed or the link is invalid.
           </p>
         </div>
       </div>
     );
   }
+
+  const userName = ownerName || "User";
 
   return (
     <div className="min-h-screen bg-cream">
@@ -52,14 +55,14 @@ export function SharedChat() {
       {/* Messages */}
       <div className="mx-auto max-w-3xl px-4 py-8 space-y-6">
         {messages.map((msg) => (
-          <SharedMessage key={msg.id} role={msg.role} content={msg.message} />
+          <SharedMessage key={msg.id} role={msg.role} content={msg.message} userName={userName} />
         ))}
       </div>
     </div>
   );
 }
 
-function SharedMessage({ role, content }: { role: string; content: string }) {
+function SharedMessage({ role, content, userName }: { role: string; content: string; userName: string }) {
   const html = useMemo(() => marked(content), [content]);
 
   if (role === "user") {
@@ -69,7 +72,7 @@ function SharedMessage({ role, content }: { role: string; content: string }) {
           <UserIcon className="h-4 w-4 text-brand-blue" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-muted mb-1">You</p>
+          <p className="text-xs font-medium text-muted mb-1">{userName}</p>
           <div className="text-sm text-body whitespace-pre-wrap">{content}</div>
         </div>
       </div>

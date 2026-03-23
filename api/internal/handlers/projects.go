@@ -334,14 +334,36 @@ func (h *Handler) UpdateProject(c echo.Context) error {
 	return c.JSON(http.StatusOK, p)
 }
 
-// DeleteProject handles DELETE /api/projects/:id (soft delete)
+// DeleteProject handles DELETE /api/projects/:id (hard delete)
+// Cascades via FK ON DELETE CASCADE: rfp_questions, rfp_answers, rfp_answer_citations,
+// rfp_answer_comments, rfp_answer_history, project_documents, approval_stages.
 func (h *Handler) DeleteProject(c echo.Context) error {
 	orgID := getOrgID(c)
 	projectID := c.Param("id")
 
+	// Collect approved answer IDs for Weaviate cleanup before deleting
+	var answerIDs []string
+	if h.AI != nil {
+		answerRows, err := h.DB.Query(
+			`SELECT a.id FROM rfp_answers a
+			 JOIN rfp_questions q ON q.id = a.question_id
+			 WHERE q.project_id = $1 AND a.organization_id = $2 AND a.status = 'approved'`,
+			projectID, orgID,
+		)
+		if err == nil {
+			defer answerRows.Close()
+			for answerRows.Next() {
+				var aid string
+				if answerRows.Scan(&aid) == nil {
+					answerIDs = append(answerIDs, aid)
+				}
+			}
+		}
+	}
+
+	// Hard delete — ON DELETE CASCADE handles all child tables
 	result, err := h.DB.Exec(
-		`UPDATE projects SET deleted_at = NOW(), updated_at = NOW()
-		 WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+		`DELETE FROM projects WHERE id = $1 AND organization_id = $2`,
 		projectID, orgID,
 	)
 	if err != nil {
@@ -354,29 +376,15 @@ func (h *Handler) DeleteProject(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "project not found"})
 	}
 
-	// Remove approved answers from Weaviate for this project
-	if h.AI != nil {
-		go func() {
-			answerRows, err := h.DB.Query(
-				`SELECT a.id FROM rfp_answers a
-				 JOIN rfp_questions q ON q.id = a.question_id
-				 WHERE q.project_id = $1 AND a.organization_id = $2 AND a.status = 'approved'`,
-				projectID, orgID,
-			)
-			if err != nil {
-				log.Printf("error fetching approved answers for project %s cleanup: %v", projectID, err)
-				return
+	// Remove approved answers from Weaviate asynchronously
+	if h.AI != nil && len(answerIDs) > 0 {
+		go func(oID string, ids []string) {
+			for _, aid := range ids {
+				ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+				_ = h.AI.RemoveAnswer(ctx, oID, aid)
+				cancel()
 			}
-			defer answerRows.Close()
-			for answerRows.Next() {
-				var answerID string
-				if answerRows.Scan(&answerID) == nil {
-					ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-					_ = h.AI.RemoveAnswer(ctx, orgID, answerID)
-					cancel()
-				}
-			}
-		}()
+		}(orgID, answerIDs)
 	}
 
 	return c.NoContent(http.StatusNoContent)

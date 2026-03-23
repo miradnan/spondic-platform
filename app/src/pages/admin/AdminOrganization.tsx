@@ -619,7 +619,7 @@ export function AdminOrganization() {
               <span className="font-semibold text-heading">
                 {organization.name}
               </span>{" "}
-              and all its data including projects, documents, and team members.
+              and all its data including proposals, documents, and team members.
               This cannot be undone.
             </DialogDescription>
           </DialogHeader>

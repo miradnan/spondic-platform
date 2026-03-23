@@ -50,7 +50,7 @@ export function ProjectCRMLinkPanel({ projectId }: ProjectCRMLinkProps) {
       { projectId, body: formData },
       {
         onSuccess: () => {
-          toast("success", "Project linked to CRM deal");
+          toast("success", "Proposal linked to CRM deal");
           setShowForm(false);
         },
         onError: (err) => toast("error", err.message),

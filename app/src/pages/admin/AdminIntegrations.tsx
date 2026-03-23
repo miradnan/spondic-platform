@@ -35,7 +35,7 @@ const CRM_PLATFORMS = [
   {
     id: "salesforce" as const,
     name: "Salesforce",
-    description: "Sync RFP projects with Salesforce Opportunities",
+    description: "Sync proposals with Salesforce Opportunities",
     color: "bg-[#00A1E0]",
     hoverColor: "hover:bg-[#0089BF]",
     logo: (
@@ -47,7 +47,7 @@ const CRM_PLATFORMS = [
   {
     id: "hubspot" as const,
     name: "HubSpot",
-    description: "Sync RFP projects with HubSpot Deals",
+    description: "Sync proposals with HubSpot Deals",
     color: "bg-[#FF7A59]",
     hoverColor: "hover:bg-[#E5694D]",
     logo: (
@@ -131,7 +131,7 @@ export function AdminIntegrations() {
         <div className="rounded-lg border border-border bg-surface shadow-sm">
           <div className="p-4 border-b border-border">
             <p className="text-sm text-muted">
-              Link your CRM to automatically sync RFP projects with deals and opportunities.
+              Link your CRM to automatically sync proposals with deals and opportunities.
               Track deal stages, revenue, and win/loss outcomes directly from your RFP dashboard.
             </p>
             <p className="mt-2 text-xs text-amber-600 bg-amber-50 rounded px-2 py-1 inline-block">
@@ -237,7 +237,7 @@ export function AdminIntegrations() {
                 Available on Growth and Enterprise plans
               </p>
               <p className="text-xs text-muted mt-1">
-                Connect Salesforce, HubSpot, and other CRMs to sync RFP projects
+                Connect Salesforce, HubSpot, and other CRMs to sync proposals
                 with deals and opportunities automatically.
               </p>
               <a
@@ -261,7 +261,7 @@ export function AdminIntegrations() {
         onCancel={() => setDisconnectTarget(null)}
         onConfirm={handleDisconnect}
         title={`Disconnect ${disconnectTarget?.platform === "salesforce" ? "Salesforce" : "HubSpot"}?`}
-        description="This will deactivate the CRM connection and clear stored tokens. Existing project-deal links will be preserved but will no longer sync."
+        description="This will deactivate the CRM connection and clear stored tokens. Existing proposal-deal links will be preserved but will no longer sync."
         confirmLabel="Disconnect"
         variant="danger"
         loading={disconnectCRM.isPending}

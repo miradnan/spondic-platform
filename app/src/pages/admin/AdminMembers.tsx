@@ -43,8 +43,8 @@ const PLACEHOLDER_TEAMS = ["Engineering", "Sales", "Marketing", "Support"];
 // ── Permission Matrix Data ──────────────────────────────────────────────────
 
 const PERMISSIONS = [
-  { label: "View projects", member: true, admin: true },
-  { label: "Create projects", member: true, admin: true },
+  { label: "View proposals", member: true, admin: true },
+  { label: "Create proposals", member: true, admin: true },
   { label: "Edit answers", member: true, admin: true },
   { label: "Approve answers", member: false, admin: true },
   { label: "Manage members", member: false, admin: true },

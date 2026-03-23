@@ -33,7 +33,7 @@ const NOTIFICATION_TYPES: { type: NotificationType; label: string; description: 
   { type: "document_indexed", label: "Document Indexed", description: "When a document finishes indexing" },
   { type: "rfp_parsed", label: "RFP Parsed", description: "When an RFP is parsed into questions" },
   { type: "rfp_drafted", label: "Answers Drafted", description: "When AI finishes drafting answers" },
-  { type: "deadline_approaching", label: "Deadline Approaching", description: "When a project deadline is near" },
+  { type: "deadline_approaching", label: "Deadline Approaching", description: "When a proposal deadline is near" },
   { type: "team_assignment", label: "Team Assignment", description: "When you are added to a team" },
   { type: "question_assigned", label: "Question Assigned", description: "When a question is assigned to you" },
 ];
@@ -772,7 +772,7 @@ export function Settings() {
           <div className="flex items-center justify-between py-3">
             <div>
               <p className="text-sm font-medium text-heading">Default view</p>
-              <p className="text-xs text-muted mt-0.5">Choose the default layout for project lists</p>
+              <p className="text-xs text-muted mt-0.5">Choose the default layout for proposal lists</p>
             </div>
             <select
               value={defaultView}

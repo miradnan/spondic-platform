@@ -149,7 +149,7 @@ export const DASHBOARD_STEPS: DriveStep[] = [
     popover: {
       title: "Create Your First RFP",
       description:
-        "Click here to start a new RFP project. Upload an RFP document and let AI extract questions and draft answers.",
+        "Click here to start a new proposal. Upload an RFP document and let AI extract questions and draft answers.",
       side: "bottom",
       align: "end",
     },
@@ -169,7 +169,7 @@ export const DASHBOARD_STEPS: DriveStep[] = [
     popover: {
       title: "Search & Filter",
       description:
-        "Quickly find projects by name or filter by status. Switch between card and table views.",
+        "Quickly find proposals by name or filter by status. Switch between card and table views.",
       side: "bottom",
       align: "start",
     },
@@ -223,9 +223,9 @@ export const RFP_NEW_STEPS: DriveStep[] = [
   {
     element: '[data-tour="rfp-name"]',
     popover: {
-      title: "Name Your Project",
+      title: "Name Your Proposal",
       description:
-        "Give your RFP project a descriptive name so your team can easily find it later.",
+        "Give your proposal a descriptive name so your team can easily find it later.",
       side: "bottom",
       align: "start",
     },

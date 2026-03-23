@@ -625,8 +625,19 @@ func (h *Handler) GetPublicSharedChat(c echo.Context) error {
 		messages = append(messages, m)
 	}
 
+	// Resolve chat owner's display name from Clerk
+	ownerName := ""
+	if ch.UserID != "" {
+		if users, err := fetchClerkUsers([]string{ch.UserID}); err == nil && len(users) > 0 {
+			first := derefStr(users[0].FirstName)
+			last := derefStr(users[0].LastName)
+			ownerName = strings.TrimSpace(first + " " + last)
+		}
+	}
+
 	return c.JSON(http.StatusOK, map[string]interface{}{
-		"chat":     ch,
-		"messages": messages,
+		"chat":       ch,
+		"messages":   messages,
+		"owner_name": ownerName,
 	})
 }
