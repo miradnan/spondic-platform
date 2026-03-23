@@ -154,7 +154,7 @@ func (h *Handler) ListDocuments(c echo.Context) error {
 	               FROM documents d`
 
 	joins := ""
-	where := " WHERE d.organization_id = $1 AND d.deleted_at IS NULL AND d.source_type != 'rfp'"
+	where := " WHERE d.organization_id = $1 AND d.deleted_at IS NULL AND COALESCE(d.source_type, '') != 'rfp'"
 	args := []interface{}{orgID}
 	argIdx := 2
 
