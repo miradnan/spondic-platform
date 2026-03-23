@@ -167,6 +167,7 @@ type RFPAnswerHistory struct {
 	PreviousText *string   `json:"previous_text,omitempty"`
 	NewText      *string   `json:"new_text,omitempty"`
 	EditedBy     string    `json:"edited_by"`
+	EditedByName string    `json:"edited_by_name"`
 	EditedAt     time.Time `json:"edited_at"`
 }
 

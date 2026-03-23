@@ -129,3 +129,7 @@ When building new features, treat security as a first-class requirement — not 
 - **Website & App**: Netlify (static exports)
 - **API & AI**: AWS ECS Fargate (Docker containers)
 - **Database**: AWS RDS PostgreSQL
+
+
+# Development 
+- When displaying user info. Do not show clerk user_id, alows show user full name in frontend app

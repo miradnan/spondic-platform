@@ -82,6 +82,9 @@ export function useProject(id: string | undefined) {
       return api.getProject(token, id!);
     },
     enabled: !!id,
+    // Poll every 2s while project is parsing so the UI shows parsing state
+    refetchInterval: (query) =>
+      query.state.data?.status === "parsing" ? 2000 : false,
   } satisfies UseQueryOptions<Project>);
 }
 

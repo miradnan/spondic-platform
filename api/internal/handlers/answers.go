@@ -399,6 +399,7 @@ func (h *Handler) ListAnswerHistory(c echo.Context) error {
 	defer rows.Close()
 
 	history := make([]models.RFPAnswerHistory, 0)
+	userIDSet := make(map[string]bool)
 	for rows.Next() {
 		var h models.RFPAnswerHistory
 		if err := rows.Scan(
@@ -407,7 +408,48 @@ func (h *Handler) ListAnswerHistory(c echo.Context) error {
 			log.Printf("error scanning history: %v", err)
 			continue
 		}
+		if h.EditedBy != "ai" {
+			userIDSet[h.EditedBy] = true
+		}
 		history = append(history, h)
+	}
+
+	// Resolve user IDs to full names via Clerk
+	nameMap := make(map[string]string)
+	nameMap["ai"] = "Spondic AI"
+	if len(userIDSet) > 0 {
+		userIDs := make([]string, 0, len(userIDSet))
+		for id := range userIDSet {
+			userIDs = append(userIDs, id)
+		}
+		users, err := fetchClerkUsers(userIDs)
+		if err != nil {
+			log.Printf("error fetching Clerk users for history: %v", err)
+		} else {
+			for _, u := range users {
+				name := derefStr(u.FirstName)
+				if ln := derefStr(u.LastName); ln != "" {
+					if name != "" {
+						name += " " + ln
+					} else {
+						name = ln
+					}
+				}
+				if name == "" {
+					name = u.ID
+				}
+				nameMap[u.ID] = name
+			}
+		}
+	}
+
+	// Populate edited_by_name
+	for i := range history {
+		if name, ok := nameMap[history[i].EditedBy]; ok {
+			history[i].EditedByName = name
+		} else {
+			history[i].EditedByName = history[i].EditedBy
+		}
 	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{

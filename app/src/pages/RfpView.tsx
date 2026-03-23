@@ -1349,7 +1349,7 @@ function AnswerHistoryPanel({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-medium text-heading">
-                        {entry.edited_by === "ai" ? "Spondic AI" : entry.edited_by.slice(0, 12)}
+                        {entry.edited_by_name}
                       </span>
                       <span className={`text-xs ${config.color}`}>
                         {config.label}

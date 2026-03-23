@@ -248,6 +248,7 @@ export interface AnswerActivity {
   previous_text: string | null;
   new_text: string | null;
   edited_by: string;
+  edited_by_name: string;
   edited_at: string;
 }
 
