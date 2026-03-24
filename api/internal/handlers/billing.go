@@ -124,6 +124,24 @@ func (h *Handler) CreateCheckout(c echo.Context) error {
 	} else if err != nil {
 		log.Printf("error querying subscription: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+	} else if sub.StripeCustomerID == "" {
+		// Subscription exists but has no Stripe customer (auto-created by middleware)
+		userID := getUserID(c)
+		newCustomerID, createErr := stripeClient.CreateCustomer(orgID, userID+"@spondic.app")
+		if createErr != nil {
+			log.Printf("error creating Stripe customer: %v", createErr)
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to create billing customer"})
+		}
+		customerID = newCustomerID
+
+		_, updateErr := h.DB.ExecContext(ctx,
+			`UPDATE subscriptions SET stripe_customer_id = $1, plan = $2, status = 'incomplete', updated_at = NOW()
+			 WHERE organization_id = $3`,
+			customerID, body.Plan, orgID,
+		)
+		if updateErr != nil {
+			log.Printf("error updating subscription with customer ID: %v", updateErr)
+		}
 	} else {
 		customerID = sub.StripeCustomerID
 	}

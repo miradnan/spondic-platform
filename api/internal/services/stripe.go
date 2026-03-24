@@ -54,7 +54,18 @@ func (s *StripeClient) CreateCheckoutSession(customerID, plan, successURL, cance
 		return "", fmt.Errorf("unknown plan: %s", plan)
 	}
 
-	params := &stripe.CheckoutSessionParams{
+	// Cancel any existing incomplete subscriptions for this customer
+	// to avoid "customer already has a subscription" errors
+	params := &stripe.SubscriptionListParams{}
+	params.Customer = stripe.String(customerID)
+	params.Status = stripe.String("incomplete")
+	i := subscription.List(params)
+	for i.Next() {
+		sub := i.Subscription()
+		_, _ = subscription.Cancel(sub.ID, nil)
+	}
+
+	checkoutParams := &stripe.CheckoutSessionParams{
 		Customer: stripe.String(customerID),
 		Mode:     stripe.String(string(stripe.CheckoutSessionModeSubscription)),
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
@@ -67,7 +78,7 @@ func (s *StripeClient) CreateCheckoutSession(customerID, plan, successURL, cance
 		CancelURL:  stripe.String(cancelURL),
 	}
 
-	sess, err := checkoutsession.New(params)
+	sess, err := checkoutsession.New(checkoutParams)
 	if err != nil {
 		return "", fmt.Errorf("failed to create checkout session: %w", err)
 	}

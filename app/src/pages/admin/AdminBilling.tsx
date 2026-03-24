@@ -1,6 +1,7 @@
 import { useAuth } from "@clerk/react";
 import { Badge } from "@/components/ui/badge";
 import { useAnalytics, useSubscription, useTokenUsage, useInvoices, useCreateCheckout, useCreatePortalSession, useUpdateSubscription } from "@/hooks/useApi";
+import { getPlanLimits } from "@/lib/planLimits";
 import {
   CreditCardIcon,
   DocumentTextIcon,
@@ -24,20 +25,30 @@ function barColor(pct: number): string {
   return "bg-brand-blue";
 }
 
+function formatCompact(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(n % 1_000 === 0 ? 0 : 1)}K`;
+  return n.toLocaleString();
+}
+
 function UsageCard({
   icon: Icon,
   label,
   used,
   limit,
+  compact = false,
 }: {
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   label: string;
   used: number;
   limit: number | null;
+  compact?: boolean;
 }) {
   const isUnlimited = limit === null;
   const pct = isUnlimited ? 0 : limit > 0 ? Math.round((used / limit) * 100) : 0;
   const isNearLimit = pct > 80;
+
+  const formatNum = compact ? formatCompact : (n: number) => n.toLocaleString();
 
   return (
     <div className="rounded-xl border border-border bg-surface p-5">
@@ -75,16 +86,16 @@ function UsageCard({
           </span>
         )}
         {isUnlimited && (
-          <span className="text-xs font-medium text-green-600">Unlimited</span>
+          <span className="text-xs font-medium text-green-600">No limit</span>
         )}
       </div>
       <p className="text-sm text-muted mb-1">{label}</p>
       <p className="text-2xl font-bold text-heading tabular-nums">
-        {used.toLocaleString()}
+        {formatNum(used)}
         {!isUnlimited && (
           <span className="text-base font-normal text-muted">
             {" "}
-            / {limit.toLocaleString()}
+            / {formatNum(limit)}
           </span>
         )}
       </p>
@@ -200,6 +211,7 @@ export function AdminBilling() {
     | string
     | undefined;
   const currentPlan = subData?.subscription?.plan || planClaim?.replace("o:", "") || "free_org";
+  const planLimits = getPlanLimits(currentPlan);
   const planInfo = PLAN_INFO[currentPlan] || {
     name: currentPlan,
     price: "—",
@@ -466,13 +478,16 @@ export function AdminBilling() {
               icon={ChatBubbleLeftRightIcon}
               label="Questions Drafted"
               used={analytics?.total_questions_drafted ?? 0}
-              limit={null}
+              limit={planLimits.maxQuestionsPerRfp !== null
+                ? (analytics?.total_rfps_processed ?? 0) * planLimits.maxQuestionsPerRfp
+                : null}
             />
             <UsageCard
               icon={BoltIcon}
               label="AI Tokens Used"
               used={tokenData?.tokens_used ?? 0}
-              limit={tokenData?.max_tokens_per_month ?? null}
+              limit={tokenData?.max_tokens_per_month ?? planLimits.maxTokensPerMonth}
+              compact
             />
           </div>
           {/* Overage notice */}

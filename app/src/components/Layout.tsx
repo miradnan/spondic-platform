@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   useOrganization,
-  useAuth,
 } from "@clerk/react";
 import { Outlet, Link, useLocation, useParams, useNavigate } from "react-router-dom";
 import {
@@ -30,6 +29,7 @@ import { CheckIcon } from "@heroicons/react/24/solid";
 import { Popover, PopoverTrigger, PopoverContent } from "./ui/popover.tsx";
 import { useProject, useUnreadCount, useNotifications, useMarkNotificationRead, useMarkAllRead } from "../hooks/useApi.ts";
 import { useAppEvents } from "../hooks/useAppEvents.ts";
+import { usePlanLimits } from "../hooks/usePlanLimits.ts";
 import { useBrandingContext } from "../contexts/BrandingContext.tsx";
 import { useTranslation } from "react-i18next";
 import { UserAvatarDropdown } from "./UserAvatarDropdown.tsx";
@@ -334,9 +334,7 @@ function OrgNav({ pathname, onLinkClick }: { pathname: string; onLinkClick?: () 
 }
 
 function PlanBadge() {
-  const { sessionClaims } = useAuth();
-  const planClaim = (sessionClaims as Record<string, unknown>)?.pla as string | undefined;
-  const plan = planClaim?.replace("o:", "") || "free";
+  const { plan } = usePlanLimits();
 
   const badgeColors: Record<string, string> = {
     enterprise: "bg-brand-gold/20 text-brand-gold",
@@ -346,8 +344,16 @@ function PlanBadge() {
     free_org: "bg-white/10 text-white/60",
   };
 
+  const planDisplayNames: Record<string, string> = {
+    free: "Free",
+    free_org: "Free",
+    starter: "Starter",
+    growth: "Growth",
+    enterprise: "Enterprise",
+  };
+
   const colorClass = badgeColors[plan] || "bg-white/10 text-white/50";
-  const label = plan.charAt(0).toUpperCase() + plan.slice(1);
+  const label = planDisplayNames[plan] || plan.charAt(0).toUpperCase() + plan.slice(1);
 
   return (
     <div className="px-4 pb-4">
