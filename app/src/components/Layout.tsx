@@ -277,6 +277,7 @@ function OrgNav({ pathname, onLinkClick }: { pathname: string; onLinkClick?: () 
     { to: "/admin/teams", label: t("nav.teams"), icon: UserGroupIcon },
     { to: "/admin/billing", label: t("nav.billing"), icon: CreditCardIcon },
     { to: "/admin/integrations", label: t("nav.integrations"), icon: LinkIcon },
+    { to: "/admin/audit", label: t("nav.auditLog"), icon: ClipboardDocumentListIcon },
     { to: "/admin/organization", label: t("nav.orgSettings"), icon: Cog6ToothIcon },
   ];
 
@@ -285,9 +286,6 @@ function OrgNav({ pathname, onLinkClick }: { pathname: string; onLinkClick?: () 
       {/* Section label */}
       <div className="flex items-center gap-2 px-3 mb-2">
         <span className="text-[10px] font-semibold uppercase tracking-widest text-white/40">{t("nav.admin")}</span>
-        <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide bg-brand-gold/20 text-brand-gold">
-          {t("nav.admin")}
-        </span>
         <div className="flex-1 h-px bg-white/10" />
       </div>
 
@@ -335,7 +333,10 @@ function OrgNav({ pathname, onLinkClick }: { pathname: string; onLinkClick?: () 
 
 function PlanBadge() {
   const { plan } = usePlanLimits();
+  const { membership } = useOrganization();
   const { t } = useTranslation();
+
+  const isAdmin = membership?.role === "org:admin";
 
   const badgeColors: Record<string, string> = {
     enterprise: "bg-brand-gold/20 text-brand-gold",
@@ -353,17 +354,38 @@ function PlanBadge() {
     enterprise: "Enterprise",
   };
 
+  const isFree = plan === "free" || plan === "free_org";
   const colorClass = badgeColors[plan] || "bg-white/10 text-white/50";
   const label = planDisplayNames[plan] || plan.charAt(0).toUpperCase() + plan.slice(1);
 
-  return (
-    <div className="px-4 pb-4">
-      <div className="flex items-center gap-2 rounded-lg bg-navy-light px-3 py-2">
-        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${colorClass}`}>
-          {label}
+  const content = (
+    <>
+      <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${colorClass}`}>
+        {label}
+      </span>
+      <span className="text-xs text-white/50 flex-1">{t("nav.plan")}</span>
+      {isAdmin && isFree && (
+        <span className="text-[10px] font-medium text-brand-gold group-hover:text-brand-gold/80 transition-colors">
+          Upgrade
         </span>
-        <span className="text-xs text-white/50">{t("nav.plan")}</span>
-      </div>
+      )}
+    </>
+  );
+
+  if (isAdmin) {
+    return (
+      <Link
+        to="/admin/billing"
+        className="flex items-center gap-2 rounded-lg bg-navy-light px-3 py-2 hover:bg-white/10 transition-colors group"
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 rounded-lg bg-navy-light px-3 py-2">
+      {content}
     </div>
   );
 }
@@ -555,50 +577,17 @@ function SidebarContent({
 
   const isAdmin = membership?.role === "org:admin";
 
-  const workspaceItems = [
+  const mainItems = [
     { to: "/proposals", label: t("nav.proposals"), icon: Squares2X2Icon, match: (p: string) => p === "/" || p === "/proposals" },
     { to: "/knowledge-base", label: t("nav.knowledgeBase"), icon: BookOpenIcon, match: (p: string) => p.startsWith("/knowledge-base") },
     { to: "/chat", label: t("nav.chat"), icon: ChatBubbleLeftEllipsisIcon, match: (p: string) => p.startsWith("/chat") },
-  ];
-
-  const createItems = [
-    { to: "/rfp/new", label: t("nav.newRfp"), icon: DocumentPlusIcon, match: (p: string) => p === "/rfp/new" },
-  ];
-
-  const insightsItems = [
     { to: "/analytics", label: t("nav.analytics"), icon: ChartBarIcon, match: (p: string) => p === "/analytics" },
-    { to: "/admin/audit", label: t("nav.auditLog"), icon: ClipboardDocumentListIcon, match: (p: string) => p === "/admin/audit" },
   ];
-
-  const renderNavGroup = (
-    label: string,
-    items: typeof workspaceItems,
-    showDivider: boolean
-  ) => (
-    <div className={showDivider ? "mt-4 pt-4 border-t border-white/10" : ""}>
-      <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/40">
-        {label}
-      </p>
-      <div className="space-y-0.5">
-        {items.map((item) => (
-          <Link
-            key={item.to}
-            to={item.to}
-            onClick={onLinkClick}
-            className={`${navLink} ${item.match(location.pathname) ? navLinkActive : ""}`}
-          >
-            <item.icon className="h-5 w-5 shrink-0" />
-            {item.label}
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
 
   return (
     <>
-      {/* Logo */}
-      <div className="flex h-14 items-center justify-center border-b border-navy-light px-4">
+      {/* Logo + New RFP CTA */}
+      <div className="px-4 pt-5 pb-4">
         <Link
           to="/proposals"
           onClick={onLinkClick}
@@ -608,30 +597,50 @@ function SidebarContent({
             <img
               src={branding.logo_url}
               alt={branding.display_name ?? "Logo"}
-              className="h-8 w-auto max-w-[160px] object-contain"
+              className="h-7 w-auto max-w-[140px] object-contain"
             />
           ) : (
-            <span className="font-logo text-[22px] font-bold tracking-tight uppercase text-white">
+            <span className="font-logo text-[20px] font-bold tracking-tight uppercase text-white">
               {branding?.display_name ?? import.meta.env.VITE_BUSINESS_NAME ?? "Spondic"}
             </span>
           )}
         </Link>
+
+        {/* Primary CTA */}
+        <Link
+          to="/rfp/new"
+          onClick={onLinkClick}
+          className="mt-4 flex items-center justify-center gap-2 rounded-lg bg-brand-blue px-3 py-2 text-sm font-medium text-white hover:bg-brand-blue-hover transition-colors w-full"
+        >
+          <DocumentPlusIcon className="h-4 w-4" />
+          {t("nav.newRfp")}
+        </Link>
       </div>
 
       {/* Main Nav */}
-      <nav className="flex-1 p-4" data-tour="sidebar-nav">
-        {renderNavGroup("Workspace", workspaceItems, false)}
-        {renderNavGroup("Create", createItems, true)}
-        {renderNavGroup("Insights", insightsItems, true)}
+      <nav className="flex-1 px-4 pb-4 overflow-y-auto" data-tour="sidebar-nav">
+        <div className="space-y-0.5">
+          {mainItems.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              onClick={onLinkClick}
+              className={`${navLink} ${item.match(location.pathname) ? navLinkActive : ""}`}
+            >
+              <item.icon className="h-5 w-5 shrink-0" />
+              {item.label}
+            </Link>
+          ))}
+        </div>
 
-        {/* Organization -- admin-only */}
+        {/* Organization — admin-only */}
         {isAdmin && (
           <OrgNav pathname={location.pathname} onLinkClick={onLinkClick} />
         )}
       </nav>
 
-      {/* Settings — pinned above plan badge */}
-      <div className="px-4 pb-2">
+      {/* Bottom section: Settings + Plan */}
+      <div className="border-t border-white/10 px-4 pt-2 pb-4 space-y-2">
         <Link
           to="/settings"
           onClick={onLinkClick}
@@ -640,10 +649,8 @@ function SidebarContent({
           <Cog6ToothIcon className="h-5 w-5 shrink-0" />
           {t("nav.settings")}
         </Link>
+        <PlanBadge />
       </div>
-
-      {/* Plan badge at bottom of sidebar */}
-      <PlanBadge />
     </>
   );
 }
