@@ -1,5 +1,6 @@
 import { useUser, useClerk, useOrganization } from "@clerk/react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Cog6ToothIcon,
   ArrowRightStartOnRectangleIcon,
@@ -27,6 +28,7 @@ export function UserAvatarDropdown() {
   const { signOut } = useClerk();
   const { membership, organization } = useOrganization();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   if (!user) return null;
@@ -47,7 +49,7 @@ export function UserAvatarDropdown() {
       <PopoverTrigger asChild>
         <button
           className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-cream-light focus:outline-none focus:ring-2 focus:ring-brand-blue focus:ring-offset-1 transition-colors"
-          aria-label="User menu"
+          aria-label={t("userMenu.ariaLabel")}
         >
           {avatarUrl ? (
             <img
@@ -109,7 +111,7 @@ export function UserAvatarDropdown() {
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-body hover:bg-cream-light transition-colors group"
           >
             <Cog6ToothIcon className="h-4 w-4 text-muted group-hover:text-body transition-colors" />
-            <span className="flex-1 text-left">Settings</span>
+            <span className="flex-1 text-left">{t("nav.settings")}</span>
           </button>
         </div>
         <div className="border-t border-border" />
@@ -119,7 +121,7 @@ export function UserAvatarDropdown() {
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors group"
           >
             <ArrowRightStartOnRectangleIcon className="h-4 w-4" />
-            <span className="flex-1 text-left">Sign out</span>
+            <span className="flex-1 text-left">{t("userMenu.signOut")}</span>
           </button>
         </div>
       </PopoverContent>

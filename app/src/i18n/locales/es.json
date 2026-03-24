@@ -50,6 +50,7 @@
     "teams": "Equipos",
     "billing": "Facturación",
     "integrations": "Integraciones",
+    "orgSettings": "Config. de Org.",
     "settings": "Configuración"
   },
   "breadcrumbs": {

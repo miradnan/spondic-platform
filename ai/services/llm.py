@@ -145,6 +145,24 @@ NEVER say "the context does not include", "not mentioned in the provided passage
 NEVER leave gaps without a placeholder. Always draft the full answer with placeholders where details are missing."""
 
 
+def _strip_invalid_citations(text: str, max_source: int) -> str:
+    """Remove [Source N] and [N] markers where N > max_source."""
+    import re
+
+    def _replace_source(m: re.Match) -> str:
+        n = int(m.group(1))
+        return m.group(0) if 1 <= n <= max_source else ""
+
+    # Strip [Source N] with invalid N
+    text = re.sub(r"\[Source\s*(\d+)\]", _replace_source, text)
+    # Strip standalone [N] with invalid N (avoid matching [ENTER: ...] etc.)
+    text = re.sub(r"\[(\d+)\]", _replace_source, text)
+    # Clean up leftover double spaces / spaces before periods
+    text = re.sub(r"  +", " ", text)
+    text = re.sub(r" +([.,])", r"\1", text)
+    return text
+
+
 def generate_answer(
     question: str,
     context_passages: list[dict],
@@ -158,16 +176,18 @@ def generate_answer(
     """
     context_block = _build_context_block(context_passages)
 
+    num_sources = len(context_passages)
     messages = [
         {"role": "system", "content": system_prompt or _ANSWER_SYSTEM_PROMPT},
         {"role": "user", "content": (
-            f"CONTEXT PASSAGES:\n{context_block}\n\n"
+            f"CONTEXT PASSAGES ({num_sources} sources provided — only cite [Source 1] through [Source {num_sources}]):\n{context_block}\n\n"
             f"QUESTION:\n{question}\n\n"
             "Answer directly with citations."
         )},
     ]
 
-    return _call_groq(messages, usage=usage)
+    result = _call_groq(messages, usage=usage)
+    return _strip_invalid_citations(result, num_sources)
 
 
 def _build_context_block(passages: list[dict]) -> str:
@@ -323,10 +343,11 @@ def chat_response_stream(
             if role in ("user", "assistant"):
                 messages.append({"role": role, "content": msg["content"]})
 
+    num_sources = len(context_passages)
     messages.append({
         "role": "user",
         "content": (
-            f"CONTEXT PASSAGES:\n{context_block}\n\n"
+            f"CONTEXT PASSAGES ({num_sources} sources — only cite [Source 1] through [Source {num_sources}]):\n{context_block}\n\n"
             f"USER MESSAGE:\n{message}"
         ),
     })
@@ -384,15 +405,17 @@ def chat_response(
             if role in ("user", "assistant"):
                 messages.append({"role": role, "content": msg["content"]})
 
+    num_sources = len(context_passages)
     messages.append({
         "role": "user",
         "content": (
-            f"CONTEXT PASSAGES:\n{context_block}\n\n"
+            f"CONTEXT PASSAGES ({num_sources} sources — only cite [Source 1] through [Source {num_sources}]):\n{context_block}\n\n"
             f"USER MESSAGE:\n{message}"
         ),
     })
 
-    return _call_groq(messages, model=_CHAT_MODEL, usage=usage)
+    result = _call_groq(messages, model=_CHAT_MODEL, usage=usage)
+    return _strip_invalid_citations(result, num_sources)
 
 
 # --------------------------------------------------------------------------- #

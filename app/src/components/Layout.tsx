@@ -103,16 +103,16 @@ function Breadcrumbs() {
   );
 }
 
-function relativeTime(dateStr: string): string {
+function relativeTime(dateStr: string, t: (key: string, opts?: Record<string, unknown>) => string): string {
   const now = Date.now();
   const diff = now - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t("common.time.justNow");
+  if (mins < 60) return t("common.time.minsAgo", { count: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24) return t("common.time.hrsAgo", { count: hrs });
   const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
+  return t("common.time.daysAgo", { count: days });
 }
 
 function NotificationBell() {
@@ -162,7 +162,7 @@ function NotificationBell() {
                 onClick={() => markAllRead.mutate()}
                 className="text-xs text-brand-blue hover:underline"
               >
-                Mark all read
+                {t("notifications.markAllRead")}
               </button>
             )}
           </div>
@@ -194,7 +194,7 @@ function NotificationBell() {
                   {n.body && (
                     <p className="text-xs text-muted truncate mt-0.5">{n.body}</p>
                   )}
-                  <p className="text-xs text-muted/60 mt-1">{relativeTime(n.created_at)}</p>
+                  <p className="text-xs text-muted/60 mt-1">{relativeTime(n.created_at, t)}</p>
                 </div>
               </button>
             ))}
@@ -205,7 +205,7 @@ function NotificationBell() {
             onClick={() => { setOpen(false); navigate("/notifications"); }}
             className="flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium text-brand-blue hover:text-brand-blue-hover hover:bg-brand-blue/5 transition-colors"
           >
-            View all notifications
+            {t("notifications.viewAll")}
           </button>
           <span className="h-4 w-px bg-border" />
           <button
@@ -213,7 +213,7 @@ function NotificationBell() {
             className="flex items-center justify-center gap-1.5 rounded-md py-1.5 px-2 text-xs text-muted hover:text-brand-blue transition-colors"
           >
             <Cog6ToothIcon className="h-3.5 w-3.5" />
-            Settings
+            {t("nav.settings")}
           </button>
         </div>
       </PopoverContent>
@@ -277,16 +277,16 @@ function OrgNav({ pathname, onLinkClick }: { pathname: string; onLinkClick?: () 
     { to: "/admin/teams", label: t("nav.teams"), icon: UserGroupIcon },
     { to: "/admin/billing", label: t("nav.billing"), icon: CreditCardIcon },
     { to: "/admin/integrations", label: t("nav.integrations"), icon: LinkIcon },
-    { to: "/admin/organization", label: "Org Settings", icon: Cog6ToothIcon },
+    { to: "/admin/organization", label: t("nav.orgSettings"), icon: Cog6ToothIcon },
   ];
 
   return (
     <div className="mt-4">
       {/* Section label */}
       <div className="flex items-center gap-2 px-3 mb-2">
-        <span className="text-[10px] font-semibold uppercase tracking-widest text-white/40">Admin</span>
+        <span className="text-[10px] font-semibold uppercase tracking-widest text-white/40">{t("nav.admin")}</span>
         <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide bg-brand-gold/20 text-brand-gold">
-          Admin
+          {t("nav.admin")}
         </span>
         <div className="flex-1 h-px bg-white/10" />
       </div>
@@ -335,6 +335,7 @@ function OrgNav({ pathname, onLinkClick }: { pathname: string; onLinkClick?: () 
 
 function PlanBadge() {
   const { plan } = usePlanLimits();
+  const { t } = useTranslation();
 
   const badgeColors: Record<string, string> = {
     enterprise: "bg-brand-gold/20 text-brand-gold",
@@ -361,7 +362,7 @@ function PlanBadge() {
         <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${colorClass}`}>
           {label}
         </span>
-        <span className="text-xs text-white/50">Plan</span>
+        <span className="text-xs text-white/50">{t("nav.plan")}</span>
       </div>
     </div>
   );
@@ -375,26 +376,31 @@ interface CommandItem {
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
 }
 
-const commandItems: CommandItem[] = [
-  { label: "Dashboard", to: "/dashboard", icon: Squares2X2Icon },
-  { label: "Knowledge Base", to: "/knowledge-base", icon: BookOpenIcon },
-  { label: "Chat", to: "/chat", icon: ChatBubbleLeftEllipsisIcon },
-  { label: "New RFP", to: "/rfp/new", icon: DocumentPlusIcon },
-  { label: "Analytics", to: "/analytics", icon: ChartBarIcon },
-  { label: "Settings", to: "/settings", icon: Cog6ToothIcon },
-  { label: "Members", to: "/admin/members", icon: UsersIcon },
-  { label: "Teams", to: "/admin/teams", icon: UserGroupIcon },
-  { label: "Billing", to: "/admin/billing", icon: CreditCardIcon },
-  { label: "Integrations", to: "/admin/integrations", icon: LinkIcon },
-  { label: "Audit Log", to: "/admin/audit", icon: ClipboardDocumentListIcon },
-  { label: "Organization Settings", to: "/admin/organization", icon: BuildingOffice2Icon },
-];
+function useCommandItems(): CommandItem[] {
+  const { t } = useTranslation();
+  return [
+    { label: t("nav.dashboard"), to: "/dashboard", icon: Squares2X2Icon },
+    { label: t("nav.knowledgeBase"), to: "/knowledge-base", icon: BookOpenIcon },
+    { label: t("nav.chat"), to: "/chat", icon: ChatBubbleLeftEllipsisIcon },
+    { label: t("nav.newRfp"), to: "/rfp/new", icon: DocumentPlusIcon },
+    { label: t("nav.analytics"), to: "/analytics", icon: ChartBarIcon },
+    { label: t("nav.settings"), to: "/settings", icon: Cog6ToothIcon },
+    { label: t("nav.members"), to: "/admin/members", icon: UsersIcon },
+    { label: t("nav.teams"), to: "/admin/teams", icon: UserGroupIcon },
+    { label: t("nav.billing"), to: "/admin/billing", icon: CreditCardIcon },
+    { label: t("nav.integrations"), to: "/admin/integrations", icon: LinkIcon },
+    { label: t("nav.auditLog"), to: "/admin/audit", icon: ClipboardDocumentListIcon },
+    { label: t("nav.orgSettings"), to: "/admin/organization", icon: BuildingOffice2Icon },
+  ];
+}
 
 function CommandPaletteInner({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const navigate = useNavigate();
+  const commandItems = useCommandItems();
 
   const filtered = query.trim()
     ? commandItems.filter((item) =>
@@ -450,7 +456,7 @@ function CommandPaletteInner({ onClose }: { onClose: () => void }) {
             autoFocus
             onChange={(e) => handleQueryChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Search pages..."
+            placeholder={t("common.searchPages")}
             style={{ boxShadow: "none" }}
             className="flex-1 bg-transparent text-base text-heading placeholder:text-muted outline-none ring-0 border-none shadow-none focus:outline-none focus:ring-0 focus:shadow-none"
           />
@@ -460,7 +466,7 @@ function CommandPaletteInner({ onClose }: { onClose: () => void }) {
         </div>
         <div className="max-h-[300px] overflow-y-auto p-2">
           {filtered.length === 0 ? (
-            <p className="px-3 py-6 text-center text-sm text-muted">No results found</p>
+            <p className="px-3 py-6 text-center text-sm text-muted">{t("common.noResults")}</p>
           ) : (
             filtered.map((item, i) => {
               const Icon = item.icon;

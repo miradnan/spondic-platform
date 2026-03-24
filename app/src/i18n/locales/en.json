@@ -50,6 +50,7 @@
     "teams": "Teams",
     "billing": "Billing",
     "integrations": "Integrations",
+    "orgSettings": "Org Settings",
     "settings": "Settings"
   },
   "breadcrumbs": {

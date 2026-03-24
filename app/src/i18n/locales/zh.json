@@ -50,6 +50,7 @@
     "teams": "团队",
     "billing": "计费",
     "integrations": "集成",
+    "orgSettings": "组织设置",
     "settings": "设置"
   },
   "breadcrumbs": {

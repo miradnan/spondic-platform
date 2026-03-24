@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Cog6ToothIcon,
   BellIcon,
@@ -27,24 +28,24 @@ import { useToast } from "../components/Toast.tsx";
 import { getPlanLimits } from "../lib/planLimits.ts";
 import type { NotificationType } from "../lib/types.ts";
 
-const NOTIFICATION_TYPES: { type: NotificationType; label: string; description: string }[] = [
-  { type: "answer_approved", label: "Answer Approved", description: "When an answer you drafted is approved" },
-  { type: "comment_added", label: "New Comment", description: "When someone comments on an answer" },
-  { type: "document_indexed", label: "Document Indexed", description: "When a document finishes indexing" },
-  { type: "rfp_parsed", label: "RFP Parsed", description: "When an RFP is parsed into questions" },
-  { type: "rfp_drafted", label: "Answers Drafted", description: "When AI finishes drafting answers" },
-  { type: "deadline_approaching", label: "Deadline Approaching", description: "When a proposal deadline is near" },
-  { type: "team_assignment", label: "Team Assignment", description: "When you are added to a team" },
-  { type: "question_assigned", label: "Question Assigned", description: "When a question is assigned to you" },
+const NOTIFICATION_TYPES: { type: NotificationType; labelKey: string; descriptionKey: string }[] = [
+  { type: "answer_approved", labelKey: "settings.notifType.answerApproved", descriptionKey: "settings.notifDesc.answerApproved" },
+  { type: "comment_added", labelKey: "settings.notifType.newComment", descriptionKey: "settings.notifDesc.newComment" },
+  { type: "document_indexed", labelKey: "settings.notifType.documentIndexed", descriptionKey: "settings.notifDesc.documentIndexed" },
+  { type: "rfp_parsed", labelKey: "settings.notifType.rfpParsed", descriptionKey: "settings.notifDesc.rfpParsed" },
+  { type: "rfp_drafted", labelKey: "settings.notifType.answersDrafted", descriptionKey: "settings.notifDesc.answersDrafted" },
+  { type: "deadline_approaching", labelKey: "settings.notifType.deadlineApproaching", descriptionKey: "settings.notifDesc.deadlineApproaching" },
+  { type: "team_assignment", labelKey: "settings.notifType.teamAssignment", descriptionKey: "settings.notifDesc.teamAssignment" },
+  { type: "question_assigned", labelKey: "settings.notifType.questionAssigned", descriptionKey: "settings.notifDesc.questionAssigned" },
 ];
 
-const SHORTCUTS: { keys: string[]; description: string }[] = [
-  { keys: ["J", "/", "K"], description: "Navigate questions" },
-  { keys: ["A"], description: "Approve answer" },
-  { keys: ["E"], description: "Edit answer" },
-  { keys: ["R"], description: "Reject answer" },
-  { keys: ["\u2318", "S"], description: "Save edits" },
-  { keys: ["\u2318", "K"], description: "Command palette" },
+const SHORTCUTS: { keys: string[]; descriptionKey: string }[] = [
+  { keys: ["J", "/", "K"], descriptionKey: "settings.shortcut.navigateQuestions" },
+  { keys: ["A"], descriptionKey: "settings.shortcut.approveAnswer" },
+  { keys: ["E"], descriptionKey: "settings.shortcut.editAnswer" },
+  { keys: ["R"], descriptionKey: "settings.shortcut.rejectAnswer" },
+  { keys: ["\u2318", "S"], descriptionKey: "settings.shortcut.saveEdits" },
+  { keys: ["\u2318", "K"], descriptionKey: "settings.shortcut.commandPalette" },
 ];
 
 function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (val: boolean) => void }) {
@@ -93,6 +94,7 @@ function Kbd({ children }: { children: React.ReactNode }) {
 /* ── Account Section ────────────────────────────────────────────────────── */
 
 function AccountSection() {
+  const { t } = useTranslation();
   const { data: profile, isLoading } = useUserProfile();
   const updateProfile = useUpdateUserProfile();
   const uploadAvatar = useUploadUserAvatar();
@@ -186,9 +188,9 @@ function AccountSection() {
     <div className="rounded-xl border border-border bg-surface p-6">
       <div className="flex items-center gap-2 mb-1">
         <UserCircleIcon className="h-5 w-5 text-brand-blue" />
-        <h2 className="text-base font-semibold text-heading">Account</h2>
+        <h2 className="text-base font-semibold text-heading">{t("settings.account")}</h2>
       </div>
-      <p className="text-sm text-muted mb-6">Manage your profile information and avatar.</p>
+      <p className="text-sm text-muted mb-6">{t("settings.accountDesc")}</p>
 
       {/* Avatar */}
       <div className="flex items-center gap-4 mb-6">
@@ -218,7 +220,7 @@ function AccountSection() {
             <button
               onClick={() => fileInputRef.current?.click()}
               className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
-              aria-label="Change avatar"
+              aria-label={t("settings.changeAvatar")}
             >
               <CameraIcon className="h-5 w-5 text-white" />
             </button>
@@ -242,7 +244,7 @@ function AccountSection() {
               disabled={isAvatarBusy}
               className="text-xs text-brand-blue hover:underline disabled:opacity-50"
             >
-              {uploadAvatar.isPending ? "Uploading..." : "Change photo"}
+              {uploadAvatar.isPending ? t("settings.uploading") : t("settings.changePhoto")}
             </button>
             {profile?.image_url && (
               <>
@@ -252,7 +254,7 @@ function AccountSection() {
                   disabled={isAvatarBusy}
                   className="text-xs text-red-600 hover:underline disabled:opacity-50"
                 >
-                  {deleteAvatar.isPending ? "Removing..." : "Remove"}
+                  {deleteAvatar.isPending ? t("settings.removingPhoto") : t("settings.removePhoto")}
                 </button>
               </>
             )}
@@ -264,7 +266,7 @@ function AccountSection() {
       <form onSubmit={handleSaveProfile} className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-heading mb-1">First name</label>
+            <label className="block text-sm font-medium text-heading mb-1">{t("settings.firstName")}</label>
             <input
               type="text"
               value={firstName}
@@ -273,7 +275,7 @@ function AccountSection() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-heading mb-1">Last name</label>
+            <label className="block text-sm font-medium text-heading mb-1">{t("settings.lastName")}</label>
             <input
               type="text"
               value={lastName}
@@ -283,14 +285,14 @@ function AccountSection() {
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-heading mb-1">Email</label>
+          <label className="block text-sm font-medium text-heading mb-1">{t("common.email")}</label>
           <input
             type="email"
             value={profile?.email ?? ""}
             disabled
             className="w-full rounded-lg border border-border bg-surface-inset px-3 py-2 text-sm text-muted cursor-not-allowed"
           />
-          <p className="text-xs text-muted mt-1">Email cannot be changed here. Contact support if needed.</p>
+          <p className="text-xs text-muted mt-1">{t("settings.emailNote")}</p>
         </div>
         <div className="flex justify-end">
           <button
@@ -298,7 +300,7 @@ function AccountSection() {
             disabled={updateProfile.isPending}
             className="rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue/90 transition-colors disabled:opacity-50"
           >
-            {updateProfile.isPending ? "Saving..." : "Save changes"}
+            {updateProfile.isPending ? t("settings.saving") : t("settings.saveChanges")}
           </button>
         </div>
       </form>
@@ -309,6 +311,7 @@ function AccountSection() {
 /* ── Password Section ───────────────────────────────────────────────────── */
 
 function PasswordSection() {
+  const { t } = useTranslation();
   const { data: profile } = useUserProfile();
   const updatePassword = useUpdateUserPassword();
   const { toast } = useToast();
@@ -351,18 +354,18 @@ function PasswordSection() {
     <div className="rounded-xl border border-border bg-surface p-6">
       <div className="flex items-center gap-2 mb-1">
         <KeyIcon className="h-5 w-5 text-brand-blue" />
-        <h2 className="text-base font-semibold text-heading">Password</h2>
+        <h2 className="text-base font-semibold text-heading">{t("settings.password")}</h2>
       </div>
       <p className="text-sm text-muted mb-6">
         {profile?.has_password
-          ? "Update your password to keep your account secure."
-          : "Set a password for your account."}
+          ? t("settings.passwordDesc")
+          : t("settings.setPasswordDesc")}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
         {profile?.has_password && (
           <div>
-            <label className="block text-sm font-medium text-heading mb-1">Current password</label>
+            <label className="block text-sm font-medium text-heading mb-1">{t("settings.currentPassword")}</label>
             <input
               type="password"
               value={currentPassword}
@@ -373,7 +376,7 @@ function PasswordSection() {
           </div>
         )}
         <div>
-          <label className="block text-sm font-medium text-heading mb-1">New password</label>
+          <label className="block text-sm font-medium text-heading mb-1">{t("settings.newPassword")}</label>
           <input
             type="password"
             value={newPassword}
@@ -392,7 +395,7 @@ function PasswordSection() {
           )}
         </div>
         <div>
-          <label className="block text-sm font-medium text-heading mb-1">Confirm new password</label>
+          <label className="block text-sm font-medium text-heading mb-1">{t("settings.confirmPassword")}</label>
           <input
             type="password"
             value={confirmPassword}
@@ -416,7 +419,7 @@ function PasswordSection() {
             disabled={updatePassword.isPending}
             className="rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue/90 transition-colors disabled:opacity-50"
           >
-            {updatePassword.isPending ? "Updating..." : profile?.has_password ? "Update password" : "Set password"}
+            {updatePassword.isPending ? t("settings.updatingPassword") : profile?.has_password ? t("settings.updatePassword") : t("settings.setPassword")}
           </button>
         </div>
       </form>
@@ -427,6 +430,7 @@ function PasswordSection() {
 /* ── Two-Factor Authentication Section ──────────────────────────────────── */
 
 function TwoFactorSection() {
+  const { t } = useTranslation();
   const { sessionClaims } = useAuth();
   const planClaim = (sessionClaims as Record<string, unknown>)?.pla as string | undefined;
   const currentPlan = planClaim?.replace("o:", "") || "free_org";
@@ -437,28 +441,28 @@ function TwoFactorSection() {
       <div className="rounded-xl border border-border bg-surface p-6">
         <div className="flex items-center gap-2 mb-1">
           <ShieldCheckIcon className="h-5 w-5 text-brand-blue" />
-          <h2 className="text-base font-semibold text-heading">Two-Factor Authentication</h2>
+          <h2 className="text-base font-semibold text-heading">{t("settings.twoFactor")}</h2>
           <span className="ml-auto rounded-md border border-border bg-surface-inset px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
-            Growth+
+            {t("settings.growthPlus")}
           </span>
         </div>
         <p className="text-sm text-muted mb-6">
-          Add an extra layer of security to your account using a TOTP authenticator app.
+          {t("settings.twoFactorDesc")}
         </p>
         <div className="flex items-start gap-3 rounded-lg border border-border bg-cream-lighter p-4">
           <LockClosedIcon className="h-5 w-5 text-muted mt-0.5 shrink-0" />
           <div>
             <p className="text-sm font-medium text-heading">
-              Available on Growth and Enterprise plans
+              {t("settings.twoFactorLocked")}
             </p>
             <p className="text-xs text-muted mt-1">
-              Two-factor authentication adds an extra layer of security to protect your account and your organization's data.
+              {t("settings.twoFactorLockedDesc")}
             </p>
             <a
               href="/admin/billing#change-plan"
               className="inline-flex items-center gap-1 mt-3 text-sm font-medium text-brand-blue hover:text-brand-blue/80 transition-colors"
             >
-              Upgrade your plan
+              {t("settings.upgradePlan")}
             </a>
           </div>
         </div>
@@ -470,6 +474,7 @@ function TwoFactorSection() {
 }
 
 function TwoFactorEnabled() {
+  const { t } = useTranslation();
   const { data: status, isLoading } = useUser2FAStatus();
   const disableMFA = useDisableUserMFA();
   const { user } = useClerkUser();
@@ -556,10 +561,10 @@ function TwoFactorEnabled() {
     <div className="rounded-xl border border-border bg-surface p-6">
       <div className="flex items-center gap-2 mb-1">
         <ShieldCheckIcon className="h-5 w-5 text-brand-blue" />
-        <h2 className="text-base font-semibold text-heading">Two-Factor Authentication</h2>
+        <h2 className="text-base font-semibold text-heading">{t("settings.twoFactor")}</h2>
       </div>
       <p className="text-sm text-muted mb-6">
-        Add an extra layer of security to your account using a TOTP authenticator app.
+        {t("settings.twoFactorDesc")}
       </p>
 
       {setupStep === "idle" && (
@@ -567,7 +572,7 @@ function TwoFactorEnabled() {
           <div className="flex items-center gap-3">
             <div className={`h-2.5 w-2.5 rounded-full ${isEnabled ? "bg-green-500" : "bg-surface-inset"}`} />
             <span className="text-sm font-medium text-heading">
-              {isEnabled ? "Enabled" : "Disabled"}
+              {isEnabled ? t("common.enabled") : t("common.disabled")}
             </span>
           </div>
           {isEnabled ? (
@@ -576,7 +581,7 @@ function TwoFactorEnabled() {
               disabled={disableMFA.isPending}
               className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors disabled:opacity-50"
             >
-              {disableMFA.isPending ? "Disabling..." : "Disable 2FA"}
+              {disableMFA.isPending ? t("settings.disabling2fa") : t("settings.disable2fa")}
             </button>
           ) : (
             <button
@@ -584,7 +589,7 @@ function TwoFactorEnabled() {
               disabled={enabling}
               className="rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue/90 transition-colors disabled:opacity-50"
             >
-              {enabling ? "Setting up..." : "Enable 2FA"}
+              {enabling ? t("settings.settingUp2fa") : t("settings.enable2fa")}
             </button>
           )}
         </div>
@@ -594,7 +599,7 @@ function TwoFactorEnabled() {
         <div className="space-y-4">
           <div className="rounded-lg border border-border bg-cream-lighter p-4">
             <p className="text-sm font-medium text-heading mb-3">
-              Scan this QR code with your authenticator app
+              {t("settings.scanQr")}
             </p>
             <div className="flex justify-center mb-3">
               <img
@@ -603,7 +608,7 @@ function TwoFactorEnabled() {
                 className="h-48 w-48 rounded-lg"
               />
             </div>
-            <p className="text-xs text-muted text-center mb-2">Or enter this secret manually:</p>
+            <p className="text-xs text-muted text-center mb-2">{t("settings.enterSecretManually")}</p>
             <div className="flex items-center justify-center gap-2">
               <code className="rounded bg-surface-inset px-2 py-1 text-xs font-mono text-heading">
                 {totpData.secret}
@@ -621,7 +626,7 @@ function TwoFactorEnabled() {
           <form onSubmit={handleVerify} className="space-y-3">
             <div>
               <label className="block text-sm font-medium text-heading mb-1">
-                Enter the 6-digit code from your app
+                {t("settings.enterCode")}
               </label>
               <input
                 type="text"
@@ -639,7 +644,7 @@ function TwoFactorEnabled() {
                 disabled={verifyCode.length !== 6 || verifying}
                 className="rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue/90 transition-colors disabled:opacity-50"
               >
-                {verifying ? "Verifying..." : "Verify & Enable"}
+                {verifying ? t("settings.verifying") : t("settings.verifyEnable")}
               </button>
               <button
                 type="button"
@@ -650,7 +655,7 @@ function TwoFactorEnabled() {
                 }}
                 className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-body hover:bg-cream-light transition-colors"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
           </form>
@@ -661,10 +666,10 @@ function TwoFactorEnabled() {
         <div className="space-y-4">
           <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-4">
             <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">
-              Save your backup codes
+              {t("settings.saveBackupCodes")}
             </p>
             <p className="text-xs text-amber-700 dark:text-amber-300 mb-3">
-              Store these codes in a safe place. Each code can be used once to access your account if you lose your authenticator device.
+              {t("settings.backupCodesDesc")}
             </p>
             <div className="grid grid-cols-2 gap-2 mb-3">
               {backupCodes.map((code) => (
@@ -681,7 +686,7 @@ function TwoFactorEnabled() {
               className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300 hover:underline"
             >
               <ClipboardDocumentIcon className="h-3.5 w-3.5" />
-              Copy all codes
+              {t("settings.copyAllCodes")}
             </button>
           </div>
           <button
@@ -691,7 +696,7 @@ function TwoFactorEnabled() {
             }}
             className="rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue/90 transition-colors"
           >
-            Done
+            {t("settings.done")}
           </button>
         </div>
       )}
@@ -702,6 +707,7 @@ function TwoFactorEnabled() {
 /* ── Main Settings Page ─────────────────────────────────────────────────── */
 
 export function Settings() {
+  const { t } = useTranslation();
   const { data: preferences, isLoading } = useNotificationPreferences();
   const updatePref = useUpdateNotificationPreference();
   const { toast } = useToast();
@@ -732,9 +738,10 @@ export function Settings() {
       email_enabled: field === "email_enabled" ? value : current.email_enabled,
     });
 
-    const label = NOTIFICATION_TYPES.find((n) => n.type === type)?.label ?? type;
+    const label = NOTIFICATION_TYPES.find((n) => n.type === type)?.labelKey;
+    const labelText = label ? t(label) : type;
     const channel = field === "email_enabled" ? "Email" : "In-app";
-    toast("success", `${channel} notifications for ${label} turned ${value ? "on" : "off"}`);
+    toast("success", `${channel} notifications for ${labelText} turned ${value ? "on" : "off"}`);
   }
 
   function handleCompactModeChange(val: boolean) {
@@ -757,8 +764,8 @@ export function Settings() {
           <Cog6ToothIcon className="h-5 w-5 text-brand-blue" />
         </div>
         <div>
-          <h1 className="text-xl font-semibold text-heading">Settings</h1>
-          <p className="text-sm text-muted">Manage your account, security, and preferences</p>
+          <h1 className="text-xl font-semibold text-heading">{t("nav.settings")}</h1>
+          <p className="text-sm text-muted">{t("settings.subtitle")}</p>
         </div>
       </div>
 
@@ -775,16 +782,16 @@ export function Settings() {
       <div className="rounded-xl border border-border bg-surface p-6">
         <div className="flex items-center gap-2 mb-1">
           <ComputerDesktopIcon className="h-5 w-5 text-brand-blue" />
-          <h2 className="text-base font-semibold text-heading">Display Preferences</h2>
+          <h2 className="text-base font-semibold text-heading">{t("settings.displayPreferences")}</h2>
         </div>
-        <p className="text-sm text-muted mb-6">Customize how the application looks and feels.</p>
+        <p className="text-sm text-muted mb-6">{t("settings.displayPreferencesDesc")}</p>
 
         <div className="space-y-4">
           {/* Compact Mode */}
           <div className="flex items-center justify-between py-3 border-b border-border">
             <div>
-              <p className="text-sm font-medium text-heading">Compact mode</p>
-              <p className="text-xs text-muted mt-0.5">Reduce spacing and padding throughout the interface</p>
+              <p className="text-sm font-medium text-heading">{t("settings.compactMode")}</p>
+              <p className="text-xs text-muted mt-0.5">{t("settings.compactModeDesc")}</p>
             </div>
             <Toggle enabled={compactMode} onChange={handleCompactModeChange} />
           </div>
@@ -792,16 +799,16 @@ export function Settings() {
           {/* Default View */}
           <div className="flex items-center justify-between py-3">
             <div>
-              <p className="text-sm font-medium text-heading">Default view</p>
-              <p className="text-xs text-muted mt-0.5">Choose the default layout for proposal lists</p>
+              <p className="text-sm font-medium text-heading">{t("settings.defaultView")}</p>
+              <p className="text-xs text-muted mt-0.5">{t("settings.defaultViewDesc")}</p>
             </div>
             <select
               value={defaultView}
               onChange={(e) => handleDefaultViewChange(e.target.value as "cards" | "table")}
               className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-heading focus:outline-none focus:ring-2 focus:ring-brand-blue focus:ring-offset-1"
             >
-              <option value="cards">Card view</option>
-              <option value="table">Table view</option>
+              <option value="cards">{t("settings.cardView")}</option>
+              <option value="table">{t("settings.tableView")}</option>
             </select>
           </div>
         </div>
@@ -811,16 +818,16 @@ export function Settings() {
       <div className="rounded-xl border border-border bg-surface p-6">
         <div className="flex items-center gap-2 mb-1">
           <BellIcon className="h-5 w-5 text-brand-blue" />
-          <h2 className="text-base font-semibold text-heading">Notification Preferences</h2>
+          <h2 className="text-base font-semibold text-heading">{t("settings.notificationPreferences")}</h2>
         </div>
-        <p className="text-sm text-muted mb-6">Choose how you want to be notified for each event type.</p>
+        <p className="text-sm text-muted mb-6">{t("settings.notificationPreferencesDesc")}</p>
 
         {/* Column Headers */}
         <div className="flex items-center justify-between pb-3 border-b border-border">
-          <span className="text-xs font-medium text-muted uppercase tracking-wider">Event</span>
+          <span className="text-xs font-medium text-muted uppercase tracking-wider">{t("settings.event")}</span>
           <div className="flex items-center gap-8">
-            <span className="text-xs font-medium text-muted uppercase tracking-wider w-11 text-center">In-App</span>
-            <span className="text-xs font-medium text-muted uppercase tracking-wider w-11 text-center">Email</span>
+            <span className="text-xs font-medium text-muted uppercase tracking-wider w-11 text-center">{t("settings.inApp")}</span>
+            <span className="text-xs font-medium text-muted uppercase tracking-wider w-11 text-center">{t("common.email")}</span>
           </div>
         </div>
 
@@ -840,8 +847,8 @@ export function Settings() {
                   className="flex items-center justify-between py-4 border-b border-border last:border-b-0"
                 >
                   <div>
-                    <p className="text-sm font-medium text-heading">{item.label}</p>
-                    <p className="text-xs text-muted mt-0.5">{item.description}</p>
+                    <p className="text-sm font-medium text-heading">{t(item.labelKey)}</p>
+                    <p className="text-xs text-muted mt-0.5">{t(item.descriptionKey)}</p>
                   </div>
                   <div className="flex items-center gap-8">
                     <Toggle
@@ -864,17 +871,17 @@ export function Settings() {
       <div className="rounded-xl border border-border bg-surface p-6">
         <div className="flex items-center gap-2 mb-1">
           <CommandLineIcon className="h-5 w-5 text-brand-blue" />
-          <h2 className="text-base font-semibold text-heading">Keyboard Shortcuts</h2>
+          <h2 className="text-base font-semibold text-heading">{t("settings.keyboardShortcuts")}</h2>
         </div>
-        <p className="text-sm text-muted mb-6">Quick reference for available keyboard shortcuts.</p>
+        <p className="text-sm text-muted mb-6">{t("settings.keyboardShortcutsDesc")}</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
           {SHORTCUTS.map((shortcut) => (
             <div
-              key={shortcut.description}
+              key={shortcut.descriptionKey}
               className="flex items-center justify-between py-2 border-b border-border/50 last:border-b-0"
             >
-              <span className="text-sm text-heading">{shortcut.description}</span>
+              <span className="text-sm text-heading">{t(shortcut.descriptionKey)}</span>
               <div className="flex items-center gap-1">
                 {shortcut.keys.map((key, i) =>
                   key === "/" ? (
