@@ -68,8 +68,8 @@ export default function BlogListClient({
         ))}
       </div>
 
-      {/* Featured Post */}
-      {!activeCategory && posts.length > 0 && (
+      {/* Featured Post — shown for "All Posts" or when the featured post matches the active category */}
+      {posts.length > 0 && (!activeCategory || posts[0].category === activeCategory) && (
         <Link
           href={`/blog/${posts[0].slug}`}
           className="group mb-12 block rounded-2xl border border-[#d8d4cb] bg-white p-6 shadow-sm transition-shadow hover:shadow-md sm:p-10"
@@ -97,7 +97,7 @@ export default function BlogListClient({
 
       {/* Post Grid */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {(activeCategory ? filtered : filtered.slice(1)).map((post) => (
+        {((!activeCategory || posts[0].category === activeCategory) ? filtered.slice(1) : filtered).map((post) => (
           <Link
             key={post.slug}
             href={`/blog/${post.slug}`}

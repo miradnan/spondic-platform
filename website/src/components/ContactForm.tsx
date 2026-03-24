@@ -53,7 +53,7 @@ export default function ContactForm() {
         <form onSubmit={handleSubmit} className="mt-6 space-y-5">
           <div>
             <label htmlFor="fullName" className="mb-1.5 block text-[13px] font-medium text-[#141413]">
-              {t("contact.fullName")}
+              {t("contact.fullName")} <span className="text-red-500">*</span>
             </label>
             <input
               id="fullName"
@@ -66,7 +66,7 @@ export default function ContactForm() {
           </div>
           <div>
             <label htmlFor="email" className="mb-1.5 block text-[13px] font-medium text-[#141413]">
-              {t("contact.email")}
+              {t("contact.email")} <span className="text-red-500">*</span>
             </label>
             <input
               id="email"
@@ -79,7 +79,7 @@ export default function ContactForm() {
           </div>
           <div>
             <label htmlFor="organization" className="mb-1.5 block text-[13px] font-medium text-[#141413]">
-              {t("contact.organization")}
+              {t("contact.organization")} <span className="font-normal text-muted">(optional)</span>
             </label>
             <input
               id="organization"
@@ -91,7 +91,7 @@ export default function ContactForm() {
           </div>
           <div>
             <label htmlFor="message" className="mb-1.5 block text-[13px] font-medium text-[#141413]">
-              {t("contact.message")}
+              {t("contact.message")} <span className="text-red-500">*</span>
             </label>
             <textarea
               id="message"

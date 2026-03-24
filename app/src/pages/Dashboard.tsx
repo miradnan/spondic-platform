@@ -712,8 +712,8 @@ export function Dashboard() {
 
       {/* Error State */}
       {isError && !isLoading && (
-        <div className="mt-8 rounded-xl border border-red-200 bg-red-50 p-8 text-center">
-          <p className="text-sm text-red-700">{t("dashboard.failedToLoad")}</p>
+        <div className="mt-8 rounded-xl border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30 p-8 text-center">
+          <p className="text-sm text-red-700 dark:text-red-300">{t("dashboard.failedToLoad")}</p>
           <button
             onClick={() => void refetch()}
             className="mt-3 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"

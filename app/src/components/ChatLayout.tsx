@@ -10,6 +10,7 @@ import {
   MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import { useChats, useDeleteChat } from "../hooks/useApi.ts";
+import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import type { Chat } from "../lib/types.ts";
 
 function getTimeGroup(dateStr: string): string {
@@ -45,6 +46,8 @@ export function ChatLayout() {
   const deleteChat = useDeleteChat();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const [deletingChat, setDeletingChat] = useState<Chat | null>(null);
 
   const chatHistory = chatsData?.data ?? [];
   const isNewChat = location.pathname === "/chat";
@@ -90,6 +93,7 @@ export function ChatLayout() {
               }
             }}
             placeholder="Search chats..."
+            aria-label="Search chats"
             style={{ boxShadow: "none" }}
             className="flex-1 min-w-0 bg-transparent text-xs text-heading placeholder-muted focus:outline-none focus:ring-0 focus:shadow-none"
           />
@@ -138,14 +142,10 @@ export function ChatLayout() {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              if (window.confirm("Delete this chat?")) {
-                                deleteChat.mutate(chat.id);
-                                if (activeChatId === chat.id) {
-                                  navigate("/chat");
-                                }
-                              }
+                              setDeletingChat(chat);
                             }}
                             className="opacity-0 group-hover:opacity-100 shrink-0 p-1 text-muted/40 hover:text-red-500 transition-all rounded"
+                            aria-label={`Delete chat: ${chat.title || "Untitled chat"}`}
                             title="Delete chat"
                           >
                             <TrashIcon className="h-3.5 w-3.5" />
@@ -176,6 +176,26 @@ export function ChatLayout() {
 
   return (
     <div className="flex min-h-full">
+      {/* Delete Chat Confirmation */}
+      <ConfirmDialog
+        open={deletingChat !== null}
+        onConfirm={() => {
+          if (deletingChat) {
+            deleteChat.mutate(deletingChat.id);
+            if (activeChatId === deletingChat.id) {
+              navigate("/chat");
+            }
+          }
+          setDeletingChat(null);
+        }}
+        onCancel={() => setDeletingChat(null)}
+        title="Delete chat?"
+        description={`This will permanently delete "${deletingChat?.title || "Untitled chat"}". This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+      />
+
       {/* Desktop sidebar — sticky so it stays visible while main scrolls */}
       <aside className="hidden md:flex w-80 shrink-0 flex-col border-r border-border bg-surface overflow-hidden sticky top-0 self-start h-[calc(100vh-3.5rem)]">
         {chatList}
@@ -191,6 +211,7 @@ export function ChatLayout() {
           <aside className="relative flex w-72 max-w-[80vw] h-full flex-col bg-surface shadow-xl">
             <button
               onClick={() => setSidebarOpen(false)}
+              aria-label="Close sidebar"
               className="absolute right-3 top-3 z-10 rounded-lg p-1 text-muted hover:text-body hover:bg-cream-light transition-colors"
             >
               <XMarkIcon className="h-5 w-5" />
@@ -207,6 +228,7 @@ export function ChatLayout() {
           {activeChatId ? (
             <button
               onClick={() => navigate("/chat")}
+              aria-label="Back to chats"
               className="rounded-lg p-1.5 text-muted hover:text-body hover:bg-cream-light transition-colors"
             >
               <ChevronLeftIcon className="h-5 w-5" />
@@ -214,6 +236,7 @@ export function ChatLayout() {
           ) : (
             <button
               onClick={() => setSidebarOpen(true)}
+              aria-label="Open chat sidebar"
               className="rounded-lg p-1.5 text-muted hover:text-body hover:bg-cream-light transition-colors"
             >
               <Bars3Icon className="h-5 w-5" />

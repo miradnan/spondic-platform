@@ -16,15 +16,18 @@ import (
 	"github.com/spondic/api/internal/middleware"
 )
 
-// superAdminUserID is the hardcoded Clerk user ID allowed to access superadmin endpoints.
-const superAdminUserID = "user_3BHZZeo8iDZIaxRhNabRli1l5HA"
+// superAdminUserIDs is the list of Clerk user IDs allowed to access superadmin endpoints.
+var superAdminUserIDs = map[string]bool{
+	"user_3BHZZeo8iDZIaxRhNabRli1l5HA": true,
+	"user_3BElrueC4RtnpgPRdefAOeWEvkG": true,
+}
 
-// SuperAdminAuth is middleware that checks the authenticated user is the superadmin.
+// SuperAdminAuth is middleware that checks the authenticated user is a superadmin.
 // Must be used after ClerkAuth middleware.
 func SuperAdminAuth(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		userID := middleware.GetUserID(c)
-		if userID != superAdminUserID {
+		if !superAdminUserIDs[userID] {
 			return c.JSON(http.StatusForbidden, map[string]string{"error": "superadmin access only"})
 		}
 		return next(c)

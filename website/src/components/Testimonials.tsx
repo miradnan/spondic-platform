@@ -51,7 +51,7 @@ export default function Testimonials() {
                   ))}
                 </div>
 
-                <blockquote className="mt-5 flex-1 text-[14px] leading-[1.7] text-body">
+                <blockquote className="mt-5 flex-1 text-[14px] leading-[1.7] text-[#3a3a38]">
                   &ldquo;{item.quote}&rdquo;
                 </blockquote>
 

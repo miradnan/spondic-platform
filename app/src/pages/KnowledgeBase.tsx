@@ -685,9 +685,9 @@ export function KnowledgeBase() {
 
       {/* Duplicate document name warning */}
       {duplicateWarnings.length > 0 && (
-        <div className="mt-4 rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 flex items-start gap-2">
-          <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
-          <div className="text-sm text-yellow-800">
+        <div className="mt-4 rounded-lg border border-yellow-300 bg-yellow-50 dark:border-yellow-700 dark:bg-yellow-950/30 px-4 py-3 flex items-start gap-2">
+          <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
+          <div className="text-sm text-yellow-800 dark:text-yellow-200">
             <span className="font-medium">The following files already exist:</span>{" "}
             {duplicateWarnings.join(", ")}.
             {" "}Uploading will create duplicates.
@@ -729,7 +729,7 @@ export function KnowledgeBase() {
           <span className={isDragging ? "text-brand-blue font-medium" : "text-muted"}>
             {isDragging ? t("knowledgeBase.dropFiles") : t("knowledgeBase.dropOrClick")}
           </span>
-          <span className="text-xs text-muted/60 hidden sm:inline">
+          <span className="text-xs text-muted/60">
             · PDF, DOCX, XLSX, TXT · max 50 MB
           </span>
         </div>
@@ -824,8 +824,8 @@ export function KnowledgeBase() {
 
       {/* Error */}
       {isError && !isLoading && (
-        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-8 text-center">
-          <p className="text-sm text-red-700">{t("knowledgeBase.failedToLoad")}</p>
+        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30 p-8 text-center">
+          <p className="text-sm text-red-700 dark:text-red-300">{t("knowledgeBase.failedToLoad")}</p>
           <button
             onClick={() => void refetch()}
             className="mt-3 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"

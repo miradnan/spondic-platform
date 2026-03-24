@@ -540,157 +540,166 @@ export function AdminMembers() {
           </h3>
         </div>
 
-        {/* Column headers for team */}
-        <div className="hidden sm:flex items-center gap-4 px-5 py-2 border-b border-border bg-surface-inset/50 text-xs font-medium text-muted uppercase tracking-wider">
-          <div className="w-10" />
-          <div className="flex-1">Member</div>
-          <div className="w-20 text-center">Role</div>
-          {teamsEnabled && <div className="w-32 text-center">Team</div>}
-          <div className="w-48 text-center">Actions</div>
-        </div>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="hidden sm:table-row border-b border-border bg-surface-inset/50 text-xs font-medium text-muted uppercase tracking-wider">
+              <th className="px-5 py-2 text-left" colSpan={2}>Member</th>
+              <th className="px-3 py-2 text-center w-24">Role</th>
+              {teamsEnabled && <th className="px-3 py-2 text-center w-36">Team</th>}
+              <th className="px-3 py-2 text-center w-52">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {memberList.map((member) => {
+              const userData = member.publicUserData;
+              const firstName = userData?.firstName ?? "";
+              const lastName = userData?.lastName ?? "";
+              const displayName =
+                `${firstName} ${lastName}`.trim() || userData?.identifier || "Unknown";
+              const email = userData?.identifier ?? "";
+              const avatarUrl = userData?.imageUrl;
+              const initial = (firstName || email || "?").charAt(0).toUpperCase();
+              const isCurrentAction = actionLoading === member.publicUserData?.userId;
+              const userId = member.publicUserData?.userId ?? "";
+              const isSelf = userId === currentUser?.id;
 
-        <div className="divide-y divide-border">
-          {memberList.map((member) => {
-            const userData = member.publicUserData;
-            const firstName = userData?.firstName ?? "";
-            const lastName = userData?.lastName ?? "";
-            const displayName =
-              `${firstName} ${lastName}`.trim() || userData?.identifier || "Unknown";
-            const email = userData?.identifier ?? "";
-            const avatarUrl = userData?.imageUrl;
-            const initial = (firstName || email || "?").charAt(0).toUpperCase();
-            const isCurrentAction = actionLoading === member.publicUserData?.userId;
-            const userId = member.publicUserData?.userId ?? "";
-            const isSelf = userId === currentUser?.id;
-
-            return (
-              <div
-                key={member.id}
-                className="flex items-center gap-4 px-5 py-3.5 hover:bg-cream-light/50 transition-colors"
-              >
-                {/* Avatar */}
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt={displayName}
-                    className="h-10 w-10 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-blue/10 text-sm font-semibold text-brand-blue">
-                    {initial}
-                  </div>
-                )}
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-heading truncate">
-                    {displayName}
-                  </p>
-                  <p className="text-xs text-muted truncate">{email}</p>
-                </div>
-
-                {/* Role badge */}
-                <Badge
-                  variant={
-                    member.role === "org:admin" ? "default" : "secondary"
-                  }
+              return (
+                <tr
+                  key={member.id}
+                  className="hover:bg-cream-light/50 transition-colors"
                 >
-                  {ROLE_LABELS[member.role] ?? member.role}
-                </Badge>
+                  {/* Avatar */}
+                  <td className="pl-5 py-3.5 w-14">
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt={displayName}
+                        className="h-10 w-10 min-w-[2.5rem] rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-blue/10 text-sm font-semibold text-brand-blue">
+                        {initial}
+                      </div>
+                    )}
+                  </td>
 
-                {/* Team select — only shown on paid plans */}
-                {teamsEnabled && (
-                  <div className="w-32">
-                    <Select
-                      value={teamAssignments[userId] || "__none__"}
-                      onValueChange={(val) => handleTeamChange(userId, val === "__none__" ? "" : val)}
+                  {/* Info */}
+                  <td className="px-3 py-3.5">
+                    <p className="text-sm font-medium text-heading truncate">
+                      {displayName}
+                    </p>
+                    <p className="text-xs text-muted truncate">{email}</p>
+                  </td>
+
+                  {/* Role badge */}
+                  <td className="px-3 py-3.5 text-center">
+                    <Badge
+                      variant={
+                        member.role === "org:admin" ? "default" : "secondary"
+                      }
                     >
-                      <SelectTrigger className="h-7 text-xs w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">No team</SelectItem>
-                        {teamNames.map((team) => (
-                          <SelectItem key={team} value={team}>
-                            {team}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+                      {ROLE_LABELS[member.role] ?? member.role}
+                    </Badge>
+                  </td>
 
-                {/* Actions */}
-                <div className="flex items-center gap-2">
-                  <Select
-                    value={member.role}
-                    onValueChange={(val) =>
-                      handleRoleChange(
-                        member.publicUserData?.userId ?? "",
-                        val as RoleOption,
-                      )
-                    }
-                    disabled={isCurrentAction || isSelf}
-                  >
-                    <SelectTrigger className="h-7 text-xs min-w-[90px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="org:member">Member</SelectItem>
-                      <SelectItem value="org:admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {/* Team select — only shown on paid plans */}
+                  {teamsEnabled && (
+                    <td className="px-3 py-3.5 text-center">
+                      <Select
+                        value={teamAssignments[userId] || "__none__"}
+                        onValueChange={(val) => handleTeamChange(userId, val === "__none__" ? "" : val)}
+                      >
+                        <SelectTrigger className="h-7 text-xs w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">No team</SelectItem>
+                          {teamNames.map((team) => (
+                            <SelectItem key={team} value={team}>
+                              {team}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </td>
+                  )}
 
-                  {isSelf ? (
-                    <span className="text-xs text-muted px-1.5">You</span>
-                  ) : confirmRemove === member.publicUserData?.userId ? (
-                    <div className="flex items-center gap-1.5">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        disabled={isCurrentAction}
-                        onClick={() =>
-                          handleRemoveMember(
+                  {/* Actions */}
+                  <td className="px-3 py-3.5">
+                    <div className="flex items-center justify-center gap-2">
+                      <Select
+                        value={member.role}
+                        onValueChange={(val) =>
+                          handleRoleChange(
                             member.publicUserData?.userId ?? "",
+                            val as RoleOption,
                           )
                         }
+                        disabled={isCurrentAction || isSelf}
                       >
-                        {isCurrentAction ? (
-                          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                        ) : (
-                          "Confirm"
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setConfirmRemove(null)}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() =>
-                        setConfirmRemove(member.publicUserData?.userId ?? null)
-                      }
-                      className="rounded-lg p-1.5 text-muted hover:bg-red-50 hover:text-red-600 transition-colors"
-                      title="Remove member"
-                    >
-                      <TrashIcon className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                        <SelectTrigger className="h-7 text-xs min-w-[90px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="org:member">Member</SelectItem>
+                          <SelectItem value="org:admin">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
 
-          {memberList.length === 0 && (
-            <div className="px-5 py-8 text-center text-sm text-muted">
-              No members found.
-            </div>
-          )}
-        </div>
+                      {isSelf ? (
+                        <span className="text-xs text-muted px-1.5">You</span>
+                      ) : confirmRemove === member.publicUserData?.userId ? (
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={isCurrentAction}
+                            onClick={() =>
+                              handleRemoveMember(
+                                member.publicUserData?.userId ?? "",
+                              )
+                            }
+                          >
+                            {isCurrentAction ? (
+                              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                            ) : (
+                              "Confirm"
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setConfirmRemove(null)}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() =>
+                            setConfirmRemove(member.publicUserData?.userId ?? null)
+                          }
+                          className="rounded-lg p-1.5 text-muted hover:bg-red-50 hover:text-red-600 transition-colors"
+                          title="Remove member"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+
+            {memberList.length === 0 && (
+              <tr>
+                <td colSpan={teamsEnabled ? 5 : 4} className="px-5 py-8 text-center text-sm text-muted">
+                  No members found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
       {/* ── Pending Invitations ────────────────────────────────────────── */}

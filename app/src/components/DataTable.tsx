@@ -126,7 +126,9 @@ export function DataTable<TData>({
   return (
     <div>
       {/* Table wrapper */}
-      <div className={`border border-border bg-surface shadow-sm overflow-x-auto ${!loading && totalRowCount > 25 ? "rounded-t-xl rounded-b-none border-b-0" : "rounded-xl"}`}>
+      <div className={`relative border border-border bg-surface shadow-sm overflow-x-auto ${!loading && totalRowCount > 25 ? "rounded-t-xl rounded-b-none border-b-0" : "rounded-xl"}`}>
+        {/* Scroll hint for mobile */}
+        <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-surface to-transparent pointer-events-none md:hidden z-[1]" />
         <table className="w-full text-sm">
           {/* Header */}
           <thead>

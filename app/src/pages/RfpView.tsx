@@ -1152,7 +1152,7 @@ function ReviewTab({
                   />
                 ) : (
                   <div
-                    className="prose prose-sm max-w-none p-4 min-h-[200px] text-heading border border-border rounded-lg bg-surface"
+                    className="prose prose-sm max-w-none p-4 min-h-[200px] text-heading leading-relaxed border border-border rounded-lg bg-surface"
                     dangerouslySetInnerHTML={{ __html: answerText }}
                   />
                 )}

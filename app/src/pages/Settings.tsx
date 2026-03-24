@@ -316,9 +316,14 @@ function PasswordSection() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  const passwordTooShort = touched.newPassword && newPassword.length > 0 && newPassword.length < 8;
+  const passwordsDoNotMatch = touched.confirmPassword && confirmPassword.length > 0 && newPassword !== confirmPassword;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setTouched({ newPassword: true, confirmPassword: true });
     if (newPassword !== confirmPassword) {
       toast("error", "New passwords do not match");
       return;
@@ -373,10 +378,18 @@ function PasswordSection() {
             type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
+            onBlur={() => setTouched((prev) => ({ ...prev, newPassword: true }))}
             required
             minLength={8}
-            className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-heading focus:outline-none focus:ring-2 focus:ring-brand-blue focus:ring-offset-1"
+            className={`w-full rounded-lg border bg-surface px-3 py-2 text-sm text-heading focus:outline-none focus:ring-2 focus:ring-offset-1 ${
+              passwordTooShort
+                ? "border-red-400 focus:ring-red-500"
+                : "border-border focus:ring-brand-blue"
+            }`}
           />
+          {passwordTooShort && (
+            <p className="mt-1 text-xs text-red-600">Password must be at least 8 characters.</p>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium text-heading mb-1">Confirm new password</label>
@@ -384,10 +397,18 @@ function PasswordSection() {
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
+            onBlur={() => setTouched((prev) => ({ ...prev, confirmPassword: true }))}
             required
             minLength={8}
-            className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-heading focus:outline-none focus:ring-2 focus:ring-brand-blue focus:ring-offset-1"
+            className={`w-full rounded-lg border bg-surface px-3 py-2 text-sm text-heading focus:outline-none focus:ring-2 focus:ring-offset-1 ${
+              passwordsDoNotMatch
+                ? "border-red-400 focus:ring-red-500"
+                : "border-border focus:ring-brand-blue"
+            }`}
           />
+          {passwordsDoNotMatch && (
+            <p className="mt-1 text-xs text-red-600">Passwords do not match.</p>
+          )}
         </div>
         <div className="flex justify-end">
           <button

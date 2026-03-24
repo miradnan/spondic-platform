@@ -130,6 +130,9 @@ export function RfpNew() {
   // #15: Draft restored message
   const [draftRestored, setDraftRestored] = useState(false);
 
+  // Draft saved indicator
+  const [draftSaved, setDraftSaved] = useState(false);
+
   // #17: Touched state for inline validation
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
@@ -168,6 +171,8 @@ export function RfpNew() {
       };
       try {
         sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+        setDraftSaved(true);
+        setTimeout(() => setDraftSaved(false), 2000);
       } catch {
         // Ignore storage errors
       }
@@ -471,7 +476,7 @@ export function RfpNew() {
                 {t("rfp.new.dragDrop")}
               </p>
               <p className="mt-1 text-xs text-muted">
-                {t("rfp.new.supportedFormats")}
+                {t("rfp.new.supportedFormats")} &middot; Max 50 MB per file
               </p>
               <div className="mt-3 flex items-center justify-center gap-2">
                 {["PDF", "DOCX", "XLSX", "PPTX", "TXT"].map((ext) => (
@@ -516,7 +521,7 @@ export function RfpNew() {
                             e.stopPropagation();
                             removeFile(index);
                           }}
-                          className="rounded-lg p-1.5 text-muted opacity-0 group-hover/file:opacity-100 hover:text-red-600 hover:bg-red-50 transition-all"
+                          className="rounded-lg p-1.5 text-muted sm:opacity-0 sm:group-hover/file:opacity-100 hover:text-red-600 hover:bg-red-50 transition-all"
                           aria-label={`Remove ${file.name}`}
                         >
                           <XMarkIcon className="h-4 w-4" />
@@ -670,15 +675,15 @@ export function RfpNew() {
         {/* Error */}
         {error && (
           <div
-            className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3"
+            className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30 px-4 py-3"
             role="alert"
           >
-            <InformationCircleIcon className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+            <InformationCircleIcon className="h-5 w-5 text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-red-800">
+              <p className="text-sm font-medium text-red-800 dark:text-red-200">
                 {t("rfp.new.errorTitle") || "Something went wrong"}
               </p>
-              <p className="text-sm text-red-700 mt-0.5">{error}</p>
+              <p className="text-sm text-red-700 dark:text-red-300 mt-0.5">{error}</p>
             </div>
           </div>
         )}
@@ -686,6 +691,12 @@ export function RfpNew() {
         {/* #17: Simplified Sticky Action Bar — just Cancel + Submit */}
         <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-surface/80 backdrop-blur-lg lg:left-56">
           <div className="w-full max-w-7xl mx-auto flex items-center justify-end px-4 lg:px-6 py-3 gap-3">
+            {draftSaved && (
+              <span className="text-xs text-green-600 flex items-center gap-1 animate-in fade-in duration-200">
+                <CheckIcon className="h-3 w-3" />
+                Draft saved
+              </span>
+            )}
             <Button
               type="button"
               variant="outline"

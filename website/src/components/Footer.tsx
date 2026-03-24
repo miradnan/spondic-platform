@@ -12,7 +12,7 @@ export default function Footer() {
     <footer className="border-t border-white/10 bg-navy">
       <div className="mx-auto max-w-[1200px] px-4 py-12 sm:px-8 sm:py-16">
         {/* Top: Logo + Nav columns */}
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-10 grid-cols-2 lg:grid-cols-4">
           {/* Brand column */}
           <div className="sm:col-span-2 lg:col-span-1">
             <span className="font-logo text-[22px] font-bold tracking-tight uppercase text-white">
