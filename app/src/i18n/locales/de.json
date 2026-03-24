@@ -36,7 +36,16 @@
     "upload": "Hochladen",
     "retry": "Erneut versuchen",
     "add": "Hinzuf\u00fcgen",
-    "dismiss": "Verwerfen"
+    "dismiss": "Verwerfen",
+    "time": {
+      "justNow": "gerade eben",
+      "minsAgo": "vor {{count}}m",
+      "hrsAgo": "vor {{count}}h",
+      "daysAgo": "vor {{count}}T"
+    },
+    "searchPages": "Seiten suchen...",
+    "enabled": "Aktiviert",
+    "disabled": "Deaktiviert"
   },
   "nav": {
     "dashboard": "\u00dcbersicht",
@@ -51,7 +60,9 @@
     "billing": "Abrechnung",
     "integrations": "Integrationen",
     "orgSettings": "Org.-Einstellungen",
-    "settings": "Einstellungen"
+    "settings": "Einstellungen",
+    "admin": "Admin",
+    "plan": "Plan"
   },
   "breadcrumbs": {
     "dashboard": "\u00dcbersicht",
@@ -71,7 +82,13 @@
     "title": "Benachrichtigungen",
     "new": "{{count}} neu",
     "empty": "Keine Benachrichtigungen",
-    "emptyDesc": "Sie werden benachrichtigt, wenn Antworten genehmigt, Kommentare hinzugef\u00fcgt oder Dokumente verarbeitet werden."
+    "emptyDesc": "Sie werden benachrichtigt, wenn Antworten genehmigt, Kommentare hinzugef\u00fcgt oder Dokumente verarbeitet werden.",
+    "markAllRead": "Alle als gelesen markieren",
+    "viewAll": "Alle Benachrichtigungen anzeigen"
+  },
+  "userMenu": {
+    "ariaLabel": "Benutzermen\u00fc",
+    "signOut": "Abmelden"
   },
   "dashboard": {
     "title": "\u00dcbersicht",
@@ -276,6 +293,91 @@
     "createWorkspace": "Arbeitsbereich erstellen",
     "joinExisting": "Oder einem bestehenden Arbeitsbereich beitreten",
     "switch": "Wechseln"
+  },
+  "settings": {
+    "subtitle": "Konto, Sicherheit und Einstellungen verwalten",
+    "account": "Konto",
+    "accountDesc": "Profilinformationen und Avatar verwalten.",
+    "changeAvatar": "Avatar \u00e4ndern",
+    "changePhoto": "Foto \u00e4ndern",
+    "removePhoto": "Entfernen",
+    "removingPhoto": "Wird entfernt...",
+    "uploading": "Wird hochgeladen...",
+    "firstName": "Vorname",
+    "lastName": "Nachname",
+    "emailNote": "E-Mail kann hier nicht ge\u00e4ndert werden. Kontaktieren Sie den Support.",
+    "saveChanges": "\u00c4nderungen speichern",
+    "saving": "Speichern...",
+    "password": "Passwort",
+    "passwordDesc": "Passwort aktualisieren, um Ihr Konto zu sch\u00fctzen.",
+    "setPasswordDesc": "Passwort f\u00fcr Ihr Konto festlegen.",
+    "currentPassword": "Aktuelles Passwort",
+    "newPassword": "Neues Passwort",
+    "confirmPassword": "Neues Passwort best\u00e4tigen",
+    "updatePassword": "Passwort aktualisieren",
+    "setPassword": "Passwort festlegen",
+    "updatingPassword": "Wird aktualisiert...",
+    "twoFactor": "Zwei-Faktor-Authentifizierung",
+    "twoFactorDesc": "F\u00fcgen Sie Ihrem Konto eine zus\u00e4tzliche Sicherheitsebene mit einer TOTP-Authenticator-App hinzu.",
+    "growthPlus": "Growth+",
+    "twoFactorLocked": "Verf\u00fcgbar in Growth- und Enterprise-Pl\u00e4nen",
+    "twoFactorLockedDesc": "Zwei-Faktor-Authentifizierung bietet zus\u00e4tzlichen Schutz f\u00fcr Ihr Konto und Ihre Organisationsdaten.",
+    "upgradePlan": "Plan upgraden",
+    "enable2fa": "2FA aktivieren",
+    "settingUp2fa": "Wird eingerichtet...",
+    "disable2fa": "2FA deaktivieren",
+    "disabling2fa": "Wird deaktiviert...",
+    "scanQr": "Scannen Sie diesen QR-Code mit Ihrer Authenticator-App",
+    "enterSecretManually": "Oder geben Sie dieses Geheimnis manuell ein:",
+    "enterCode": "Geben Sie den 6-stelligen Code aus Ihrer App ein",
+    "verifyEnable": "Verifizieren & Aktivieren",
+    "verifying": "Wird verifiziert...",
+    "saveBackupCodes": "Backup-Codes speichern",
+    "backupCodesDesc": "Bewahren Sie diese Codes an einem sicheren Ort auf. Jeder Code kann einmal verwendet werden, wenn Sie Ihr Authenticator-Ger\u00e4t verlieren.",
+    "copyAllCodes": "Alle Codes kopieren",
+    "done": "Fertig",
+    "displayPreferences": "Anzeigeeinstellungen",
+    "displayPreferencesDesc": "Passen Sie das Erscheinungsbild der Anwendung an.",
+    "compactMode": "Kompaktmodus",
+    "compactModeDesc": "Abst\u00e4nde und Polsterung in der Oberfl\u00e4che reduzieren",
+    "defaultView": "Standardansicht",
+    "defaultViewDesc": "Standardlayout f\u00fcr Projektlisten w\u00e4hlen",
+    "cardView": "Kartenansicht",
+    "tableView": "Tabellenansicht",
+    "notificationPreferences": "Benachrichtigungseinstellungen",
+    "notificationPreferencesDesc": "W\u00e4hlen Sie, wie Sie f\u00fcr jeden Ereignistyp benachrichtigt werden m\u00f6chten.",
+    "event": "Ereignis",
+    "inApp": "In-App",
+    "keyboardShortcuts": "Tastaturk\u00fcrzel",
+    "keyboardShortcutsDesc": "Kurz\u00fcbersicht der verf\u00fcgbaren Tastaturk\u00fcrzel.",
+    "notifType": {
+      "answerApproved": "Antwort genehmigt",
+      "newComment": "Neuer Kommentar",
+      "documentIndexed": "Dokument indexiert",
+      "rfpParsed": "RFP analysiert",
+      "answersDrafted": "Antworten entworfen",
+      "deadlineApproaching": "Frist n\u00e4hert sich",
+      "teamAssignment": "Teamzuweisung",
+      "questionAssigned": "Frage zugewiesen"
+    },
+    "notifDesc": {
+      "answerApproved": "Wenn eine von Ihnen entworfene Antwort genehmigt wird",
+      "newComment": "Wenn jemand eine Antwort kommentiert",
+      "documentIndexed": "Wenn ein Dokument fertig indexiert ist",
+      "rfpParsed": "Wenn eine RFP in Fragen aufgeteilt wird",
+      "answersDrafted": "Wenn KI das Entwerfen von Antworten abschlie\u00dft",
+      "deadlineApproaching": "Wenn eine Projektfrist naht",
+      "teamAssignment": "Wenn Sie einem Team hinzugef\u00fcgt werden",
+      "questionAssigned": "Wenn Ihnen eine Frage zugewiesen wird"
+    },
+    "shortcut": {
+      "navigateQuestions": "Fragen navigieren",
+      "approveAnswer": "Antwort genehmigen",
+      "editAnswer": "Antwort bearbeiten",
+      "rejectAnswer": "Antwort ablehnen",
+      "saveEdits": "Bearbeitungen speichern",
+      "commandPalette": "Befehlspalette"
+    }
   },
   "language": {
     "title": "Sprache",

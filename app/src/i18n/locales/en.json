@@ -36,7 +36,16 @@
     "upload": "Upload",
     "retry": "Retry",
     "add": "Add",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "time": {
+      "justNow": "just now",
+      "minsAgo": "{{count}}m ago",
+      "hrsAgo": "{{count}}h ago",
+      "daysAgo": "{{count}}d ago"
+    },
+    "searchPages": "Search pages...",
+    "enabled": "Enabled",
+    "disabled": "Disabled"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -51,7 +60,9 @@
     "billing": "Billing",
     "integrations": "Integrations",
     "orgSettings": "Org Settings",
-    "settings": "Settings"
+    "settings": "Settings",
+    "admin": "Admin",
+    "plan": "Plan"
   },
   "breadcrumbs": {
     "dashboard": "Dashboard",
@@ -71,7 +82,9 @@
     "title": "Notifications",
     "new": "{{count}} new",
     "empty": "No notifications yet",
-    "emptyDesc": "You'll be notified when answers are approved, comments are added, or documents finish processing."
+    "emptyDesc": "You'll be notified when answers are approved, comments are added, or documents finish processing.",
+    "markAllRead": "Mark all read",
+    "viewAll": "View all notifications"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -285,5 +298,94 @@
     "de": "Deutsch",
     "es": "Espa\u00f1ol",
     "zh": "\u4e2d\u6587"
+  },
+  "userMenu": {
+    "ariaLabel": "User menu",
+    "signOut": "Sign out"
+  },
+  "settings": {
+    "subtitle": "Manage your account, security, and preferences",
+    "account": "Account",
+    "accountDesc": "Manage your profile information and avatar.",
+    "changeAvatar": "Change avatar",
+    "changePhoto": "Change photo",
+    "removePhoto": "Remove",
+    "removingPhoto": "Removing...",
+    "uploading": "Uploading...",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "emailNote": "Email cannot be changed here. Contact support if needed.",
+    "saveChanges": "Save changes",
+    "saving": "Saving...",
+    "password": "Password",
+    "passwordDesc": "Update your password to keep your account secure.",
+    "setPasswordDesc": "Set a password for your account.",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "updatePassword": "Update password",
+    "setPassword": "Set password",
+    "updatingPassword": "Updating...",
+    "twoFactor": "Two-Factor Authentication",
+    "twoFactorDesc": "Add an extra layer of security to your account using a TOTP authenticator app.",
+    "growthPlus": "Growth+",
+    "twoFactorLocked": "Available on Growth and Enterprise plans",
+    "twoFactorLockedDesc": "Two-factor authentication adds an extra layer of security to protect your account and your organization's data.",
+    "upgradePlan": "Upgrade your plan",
+    "enable2fa": "Enable 2FA",
+    "settingUp2fa": "Setting up...",
+    "disable2fa": "Disable 2FA",
+    "disabling2fa": "Disabling...",
+    "scanQr": "Scan this QR code with your authenticator app",
+    "enterSecretManually": "Or enter this secret manually:",
+    "enterCode": "Enter the 6-digit code from your app",
+    "verifyEnable": "Verify & Enable",
+    "verifying": "Verifying...",
+    "saveBackupCodes": "Save your backup codes",
+    "backupCodesDesc": "Store these codes in a safe place. Each code can be used once to access your account if you lose your authenticator device.",
+    "copyAllCodes": "Copy all codes",
+    "done": "Done",
+    "displayPreferences": "Display Preferences",
+    "displayPreferencesDesc": "Customize how the application looks and feels.",
+    "compactMode": "Compact mode",
+    "compactModeDesc": "Reduce spacing and padding throughout the interface",
+    "defaultView": "Default view",
+    "defaultViewDesc": "Choose the default layout for project lists",
+    "cardView": "Card view",
+    "tableView": "Table view",
+    "notificationPreferences": "Notification Preferences",
+    "notificationPreferencesDesc": "Choose how you want to be notified for each event type.",
+    "event": "Event",
+    "inApp": "In-App",
+    "keyboardShortcuts": "Keyboard Shortcuts",
+    "keyboardShortcutsDesc": "Quick reference for available keyboard shortcuts.",
+    "notifType": {
+      "answerApproved": "Answer Approved",
+      "newComment": "New Comment",
+      "documentIndexed": "Document Indexed",
+      "rfpParsed": "RFP Parsed",
+      "answersDrafted": "Answers Drafted",
+      "deadlineApproaching": "Deadline Approaching",
+      "teamAssignment": "Team Assignment",
+      "questionAssigned": "Question Assigned"
+    },
+    "notifDesc": {
+      "answerApproved": "When an answer you drafted is approved",
+      "newComment": "When someone comments on an answer",
+      "documentIndexed": "When a document finishes indexing",
+      "rfpParsed": "When an RFP is parsed into questions",
+      "answersDrafted": "When AI finishes drafting answers",
+      "deadlineApproaching": "When a project deadline is near",
+      "teamAssignment": "When you are added to a team",
+      "questionAssigned": "When a question is assigned to you"
+    },
+    "shortcut": {
+      "navigateQuestions": "Navigate questions",
+      "approveAnswer": "Approve answer",
+      "editAnswer": "Edit answer",
+      "rejectAnswer": "Reject answer",
+      "saveEdits": "Save edits",
+      "commandPalette": "Command palette"
+    }
   }
 }

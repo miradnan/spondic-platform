@@ -36,7 +36,16 @@
     "upload": "上传",
     "retry": "重试",
     "add": "添加",
-    "dismiss": "忽略"
+    "dismiss": "忽略",
+    "time": {
+      "justNow": "刚刚",
+      "minsAgo": "{{count}}分钟前",
+      "hrsAgo": "{{count}}小时前",
+      "daysAgo": "{{count}}天前"
+    },
+    "searchPages": "搜索页面...",
+    "enabled": "已启用",
+    "disabled": "已禁用"
   },
   "nav": {
     "dashboard": "仪表盘",
@@ -51,7 +60,9 @@
     "billing": "计费",
     "integrations": "集成",
     "orgSettings": "组织设置",
-    "settings": "设置"
+    "settings": "设置",
+    "admin": "管理",
+    "plan": "套餐"
   },
   "breadcrumbs": {
     "dashboard": "仪表盘",
@@ -71,7 +82,9 @@
     "title": "通知",
     "new": "{{count}} 条新通知",
     "empty": "暂无通知",
-    "emptyDesc": "当答案被批准、添加评论或文档处理完成时，您将收到通知。"
+    "emptyDesc": "当答案被批准、添加评论或文档处理完成时，您将收到通知。",
+    "markAllRead": "全部标记已读",
+    "viewAll": "查看所有通知"
   },
   "dashboard": {
     "title": "仪表盘",
@@ -285,5 +298,94 @@
     "de": "Deutsch",
     "es": "Español",
     "zh": "中文"
+  },
+  "userMenu": {
+    "ariaLabel": "用户菜单",
+    "signOut": "退出登录"
+  },
+  "settings": {
+    "subtitle": "管理您的账户、安全和偏好设置",
+    "account": "账户",
+    "accountDesc": "管理您的个人信息和头像。",
+    "changeAvatar": "更换头像",
+    "changePhoto": "更换照片",
+    "removePhoto": "移除",
+    "removingPhoto": "移除中...",
+    "uploading": "上传中...",
+    "firstName": "名",
+    "lastName": "姓",
+    "emailNote": "此处无法更改邮箱。如需修改请联系支持团队。",
+    "saveChanges": "保存更改",
+    "saving": "保存中...",
+    "password": "密码",
+    "passwordDesc": "更新密码以保护您的账户安全。",
+    "setPasswordDesc": "为您的账户设置密码。",
+    "currentPassword": "当前密码",
+    "newPassword": "新密码",
+    "confirmPassword": "确认新密码",
+    "updatePassword": "更新密码",
+    "setPassword": "设置密码",
+    "updatingPassword": "更新中...",
+    "twoFactor": "两步验证",
+    "twoFactorDesc": "使用 TOTP 验证器应用为您的账户添加额外安全层。",
+    "growthPlus": "Growth+",
+    "twoFactorLocked": "仅在 Growth 和 Enterprise 套餐中可用",
+    "twoFactorLockedDesc": "两步验证为您的账户和组织数据添加额外安全保护。",
+    "upgradePlan": "升级套餐",
+    "enable2fa": "启用两步验证",
+    "settingUp2fa": "设置中...",
+    "disable2fa": "禁用两步验证",
+    "disabling2fa": "禁用中...",
+    "scanQr": "使用验证器应用扫描此二维码",
+    "enterSecretManually": "或手动输入此密钥：",
+    "enterCode": "输入应用中的6位验证码",
+    "verifyEnable": "验证并启用",
+    "verifying": "验证中...",
+    "saveBackupCodes": "保存备用码",
+    "backupCodesDesc": "请将这些代码保存在安全的地方。如果您丢失了验证器设备，每个代码可使用一次来访问您的账户。",
+    "copyAllCodes": "复制所有代码",
+    "done": "完成",
+    "displayPreferences": "显示偏好",
+    "displayPreferencesDesc": "自定义应用的外观和体验。",
+    "compactMode": "紧凑模式",
+    "compactModeDesc": "减少界面中的间距和内边距",
+    "defaultView": "默认视图",
+    "defaultViewDesc": "选择项目列表的默认布局",
+    "cardView": "卡片视图",
+    "tableView": "表格视图",
+    "notificationPreferences": "通知偏好",
+    "notificationPreferencesDesc": "选择每种事件类型的通知方式。",
+    "event": "事件",
+    "inApp": "应用内",
+    "keyboardShortcuts": "键盘快捷键",
+    "keyboardShortcutsDesc": "可用键盘快捷键快速参考。",
+    "notifType": {
+      "answerApproved": "答案已批准",
+      "newComment": "新评论",
+      "documentIndexed": "文档已索引",
+      "rfpParsed": "招标已解析",
+      "answersDrafted": "答案已起草",
+      "deadlineApproaching": "截止日期临近",
+      "teamAssignment": "团队分配",
+      "questionAssigned": "问题已分配"
+    },
+    "notifDesc": {
+      "answerApproved": "当您起草的答案被批准时",
+      "newComment": "当有人评论答案时",
+      "documentIndexed": "当文档完成索引时",
+      "rfpParsed": "当招标被解析为问题时",
+      "answersDrafted": "当 AI 完成答案起草时",
+      "deadlineApproaching": "当项目截止日期临近时",
+      "teamAssignment": "当您被添加到团队时",
+      "questionAssigned": "当问题被分配给您时"
+    },
+    "shortcut": {
+      "navigateQuestions": "浏览问题",
+      "approveAnswer": "批准答案",
+      "editAnswer": "编辑答案",
+      "rejectAnswer": "拒绝答案",
+      "saveEdits": "保存编辑",
+      "commandPalette": "命令面板"
+    }
   }
 }
