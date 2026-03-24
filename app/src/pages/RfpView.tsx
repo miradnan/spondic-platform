@@ -51,7 +51,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog.tsx";
 import { Tooltip } from "../components/ui/tooltip.tsx";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs.tsx";
 import { useWalkthrough, RFP_VIEW_STEPS } from "../hooks/useWalkthrough.ts";
-import type { RFPQuestion, RFPAnswer, AnswerApproval, StageApproveRequest } from "../lib/types.ts";
+import type { RFPQuestion, RFPAnswer, AnswerApproval, StageApproveRequest, Citation } from "../lib/types.ts";
 import { StatusBadge } from "../components/ui/status-badge.tsx";
 import { RichTextEditor } from "../components/ui/rich-text-editor.tsx";
 import { ProjectCRMLinkPanel } from "../components/ProjectCRMLink.tsx";
@@ -1329,7 +1329,26 @@ function ReviewTab({
 
 function RightPanel({ answer, projectId }: { answer: RFPAnswer | null | undefined; projectId: string }) {
   const { t } = useTranslation();
-  const citationCount = answer?.citations?.length ?? 0;
+
+  // Only show citations that are actually referenced in the answer text.
+  // Each entry keeps its original 1-based index so sidebar numbers match badges.
+  const referencedCitations = useMemo(() => {
+    if (!answer?.citations?.length) return [] as { citation: Citation; originalIndex: number }[];
+    const text = answer.edited_text || answer.draft_text || "";
+    // Find all [Source N] and [N] references in the text
+    const refs = new Set<number>();
+    for (const m of text.matchAll(/\[Source\s*(\d+)\]/gi)) refs.add(parseInt(m[1], 10));
+    for (const m of text.matchAll(/(?<!\bSource\s)\[(\d+)\]/g)) refs.add(parseInt(m[1], 10));
+    if (refs.size === 0) {
+      // No inline refs found — show all citations
+      return answer.citations.map((c, i) => ({ citation: c, originalIndex: i + 1 }));
+    }
+    return answer.citations
+      .map((c, i) => ({ citation: c, originalIndex: i + 1 }))
+      .filter((entry) => refs.has(entry.originalIndex));
+  }, [answer?.citations, answer?.edited_text, answer?.draft_text]);
+
+  const citationCount = referencedCitations.length;
 
   return (
     <div className="flex flex-col gap-3">
@@ -1344,18 +1363,18 @@ function RightPanel({ answer, projectId }: { answer: RFPAnswer | null | undefine
           </div>
         </div>
         <div className="px-5 pb-5">
-          {answer?.citations && answer.citations.length > 0 ? (
+          {referencedCitations.length > 0 ? (
             <ul className="space-y-3">
-              {answer.citations.map((c, idx) => (
+              {referencedCitations.map(({ citation: c, originalIndex }) => (
                 <li
                   key={c.id}
-                  id={`citation-${idx + 1}`}
+                  id={`citation-${originalIndex}`}
                   className="rounded-lg border border-border bg-cream-light p-3 scroll-mt-4 transition-colors"
                 >
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-brand-blue text-[10px] font-semibold text-white">
-                        {idx + 1}
+                        {originalIndex}
                       </span>
                       <span className="text-xs font-medium text-brand-blue truncate">
                         {c.document_title}

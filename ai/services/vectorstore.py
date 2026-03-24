@@ -288,10 +288,17 @@ def _format_results(objects: list[Any]) -> list[dict]:
             continue
         seen_content.add(content_key)
 
-        # Weaviate returns distance (lower = more similar). Convert to a
-        # similarity score in [0, 1].
-        distance = getattr(obj.metadata, "distance", None) or 0.0
-        score = max(0.0, 1.0 - distance)
+        # Hybrid search returns a fused score (higher = more relevant).
+        # Vector-only search returns distance (lower = more similar).
+        # Use the hybrid score when available, fall back to distance conversion.
+        hybrid_score = getattr(obj.metadata, "score", None)
+        distance = getattr(obj.metadata, "distance", None)
+        if hybrid_score is not None:
+            score = min(1.0, max(0.0, hybrid_score))
+        elif distance is not None:
+            score = max(0.0, 1.0 - distance)
+        else:
+            score = 0.0
 
         formatted.append({
             "content": content,

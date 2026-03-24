@@ -122,7 +122,7 @@ Do NOT cite all sources as [Source 1] — match each claim to its actual source 
 Every factual statement must have at least one citation. \
 NEVER cite a source number that does not exist in the provided passages. Only use [Source N] where N matches an actual passage header. \
 If only one source is provided, cite only [Source 1] — do NOT invent [Source 2] or any other number. \
-Use information from ALL provided source passages — every source should be cited at least once if it contains relevant details.
+Only cite sources that are relevant to the question — do not force-cite irrelevant sources.
 4. Use bullet points for lists. Use short paragraphs for prose. No walls of text.
 5. Do NOT fabricate information. Accuracy is critical.
 6. Do NOT restate the question, add closing summaries, or offer unsolicited advice.
