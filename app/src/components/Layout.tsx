@@ -49,13 +49,13 @@ function useBreadcrumbs() {
   const crumbs: { label: string; to?: string }[] = [];
   const path = location.pathname;
 
-  if (path === "/" || path === "/dashboard") {
-    crumbs.push({ label: t("breadcrumbs.dashboard") });
+  if (path === "/" || path === "/proposals") {
+    crumbs.push({ label: t("breadcrumbs.proposals") });
   } else if (path === "/rfp/new") {
-    crumbs.push({ label: t("breadcrumbs.dashboard"), to: "/dashboard" });
+    crumbs.push({ label: t("breadcrumbs.proposals"), to: "/proposals" });
     crumbs.push({ label: t("breadcrumbs.newRfp") });
   } else if (path.startsWith("/rfp/")) {
-    crumbs.push({ label: t("breadcrumbs.dashboard"), to: "/dashboard" });
+    crumbs.push({ label: t("breadcrumbs.proposals"), to: "/proposals" });
     crumbs.push({ label: project?.name ?? t("breadcrumbs.rfpProject") });
   } else if (path === "/knowledge-base") {
     crumbs.push({ label: t("breadcrumbs.knowledgeBase") });
@@ -379,7 +379,7 @@ interface CommandItem {
 function useCommandItems(): CommandItem[] {
   const { t } = useTranslation();
   return [
-    { label: t("nav.dashboard"), to: "/dashboard", icon: Squares2X2Icon },
+    { label: t("nav.proposals"), to: "/proposals", icon: Squares2X2Icon },
     { label: t("nav.knowledgeBase"), to: "/knowledge-base", icon: BookOpenIcon },
     { label: t("nav.chat"), to: "/chat", icon: ChatBubbleLeftEllipsisIcon },
     { label: t("nav.newRfp"), to: "/rfp/new", icon: DocumentPlusIcon },
@@ -556,7 +556,7 @@ function SidebarContent({
   const isAdmin = membership?.role === "org:admin";
 
   const workspaceItems = [
-    { to: "/dashboard", label: t("nav.dashboard"), icon: Squares2X2Icon, match: (p: string) => p === "/" || p === "/dashboard" },
+    { to: "/proposals", label: t("nav.proposals"), icon: Squares2X2Icon, match: (p: string) => p === "/" || p === "/proposals" },
     { to: "/knowledge-base", label: t("nav.knowledgeBase"), icon: BookOpenIcon, match: (p: string) => p.startsWith("/knowledge-base") },
     { to: "/chat", label: t("nav.chat"), icon: ChatBubbleLeftEllipsisIcon, match: (p: string) => p.startsWith("/chat") },
   ];
@@ -600,7 +600,7 @@ function SidebarContent({
       {/* Logo */}
       <div className="flex h-14 items-center justify-center border-b border-navy-light px-4">
         <Link
-          to="/dashboard"
+          to="/proposals"
           onClick={onLinkClick}
           className="flex items-center gap-2"
         >

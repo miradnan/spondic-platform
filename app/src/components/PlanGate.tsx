@@ -67,7 +67,7 @@ function PlanSelectionScreen() {
     checkout.mutate(
       {
         plan: planId,
-        success_url: `${window.location.origin}/dashboard?success=true`,
+        success_url: `${window.location.origin}/proposals?success=true`,
         cancel_url: `${window.location.origin}/plan`,
       },
       {

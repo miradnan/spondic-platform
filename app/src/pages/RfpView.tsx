@@ -245,7 +245,7 @@ export function RfpView() {
       <div className="text-center py-12">
         <p className="text-muted">{t("rfp.view.projectNotFound")}</p>
         <Link to="/" className="mt-4 inline-block text-sm text-brand-blue hover:underline">
-          {t("rfp.view.backToDashboard")}
+          {t("rfp.view.backToProposals")}
         </Link>
       </div>
     );

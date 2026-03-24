@@ -37,13 +37,18 @@
     "retry": "Reintentar",
     "add": "Añadir",
     "dismiss": "Descartar",
-    "time": { "justNow": "ahora mismo", "minsAgo": "hace {{count}}m", "hrsAgo": "hace {{count}}h", "daysAgo": "hace {{count}}d" },
+    "time": {
+      "justNow": "ahora mismo",
+      "minsAgo": "hace {{count}}m",
+      "hrsAgo": "hace {{count}}h",
+      "daysAgo": "hace {{count}}d"
+    },
     "searchPages": "Buscar páginas...",
     "enabled": "Activado",
     "disabled": "Desactivado"
   },
   "nav": {
-    "dashboard": "Panel de control",
+    "proposals": "Propuestas",
     "knowledgeBase": "Base de conocimientos",
     "newRfp": "Nueva licitación",
     "analytics": "Análisis",
@@ -60,7 +65,7 @@
     "plan": "Plan"
   },
   "breadcrumbs": {
-    "dashboard": "Panel de control",
+    "proposals": "Propuestas",
     "newRfp": "Nueva licitación",
     "rfpProject": "Propuesta",
     "knowledgeBase": "Base de conocimientos",
@@ -80,50 +85,6 @@
     "emptyDesc": "Se le notificará cuando se aprueben respuestas, se añadan comentarios o se procesen documentos.",
     "markAllRead": "Marcar todo como leído",
     "viewAll": "Ver todas las notificaciones"
-  },
-  "dashboard": {
-    "title": "Panel de control",
-    "subtitle": "Sus propuestas y actividad reciente.",
-    "noProjects": "Aún no hay propuestas",
-    "noProjectsDesc": "Cree su primera propuesta para empezar a redactar respuestas a licitaciones con IA.",
-    "createFirst": "Crear su primera licitación",
-    "createProject": "Nueva propuesta",
-    "searchProjects": "Buscar propuestas...",
-    "allStatuses": "Todos los estados",
-    "failedToLoad": "Error al cargar las propuestas.",
-    "approved": "aprobadas",
-    "questions": "{{count}} preguntas",
-    "drafted": "{{count}} redactadas",
-    "updated": "Actualizado {{time}}",
-    "status": {
-      "draft": "Borrador",
-      "in_progress": "En progreso",
-      "completed": "Completado",
-      "submitted": "Enviado"
-    },
-    "table": {
-      "name": "Nombre",
-      "description": "Descripción",
-      "status": "Estado",
-      "deadline": "Fecha límite",
-      "questions": "Preguntas",
-      "progress": "Progreso",
-      "updated": "Actualizado"
-    },
-    "onboarding": {
-      "title": "Comience con Spondic",
-      "stepsCompleted": "{{completed}} de {{total}} pasos completados",
-      "step1": "Suba documentos a la base de conocimientos",
-      "step1Desc": "Respuestas anteriores, documentos de producto, certificados de cumplimiento",
-      "step2": "Cree su primera propuesta",
-      "step2Desc": "Suba una licitación y deje que la IA extraiga las preguntas",
-      "step3": "Revise y apruebe las respuestas redactadas por la IA",
-      "step3Desc": "Edite, apruebe y exporte su respuesta final"
-    },
-    "cardView": "Vista de tarjetas",
-    "tableView": "Vista de tabla",
-    "overdue": "Vencido",
-    "daysLeft": "{{count}} día(s) restante(s)"
   },
   "rfp": {
     "new": {
@@ -170,7 +131,6 @@
       "noQuestionsReview": "No hay preguntas para revisar",
       "noQuestionsReviewDesc": "Primero analice la licitación para extraer preguntas.",
       "projectNotFound": "Propuesta no encontrada.",
-      "backToDashboard": "Volver al panel de control",
       "progressPipeline": "Pipeline de progreso",
       "questionsTotal": "({{count}} preguntas en total)",
       "approved": "Aprobado",
@@ -213,7 +173,8 @@
       "exportDocx": "Exportar como Word (.docx)",
       "exportPdf": "Exportar como PDF",
       "readyToExport": "{{approved}} de {{total}} preguntas aprobadas",
-      "exportProgress": "{{drafted}} redactadas, {{approved}} aprobadas"
+      "exportProgress": "{{drafted}} redactadas, {{approved}} aprobadas",
+      "backToProposals": "Volver a propuestas"
     }
   },
   "knowledgeBase": {
@@ -294,7 +255,10 @@
     "es": "Español",
     "zh": "中文"
   },
-  "userMenu": { "ariaLabel": "Menú de usuario", "signOut": "Cerrar sesión" },
+  "userMenu": {
+    "ariaLabel": "Menú de usuario",
+    "signOut": "Cerrar sesión"
+  },
   "settings": {
     "subtitle": "Gestiona tu cuenta, seguridad y preferencias",
     "account": "Cuenta",
@@ -351,8 +315,77 @@
     "inApp": "En la app",
     "keyboardShortcuts": "Atajos de teclado",
     "keyboardShortcutsDesc": "Referencia rápida de atajos de teclado disponibles.",
-    "notifType": { "answerApproved": "Respuesta aprobada", "newComment": "Nuevo comentario", "documentIndexed": "Documento indexado", "rfpParsed": "RFP analizada", "answersDrafted": "Respuestas redactadas", "deadlineApproaching": "Fecha límite próxima", "teamAssignment": "Asignación de equipo", "questionAssigned": "Pregunta asignada" },
-    "notifDesc": { "answerApproved": "Cuando una respuesta que redactaste es aprobada", "newComment": "Cuando alguien comenta una respuesta", "documentIndexed": "Cuando un documento termina de indexarse", "rfpParsed": "Cuando una RFP es analizada en preguntas", "answersDrafted": "Cuando la IA termina de redactar respuestas", "deadlineApproaching": "Cuando se acerca la fecha límite de un proyecto", "teamAssignment": "Cuando te añaden a un equipo", "questionAssigned": "Cuando te asignan una pregunta" },
-    "shortcut": { "navigateQuestions": "Navegar preguntas", "approveAnswer": "Aprobar respuesta", "editAnswer": "Editar respuesta", "rejectAnswer": "Rechazar respuesta", "saveEdits": "Guardar ediciones", "commandPalette": "Paleta de comandos" }
+    "notifType": {
+      "answerApproved": "Respuesta aprobada",
+      "newComment": "Nuevo comentario",
+      "documentIndexed": "Documento indexado",
+      "rfpParsed": "RFP analizada",
+      "answersDrafted": "Respuestas redactadas",
+      "deadlineApproaching": "Fecha límite próxima",
+      "teamAssignment": "Asignación de equipo",
+      "questionAssigned": "Pregunta asignada"
+    },
+    "notifDesc": {
+      "answerApproved": "Cuando una respuesta que redactaste es aprobada",
+      "newComment": "Cuando alguien comenta una respuesta",
+      "documentIndexed": "Cuando un documento termina de indexarse",
+      "rfpParsed": "Cuando una RFP es analizada en preguntas",
+      "answersDrafted": "Cuando la IA termina de redactar respuestas",
+      "deadlineApproaching": "Cuando se acerca la fecha límite de un proyecto",
+      "teamAssignment": "Cuando te añaden a un equipo",
+      "questionAssigned": "Cuando te asignan una pregunta"
+    },
+    "shortcut": {
+      "navigateQuestions": "Navegar preguntas",
+      "approveAnswer": "Aprobar respuesta",
+      "editAnswer": "Editar respuesta",
+      "rejectAnswer": "Rechazar respuesta",
+      "saveEdits": "Guardar ediciones",
+      "commandPalette": "Paleta de comandos"
+    }
+  },
+  "proposals": {
+    "title": "Propuestas",
+    "subtitle": "Gestione y rastree sus propuestas de RFP",
+    "noProjects": "Aún no hay propuestas",
+    "noProjectsDesc": "Cree su primera propuesta para empezar a redactar respuestas a licitaciones con IA.",
+    "createFirst": "Crear su primera licitación",
+    "createProject": "Nueva propuesta",
+    "searchProjects": "Buscar propuestas...",
+    "allStatuses": "Todos los estados",
+    "failedToLoad": "Error al cargar las propuestas.",
+    "approved": "aprobadas",
+    "questions": "{{count}} preguntas",
+    "drafted": "{{count}} redactadas",
+    "updated": "Actualizado {{time}}",
+    "status": {
+      "draft": "Borrador",
+      "in_progress": "En progreso",
+      "completed": "Completado",
+      "submitted": "Enviado"
+    },
+    "table": {
+      "name": "Nombre",
+      "description": "Descripción",
+      "status": "Estado",
+      "deadline": "Fecha límite",
+      "questions": "Preguntas",
+      "progress": "Progreso",
+      "updated": "Actualizado"
+    },
+    "onboarding": {
+      "title": "Comience con Spondic",
+      "stepsCompleted": "{{completed}} de {{total}} pasos completados",
+      "step1": "Suba documentos a la base de conocimientos",
+      "step1Desc": "Respuestas anteriores, documentos de producto, certificados de cumplimiento",
+      "step2": "Cree su primera propuesta",
+      "step2Desc": "Suba una licitación y deje que la IA extraiga las preguntas",
+      "step3": "Revise y apruebe las respuestas redactadas por la IA",
+      "step3Desc": "Edite, apruebe y exporte su respuesta final"
+    },
+    "cardView": "Vista de tarjetas",
+    "tableView": "Vista de tabla",
+    "overdue": "Vencido",
+    "daysLeft": "{{count}} día(s) restante(s)"
   }
 }

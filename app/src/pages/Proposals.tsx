@@ -21,7 +21,7 @@ import {
   type ColumnDef,
 } from "@tanstack/react-table";
 import { useProjects, useDocuments, useDeleteProject } from "../hooks/useApi.ts";
-import { useWalkthrough, DASHBOARD_STEPS } from "../hooks/useWalkthrough.ts";
+import { useWalkthrough, PROPOSALS_STEPS } from "../hooks/useWalkthrough.ts";
 import { DataTable } from "../components/DataTable.tsx";
 import { ConfirmDialog } from "../components/ConfirmDialog.tsx";
 import { PaginationBar } from "../components/ui/pagination-bar.tsx";
@@ -34,11 +34,11 @@ import type { Project } from "../lib/types.ts";
 function useStatusOptions() {
   const { t } = useTranslation();
   return [
-    { value: "", label: t("dashboard.allStatuses") },
-    { value: "draft", label: t("dashboard.status.draft") },
-    { value: "in_progress", label: t("dashboard.status.in_progress") },
-    { value: "completed", label: t("dashboard.status.completed") },
-    { value: "submitted", label: t("dashboard.status.submitted") },
+    { value: "", label: t("proposals.allStatuses") },
+    { value: "draft", label: t("proposals.status.draft") },
+    { value: "in_progress", label: t("proposals.status.in_progress") },
+    { value: "completed", label: t("proposals.status.completed") },
+    { value: "submitted", label: t("proposals.status.submitted") },
   ] as const;
 }
 
@@ -186,22 +186,22 @@ function OnboardingChecklist({
   const steps = [
     {
       done: hasDocuments,
-      label: t("dashboard.onboarding.step1"),
-      description: t("dashboard.onboarding.step1Desc"),
+      label: t("proposals.onboarding.step1"),
+      description: t("proposals.onboarding.step1Desc"),
       to: "/knowledge-base",
       icon: BookOpenIcon,
     },
     {
       done: hasProjects,
-      label: t("dashboard.onboarding.step2"),
-      description: t("dashboard.onboarding.step2Desc"),
+      label: t("proposals.onboarding.step2"),
+      description: t("proposals.onboarding.step2Desc"),
       to: "/rfp/new",
       icon: DocumentTextIcon,
     },
     {
       done: false,
-      label: t("dashboard.onboarding.step3"),
-      description: t("dashboard.onboarding.step3Desc"),
+      label: t("proposals.onboarding.step3"),
+      description: t("proposals.onboarding.step3Desc"),
       to: undefined,
       icon: CheckCircleIcon,
     },
@@ -227,10 +227,10 @@ function OnboardingChecklist({
           </div>
           <div>
             <h2 className="text-base font-semibold text-heading">
-              {t("dashboard.onboarding.title")}
+              {t("proposals.onboarding.title")}
             </h2>
             <p className="text-sm text-muted mt-0.5">
-              {t("dashboard.onboarding.stepsCompleted", { completed: completedCount, total: steps.length })}
+              {t("proposals.onboarding.stepsCompleted", { completed: completedCount, total: steps.length })}
             </p>
           </div>
         </div>
@@ -313,9 +313,9 @@ function OnboardingChecklist({
   );
 }
 
-// ── Dashboard ─────────────────────────────────────────────────────────────────
+// ── Proposals ─────────────────────────────────────────────────────────────────
 
-export function Dashboard() {
+export function Proposals() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const STATUS_OPTIONS = useStatusOptions();
@@ -410,7 +410,7 @@ export function Dashboard() {
   // Check if all onboarding steps are incomplete (for re-enable link)
   const allStepsIncomplete = !hasDocuments && !hasProjects;
 
-  useWalkthrough({ key: "dashboard", steps: DASHBOARD_STEPS });
+  useWalkthrough({ key: "proposals", steps: PROPOSALS_STEPS });
 
   const handlePageChange = useCallback((page: number) => {
     onPaginationChange({ pageIndex: page - 1, pageSize: pagination.pageSize });
@@ -566,8 +566,8 @@ export function Dashboard() {
             <Squares2X2Icon className="h-5 w-5 text-brand-blue" />
           </div>
           <div>
-            <h1 className="font-display text-2xl font-bold text-heading">{t("dashboard.title")}</h1>
-            <p className="text-sm text-body">{t("dashboard.subtitle")}</p>
+            <h1 className="font-display text-2xl font-bold text-heading">{t("proposals.title")}</h1>
+            <p className="text-sm text-body">{t("proposals.subtitle")}</p>
           </div>
         </div>
         <Link
@@ -576,7 +576,7 @@ export function Dashboard() {
           className="inline-flex items-center gap-2 rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue-hover transition-colors"
         >
           <PlusIcon className="h-4 w-4" />
-          {t("dashboard.createProject")}
+          {t("proposals.createProject")}
         </Link>
       </div>
 
@@ -610,7 +610,7 @@ export function Dashboard() {
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <input
             type="text"
-            placeholder={t("dashboard.searchProjects")}
+            placeholder={t("proposals.searchProjects")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => {
@@ -628,7 +628,7 @@ export function Dashboard() {
           onValueChange={(val) => setStatusFilter(val === "__all__" ? "" : val)}
         >
           <SelectTrigger icon={<FunnelIcon className="h-4 w-4" />} className="min-w-[140px]">
-            <SelectValue placeholder={t("dashboard.allStatuses")} />
+            <SelectValue placeholder={t("proposals.allStatuses")} />
           </SelectTrigger>
           <SelectContent>
             {STATUS_OPTIONS.map((opt) => (
@@ -713,7 +713,7 @@ export function Dashboard() {
       {/* Error State */}
       {isError && !isLoading && (
         <div className="mt-8 rounded-xl border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30 p-8 text-center">
-          <p className="text-sm text-red-700 dark:text-red-300">{t("dashboard.failedToLoad")}</p>
+          <p className="text-sm text-red-700 dark:text-red-300">{t("proposals.failedToLoad")}</p>
           <button
             onClick={() => void refetch()}
             className="mt-3 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
@@ -727,16 +727,16 @@ export function Dashboard() {
       {!isLoading && !isError && projects.length === 0 && !hasProjects && !statusFilter && !deadlineFilter && !search && (
         <div className="mt-8 rounded-xl border border-border bg-cream-light p-8 text-center">
           <DocumentTextIcon className="mx-auto h-10 w-10 text-muted" />
-          <p className="mt-4 text-body font-medium">{t("dashboard.noProjects")}</p>
+          <p className="mt-4 text-body font-medium">{t("proposals.noProjects")}</p>
           <p className="mt-1 text-sm text-muted">
-            {t("dashboard.noProjectsDesc")}
+            {t("proposals.noProjectsDesc")}
           </p>
           <Link
             to="/rfp/new"
             className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue-hover transition-colors"
           >
             <PlusIcon className="h-4 w-4" />
-            {t("dashboard.createFirst")}
+            {t("proposals.createFirst")}
           </Link>
         </div>
       )}
@@ -858,15 +858,15 @@ export function Dashboard() {
                     </div>
 
                     <div className="mt-3 flex items-center gap-4 text-xs text-muted">
-                      <span>{t("dashboard.questions", { count: project.question_count })}</span>
+                      <span>{t("proposals.questions", { count: project.question_count })}</span>
                       {project.draft_count > 0 && (
-                        <span>{t("dashboard.drafted", { count: project.draft_count })}</span>
+                        <span>{t("proposals.drafted", { count: project.draft_count })}</span>
                       )}
                     </div>
 
                     <Tooltip content={new Date(project.updated_at).toLocaleString()}>
                       <p className="mt-2 text-xs text-muted inline-block">
-                        {t("dashboard.updated", { time: relativeTime(project.updated_at) })}
+                        {t("proposals.updated", { time: relativeTime(project.updated_at) })}
                       </p>
                     </Tooltip>
                   </Link>

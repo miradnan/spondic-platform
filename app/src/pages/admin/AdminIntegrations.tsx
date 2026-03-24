@@ -132,7 +132,7 @@ export function AdminIntegrations() {
           <div className="p-4 border-b border-border">
             <p className="text-sm text-muted">
               Link your CRM to automatically sync proposals with deals and opportunities.
-              Track deal stages, revenue, and win/loss outcomes directly from your RFP dashboard.
+              Track deal stages, revenue, and win/loss outcomes directly from your proposals.
             </p>
             <p className="mt-2 text-xs text-amber-600 bg-amber-50 rounded px-2 py-1 inline-block">
               Note: OAuth authentication will be configured during deployment. Connections created here are placeholders.

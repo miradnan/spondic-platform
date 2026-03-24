@@ -37,13 +37,18 @@
     "retry": "إعادة المحاولة",
     "add": "إضافة",
     "dismiss": "تجاهل",
-    "time": { "justNow": "الآن", "minsAgo": "منذ {{count}} دقيقة", "hrsAgo": "منذ {{count}} ساعة", "daysAgo": "منذ {{count}} يوم" },
+    "time": {
+      "justNow": "الآن",
+      "minsAgo": "منذ {{count}} دقيقة",
+      "hrsAgo": "منذ {{count}} ساعة",
+      "daysAgo": "منذ {{count}} يوم"
+    },
     "searchPages": "بحث في الصفحات...",
     "enabled": "مُفعّل",
     "disabled": "مُعطّل"
   },
   "nav": {
-    "dashboard": "لوحة التحكم",
+    "proposals": "العروض",
     "knowledgeBase": "قاعدة المعرفة",
     "newRfp": "طلب عروض جديد",
     "analytics": "التحليلات",
@@ -60,7 +65,7 @@
     "plan": "الخطة"
   },
   "breadcrumbs": {
-    "dashboard": "لوحة التحكم",
+    "proposals": "العروض",
     "newRfp": "طلب عروض جديد",
     "rfpProject": "عرض",
     "knowledgeBase": "قاعدة المعرفة",
@@ -80,50 +85,6 @@
     "emptyDesc": "سيتم إشعارك عند الموافقة على الإجابات أو إضافة تعليقات أو انتهاء معالجة المستندات.",
     "markAllRead": "تعيين الكل كمقروء",
     "viewAll": "عرض جميع الإشعارات"
-  },
-  "dashboard": {
-    "title": "لوحة التحكم",
-    "subtitle": "عروضك والنشاط الأخير.",
-    "noProjects": "لا توجد عروض بعد",
-    "noProjectsDesc": "أنشئ عرضك الأول لبدء صياغة ردود طلبات العروض بالذكاء الاصطناعي.",
-    "createFirst": "أنشئ أول طلب عروض",
-    "createProject": "عرض جديد",
-    "searchProjects": "ابحث في العروض...",
-    "allStatuses": "جميع الحالات",
-    "failedToLoad": "فشل في تحميل العروض.",
-    "approved": "موافق عليها",
-    "questions": "{{count}} أسئلة",
-    "drafted": "{{count}} مسودة",
-    "updated": "تم التحديث {{time}}",
-    "status": {
-      "draft": "مسودة",
-      "in_progress": "قيد التنفيذ",
-      "completed": "مكتمل",
-      "submitted": "مُقدَّم"
-    },
-    "table": {
-      "name": "الاسم",
-      "description": "الوصف",
-      "status": "الحالة",
-      "deadline": "الموعد النهائي",
-      "questions": "الأسئلة",
-      "progress": "التقدم",
-      "updated": "آخر تحديث"
-    },
-    "onboarding": {
-      "title": "ابدأ مع Spondic",
-      "stepsCompleted": "{{completed}} من {{total}} خطوات مكتملة",
-      "step1": "ارفع المستندات إلى قاعدة المعرفة",
-      "step1Desc": "ردود طلبات العروض السابقة، وثائق المنتجات، شهادات الامتثال",
-      "step2": "أنشئ أول عرض",
-      "step2Desc": "ارفع طلب عروض ودع الذكاء الاصطناعي يستخرج الأسئلة",
-      "step3": "راجع ووافق على الإجابات المصاغة بالذكاء الاصطناعي",
-      "step3Desc": "عدّل، وافق، وصدّر ردك النهائي"
-    },
-    "cardView": "عرض البطاقات",
-    "tableView": "عرض الجدول",
-    "overdue": "متأخر",
-    "daysLeft": "{{count}} يوم متبقي"
   },
   "rfp": {
     "new": {
@@ -170,7 +131,6 @@
       "noQuestionsReview": "لا توجد أسئلة للمراجعة",
       "noQuestionsReviewDesc": "حلّل طلب العروض أولاً لاستخراج الأسئلة.",
       "projectNotFound": "لم يتم العثور على العرض.",
-      "backToDashboard": "العودة إلى لوحة التحكم",
       "progressPipeline": "خط سير التقدم",
       "questionsTotal": "({{count}} سؤال إجمالي)",
       "approved": "موافق عليه",
@@ -213,7 +173,8 @@
       "exportDocx": "تصدير كـ Word (.docx)",
       "exportPdf": "تصدير كـ PDF",
       "readyToExport": "{{approved}} من {{total}} سؤال تمت الموافقة عليها",
-      "exportProgress": "{{drafted}} مسودة، {{approved}} موافق عليها"
+      "exportProgress": "{{drafted}} مسودة، {{approved}} موافق عليها",
+      "backToProposals": "العودة إلى العروض"
     }
   },
   "knowledgeBase": {
@@ -296,7 +257,10 @@
     "it": "Italiano",
     "nl": "Nederlands"
   },
-  "userMenu": { "ariaLabel": "قائمة المستخدم", "signOut": "تسجيل الخروج" },
+  "userMenu": {
+    "ariaLabel": "قائمة المستخدم",
+    "signOut": "تسجيل الخروج"
+  },
   "settings": {
     "subtitle": "إدارة حسابك والأمان والتفضيلات",
     "account": "الحساب",
@@ -353,8 +317,77 @@
     "inApp": "داخل التطبيق",
     "keyboardShortcuts": "اختصارات لوحة المفاتيح",
     "keyboardShortcutsDesc": "مرجع سريع لاختصارات لوحة المفاتيح المتاحة.",
-    "notifType": { "answerApproved": "تمت الموافقة على الإجابة", "newComment": "تعليق جديد", "documentIndexed": "تم فهرسة المستند", "rfpParsed": "تم تحليل المناقصة", "answersDrafted": "تم صياغة الإجابات", "deadlineApproaching": "الموعد النهائي يقترب", "teamAssignment": "تعيين فريق", "questionAssigned": "تم تعيين سؤال" },
-    "notifDesc": { "answerApproved": "عند الموافقة على إجابة قمت بصياغتها", "newComment": "عند تعليق شخص على إجابة", "documentIndexed": "عند انتهاء فهرسة مستند", "rfpParsed": "عند تحليل مناقصة إلى أسئلة", "answersDrafted": "عند انتهاء AI من صياغة الإجابات", "deadlineApproaching": "عند اقتراب موعد نهائي لمشروع", "teamAssignment": "عند إضافتك لفريق", "questionAssigned": "عند تعيين سؤال لك" },
-    "shortcut": { "navigateQuestions": "تصفح الأسئلة", "approveAnswer": "الموافقة على الإجابة", "editAnswer": "تعديل الإجابة", "rejectAnswer": "رفض الإجابة", "saveEdits": "حفظ التعديلات", "commandPalette": "لوحة الأوامر" }
+    "notifType": {
+      "answerApproved": "تمت الموافقة على الإجابة",
+      "newComment": "تعليق جديد",
+      "documentIndexed": "تم فهرسة المستند",
+      "rfpParsed": "تم تحليل المناقصة",
+      "answersDrafted": "تم صياغة الإجابات",
+      "deadlineApproaching": "الموعد النهائي يقترب",
+      "teamAssignment": "تعيين فريق",
+      "questionAssigned": "تم تعيين سؤال"
+    },
+    "notifDesc": {
+      "answerApproved": "عند الموافقة على إجابة قمت بصياغتها",
+      "newComment": "عند تعليق شخص على إجابة",
+      "documentIndexed": "عند انتهاء فهرسة مستند",
+      "rfpParsed": "عند تحليل مناقصة إلى أسئلة",
+      "answersDrafted": "عند انتهاء AI من صياغة الإجابات",
+      "deadlineApproaching": "عند اقتراب موعد نهائي لمشروع",
+      "teamAssignment": "عند إضافتك لفريق",
+      "questionAssigned": "عند تعيين سؤال لك"
+    },
+    "shortcut": {
+      "navigateQuestions": "تصفح الأسئلة",
+      "approveAnswer": "الموافقة على الإجابة",
+      "editAnswer": "تعديل الإجابة",
+      "rejectAnswer": "رفض الإجابة",
+      "saveEdits": "حفظ التعديلات",
+      "commandPalette": "لوحة الأوامر"
+    }
+  },
+  "proposals": {
+    "title": "العروض",
+    "subtitle": "إدارة وتتبع عروض RFP الخاصة بك",
+    "noProjects": "لا توجد عروض بعد",
+    "noProjectsDesc": "أنشئ عرضك الأول لبدء صياغة ردود طلبات العروض بالذكاء الاصطناعي.",
+    "createFirst": "أنشئ أول طلب عروض",
+    "createProject": "عرض جديد",
+    "searchProjects": "ابحث في العروض...",
+    "allStatuses": "جميع الحالات",
+    "failedToLoad": "فشل في تحميل العروض.",
+    "approved": "موافق عليها",
+    "questions": "{{count}} أسئلة",
+    "drafted": "{{count}} مسودة",
+    "updated": "تم التحديث {{time}}",
+    "status": {
+      "draft": "مسودة",
+      "in_progress": "قيد التنفيذ",
+      "completed": "مكتمل",
+      "submitted": "مُقدَّم"
+    },
+    "table": {
+      "name": "الاسم",
+      "description": "الوصف",
+      "status": "الحالة",
+      "deadline": "الموعد النهائي",
+      "questions": "الأسئلة",
+      "progress": "التقدم",
+      "updated": "آخر تحديث"
+    },
+    "onboarding": {
+      "title": "ابدأ مع Spondic",
+      "stepsCompleted": "{{completed}} من {{total}} خطوات مكتملة",
+      "step1": "ارفع المستندات إلى قاعدة المعرفة",
+      "step1Desc": "ردود طلبات العروض السابقة، وثائق المنتجات، شهادات الامتثال",
+      "step2": "أنشئ أول عرض",
+      "step2Desc": "ارفع طلب عروض ودع الذكاء الاصطناعي يستخرج الأسئلة",
+      "step3": "راجع ووافق على الإجابات المصاغة بالذكاء الاصطناعي",
+      "step3Desc": "عدّل، وافق، وصدّر ردك النهائي"
+    },
+    "cardView": "عرض البطاقات",
+    "tableView": "عرض الجدول",
+    "overdue": "متأخر",
+    "daysLeft": "{{count}} يوم متبقي"
   }
 }

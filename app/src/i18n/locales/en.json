@@ -48,7 +48,7 @@
     "disabled": "Disabled"
   },
   "nav": {
-    "dashboard": "Dashboard",
+    "proposals": "Proposals",
     "knowledgeBase": "Knowledge Base",
     "newRfp": "New RFP",
     "analytics": "Analytics",
@@ -65,7 +65,7 @@
     "plan": "Plan"
   },
   "breadcrumbs": {
-    "dashboard": "Dashboard",
+    "proposals": "Proposals",
     "newRfp": "New RFP",
     "rfpProject": "Proposal",
     "knowledgeBase": "Knowledge Base",
@@ -85,50 +85,6 @@
     "emptyDesc": "You'll be notified when answers are approved, comments are added, or documents finish processing.",
     "markAllRead": "Mark all read",
     "viewAll": "View all notifications"
-  },
-  "dashboard": {
-    "title": "Dashboard",
-    "subtitle": "Your proposals and recent activity.",
-    "noProjects": "No proposals yet",
-    "noProjectsDesc": "Create your first proposal to start drafting RFP responses with AI.",
-    "createFirst": "Create your first RFP",
-    "createProject": "New Proposal",
-    "searchProjects": "Search proposals...",
-    "allStatuses": "All statuses",
-    "failedToLoad": "Failed to load proposals.",
-    "approved": "approved",
-    "questions": "{{count}} questions",
-    "drafted": "{{count}} drafted",
-    "updated": "Updated {{time}}",
-    "status": {
-      "draft": "Draft",
-      "in_progress": "In Progress",
-      "completed": "Completed",
-      "submitted": "Submitted"
-    },
-    "table": {
-      "name": "Name",
-      "description": "Description",
-      "status": "Status",
-      "deadline": "Deadline",
-      "questions": "Questions",
-      "progress": "Progress",
-      "updated": "Updated"
-    },
-    "onboarding": {
-      "title": "Get started with Spondic",
-      "stepsCompleted": "{{completed}} of {{total}} steps completed",
-      "step1": "Upload documents to your Knowledge Base",
-      "step1Desc": "Past RFP responses, product docs, compliance certs",
-      "step2": "Create your first proposal",
-      "step2Desc": "Upload an RFP and let AI extract questions",
-      "step3": "Review and approve AI-drafted answers",
-      "step3Desc": "Edit, approve, and export your final response"
-    },
-    "cardView": "Card view",
-    "tableView": "Table view",
-    "overdue": "Overdue",
-    "daysLeft": "{{count}}d left"
   },
   "rfp": {
     "new": {
@@ -175,7 +131,6 @@
       "noQuestionsReview": "No questions to review",
       "noQuestionsReviewDesc": "Parse the RFP first to extract questions.",
       "projectNotFound": "Proposal not found.",
-      "backToDashboard": "Back to Dashboard",
       "progressPipeline": "Progress Pipeline",
       "questionsTotal": "({{count}} questions total)",
       "approved": "Approved",
@@ -218,7 +173,8 @@
       "exportDocx": "Export as Word (.docx)",
       "exportPdf": "Export as PDF",
       "readyToExport": "{{approved}} of {{total}} questions approved",
-      "exportProgress": "{{drafted}} drafted, {{approved}} approved"
+      "exportProgress": "{{drafted}} drafted, {{approved}} approved",
+      "backToProposals": "Back to Proposals"
     }
   },
   "knowledgeBase": {
@@ -293,11 +249,11 @@
   "language": {
     "title": "Language",
     "en": "English",
-    "ar": "\u0627\u0644\u0639\u0631\u0628\u064a\u0629",
-    "fr": "Fran\u00e7ais",
+    "ar": "العربية",
+    "fr": "Français",
     "de": "Deutsch",
-    "es": "Espa\u00f1ol",
-    "zh": "\u4e2d\u6587"
+    "es": "Español",
+    "zh": "中文"
   },
   "userMenu": {
     "ariaLabel": "User menu",
@@ -387,5 +343,49 @@
       "saveEdits": "Save edits",
       "commandPalette": "Command palette"
     }
+  },
+  "proposals": {
+    "title": "Proposals",
+    "subtitle": "Manage and track your RFP proposals",
+    "noProjects": "No proposals yet",
+    "noProjectsDesc": "Create your first proposal to start drafting RFP responses with AI.",
+    "createFirst": "Create your first RFP",
+    "createProject": "New Proposal",
+    "searchProjects": "Search proposals...",
+    "allStatuses": "All statuses",
+    "failedToLoad": "Failed to load proposals.",
+    "approved": "approved",
+    "questions": "{{count}} questions",
+    "drafted": "{{count}} drafted",
+    "updated": "Updated {{time}}",
+    "status": {
+      "draft": "Draft",
+      "in_progress": "In Progress",
+      "completed": "Completed",
+      "submitted": "Submitted"
+    },
+    "table": {
+      "name": "Name",
+      "description": "Description",
+      "status": "Status",
+      "deadline": "Deadline",
+      "questions": "Questions",
+      "progress": "Progress",
+      "updated": "Updated"
+    },
+    "onboarding": {
+      "title": "Get started with Spondic",
+      "stepsCompleted": "{{completed}} of {{total}} steps completed",
+      "step1": "Upload documents to your Knowledge Base",
+      "step1Desc": "Past RFP responses, product docs, compliance certs",
+      "step2": "Create your first proposal",
+      "step2Desc": "Upload an RFP and let AI extract questions",
+      "step3": "Review and approve AI-drafted answers",
+      "step3Desc": "Edit, approve, and export your final response"
+    },
+    "cardView": "Card view",
+    "tableView": "Table view",
+    "overdue": "Overdue",
+    "daysLeft": "{{count}}d left"
   }
 }

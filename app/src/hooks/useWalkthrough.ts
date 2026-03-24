@@ -133,13 +133,13 @@ export function useWalkthrough({
 
 // ── Pre-built walkthrough step sets ──────────────────────────────────────────
 
-export const DASHBOARD_STEPS: DriveStep[] = [
+export const PROPOSALS_STEPS: DriveStep[] = [
   {
     element: '[data-tour="sidebar-nav"]',
     popover: {
       title: "Navigation",
       description:
-        "Use the sidebar to move between your dashboard, knowledge base, AI chat, and analytics.",
+        "Use the sidebar to move between your proposals, knowledge base, AI chat, and analytics.",
       side: "right",
       align: "start",
     },

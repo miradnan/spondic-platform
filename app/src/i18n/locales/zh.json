@@ -48,7 +48,7 @@
     "disabled": "已禁用"
   },
   "nav": {
-    "dashboard": "仪表盘",
+    "proposals": "提案",
     "knowledgeBase": "知识库",
     "newRfp": "新建招标",
     "analytics": "分析",
@@ -65,7 +65,7 @@
     "plan": "套餐"
   },
   "breadcrumbs": {
-    "dashboard": "仪表盘",
+    "proposals": "提案",
     "newRfp": "新建招标",
     "rfpProject": "提案",
     "knowledgeBase": "知识库",
@@ -85,50 +85,6 @@
     "emptyDesc": "当答案被批准、添加评论或文档处理完成时，您将收到通知。",
     "markAllRead": "全部标记已读",
     "viewAll": "查看所有通知"
-  },
-  "dashboard": {
-    "title": "仪表盘",
-    "subtitle": "您的提案和最近活动。",
-    "noProjects": "暂无提案",
-    "noProjectsDesc": "创建您的第一个提案，开始使用 AI 起草招标响应。",
-    "createFirst": "创建您的第一个招标",
-    "createProject": "新建提案",
-    "searchProjects": "搜索提案...",
-    "allStatuses": "所有状态",
-    "failedToLoad": "加载提案失败。",
-    "approved": "已批准",
-    "questions": "{{count}} 个问题",
-    "drafted": "{{count}} 个草稿",
-    "updated": "更新于 {{time}}",
-    "status": {
-      "draft": "草稿",
-      "in_progress": "进行中",
-      "completed": "已完成",
-      "submitted": "已提交"
-    },
-    "table": {
-      "name": "名称",
-      "description": "描述",
-      "status": "状态",
-      "deadline": "截止日期",
-      "questions": "问题",
-      "progress": "进度",
-      "updated": "更新时间"
-    },
-    "onboarding": {
-      "title": "开始使用 Spondic",
-      "stepsCompleted": "已完成 {{completed}}/{{total}} 步骤",
-      "step1": "将文档上传到知识库",
-      "step1Desc": "以往的招标响应、产品文档、合规证书",
-      "step2": "创建您的第一个提案",
-      "step2Desc": "上传招标文件，让 AI 提取问题",
-      "step3": "审查并批准 AI 起草的答案",
-      "step3Desc": "编辑、批准并导出您的最终响应"
-    },
-    "cardView": "卡片视图",
-    "tableView": "表格视图",
-    "overdue": "已过期",
-    "daysLeft": "剩余 {{count}} 天"
   },
   "rfp": {
     "new": {
@@ -175,7 +131,6 @@
       "noQuestionsReview": "没有需要审查的问题",
       "noQuestionsReviewDesc": "请先解析招标文件以提取问题。",
       "projectNotFound": "未找到提案。",
-      "backToDashboard": "返回仪表盘",
       "progressPipeline": "进度管道",
       "questionsTotal": "(共 {{count}} 个问题)",
       "approved": "已批准",
@@ -218,7 +173,8 @@
       "exportDocx": "导出为 Word (.docx)",
       "exportPdf": "导出为 PDF",
       "readyToExport": "{{approved}}/{{total}} 个问题已批准",
-      "exportProgress": "{{drafted}} 个草稿，{{approved}} 个已批准"
+      "exportProgress": "{{drafted}} 个草稿，{{approved}} 个已批准",
+      "backToProposals": "返回提案"
     }
   },
   "knowledgeBase": {
@@ -387,5 +343,49 @@
       "saveEdits": "保存编辑",
       "commandPalette": "命令面板"
     }
+  },
+  "proposals": {
+    "title": "提案",
+    "subtitle": "管理和跟踪您的RFP提案",
+    "noProjects": "暂无提案",
+    "noProjectsDesc": "创建您的第一个提案，开始使用 AI 起草招标响应。",
+    "createFirst": "创建您的第一个招标",
+    "createProject": "新建提案",
+    "searchProjects": "搜索提案...",
+    "allStatuses": "所有状态",
+    "failedToLoad": "加载提案失败。",
+    "approved": "已批准",
+    "questions": "{{count}} 个问题",
+    "drafted": "{{count}} 个草稿",
+    "updated": "更新于 {{time}}",
+    "status": {
+      "draft": "草稿",
+      "in_progress": "进行中",
+      "completed": "已完成",
+      "submitted": "已提交"
+    },
+    "table": {
+      "name": "名称",
+      "description": "描述",
+      "status": "状态",
+      "deadline": "截止日期",
+      "questions": "问题",
+      "progress": "进度",
+      "updated": "更新时间"
+    },
+    "onboarding": {
+      "title": "开始使用 Spondic",
+      "stepsCompleted": "已完成 {{completed}}/{{total}} 步骤",
+      "step1": "将文档上传到知识库",
+      "step1Desc": "以往的招标响应、产品文档、合规证书",
+      "step2": "创建您的第一个提案",
+      "step2Desc": "上传招标文件，让 AI 提取问题",
+      "step3": "审查并批准 AI 起草的答案",
+      "step3Desc": "编辑、批准并导出您的最终响应"
+    },
+    "cardView": "卡片视图",
+    "tableView": "表格视图",
+    "overdue": "已过期",
+    "daysLeft": "剩余 {{count}} 天"
   }
 }

@@ -80,6 +80,7 @@ func (h *Handler) ListProjects(c echo.Context) error {
 	userID := getUserID(c)
 	page, limit, offset := paginationParams(c)
 	statusFilter := c.QueryParam("status")
+	searchQuery := strings.TrimSpace(c.QueryParam("search"))
 
 	// Role-based visibility: admins see all, members see their team's projects + own + assigned
 	isAdminUser := isAdmin(c)
@@ -109,6 +110,12 @@ func (h *Handler) ListProjects(c echo.Context) error {
 	if statusFilter != "" {
 		countQuery += ` AND p.status = $` + itoa(argIdx)
 		args = append(args, statusFilter)
+		argIdx++
+	}
+
+	if searchQuery != "" {
+		countQuery += ` AND (p.name ILIKE $` + itoa(argIdx) + ` OR p.description ILIKE $` + itoa(argIdx) + `)`
+		args = append(args, "%"+searchQuery+"%")
 		argIdx++
 	}
 
@@ -157,6 +164,12 @@ func (h *Handler) ListProjects(c echo.Context) error {
 	if statusFilter != "" {
 		query += ` AND p.status = $` + itoa(fetchIdx)
 		fetchArgs = append(fetchArgs, statusFilter)
+		fetchIdx++
+	}
+
+	if searchQuery != "" {
+		query += ` AND (p.name ILIKE $` + itoa(fetchIdx) + ` OR p.description ILIKE $` + itoa(fetchIdx) + `)`
+		fetchArgs = append(fetchArgs, "%"+searchQuery+"%")
 		fetchIdx++
 	}
 

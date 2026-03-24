@@ -6,7 +6,7 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
   const isAdmin = membership?.role === "org:admin";
 
   if (!membership) return null; // loading
-  if (!isAdmin) return <Navigate to="/dashboard" replace />;
+  if (!isAdmin) return <Navigate to="/proposals" replace />;
 
   return <>{children}</>;
 }

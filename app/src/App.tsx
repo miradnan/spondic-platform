@@ -11,7 +11,7 @@ import { AdminLayout } from "./components/AdminLayout.tsx";
 import { ToastProvider } from "./components/Toast.tsx";
 import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
 import { ScrollToTop } from "./components/ScrollToTop.tsx";
-import { Dashboard } from "./pages/Dashboard.tsx";
+import { Proposals } from "./pages/Proposals.tsx";
 import { RfpNew } from "./pages/RfpNew.tsx";
 import { RfpView } from "./pages/RfpView.tsx";
 import { ChatLayout } from "./components/ChatLayout.tsx";
@@ -91,8 +91,10 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard />} />
+          <Route index element={<Navigate to="/proposals" replace />} />
+          <Route path="proposals" element={<Proposals />} />
+          {/* Backwards-compatible redirect for old bookmarks */}
+          <Route path="dashboard" element={<Navigate to="/proposals" replace />} />
           <Route path="rfp/new" element={<RfpNew />} />
           <Route path="rfp/:id" element={<RfpView />} />
           <Route path="knowledge-base" element={<KnowledgeBase />} />
@@ -123,7 +125,7 @@ export default function App() {
             <Route path="audit" element={<AdminAudit />} />
           </Route>
         </Route>
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/proposals" replace />} />
       </Routes>
     </ToastProvider>
     </ErrorBoundary>
@@ -137,7 +139,7 @@ function ClerkSignIn() {
         routing="path"
         path="/sign-in"
         signUpUrl="/sign-up"
-        fallbackRedirectUrl="/dashboard"
+        fallbackRedirectUrl="/proposals"
       />
     </div>
   );
@@ -150,7 +152,7 @@ function ClerkSignUp() {
         routing="path"
         path="/sign-up"
         signInUrl="/sign-in"
-        fallbackRedirectUrl="/dashboard"
+        fallbackRedirectUrl="/proposals"
       />
     </div>
   );

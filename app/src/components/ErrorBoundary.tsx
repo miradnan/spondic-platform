@@ -47,10 +47,10 @@ export class ErrorBoundary extends Component<Props, State> {
                 Refresh Page
               </button>
               <a
-                href="/dashboard"
+                href="/proposals"
                 className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-body hover:bg-cream-light transition-colors"
               >
-                Go to Dashboard
+                Go to Proposals
               </a>
             </div>
           </div>
