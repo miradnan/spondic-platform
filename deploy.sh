@@ -1,16 +1,23 @@
 #!/bin/bash
-# Spondic — Deploy to production EC2
+# Spondic — Deploy to Railway (project smooth-harbor, services spondic-api / spondic-ai)
 # Usage: ./deploy.sh
 # Usage: ./deploy.sh "commit message"
+#
+# Requires: railway CLI (logged in), psql, python3.
 
 set -e
 
-SERVER="ubuntu@54.144.103.188"
-KEY="./spondic.pem"
-REMOTE_DIR="/home/ubuntu/spondic"
-COMPOSE_FILE="docker-compose.prod.yml"
+PROJECT="smooth-harbor"
+ENVIRONMENT="production"
+API_SERVICE="spondic-api"
+AI_SERVICE="spondic-ai"
+PUBLIC_URL="https://api.spondic.com"
+FALLBACK_URL="https://spondic-api-production.up.railway.app"
 
-echo "🚀 Deploying Spondic to production..."
+cd "$(dirname "$0")"
+
+echo "🚀 Deploying Spondic to Railway ($PROJECT)..."
+railway link -p "$PROJECT" -e "$ENVIRONMENT" >/dev/null
 
 # 1. Commit and push (if there are changes)
 if [ -n "$(git status --porcelain)" ]; then
@@ -28,35 +35,60 @@ else
   fi
 fi
 
-# 2. Sync files (excludes frontend, node_modules, etc.)
-echo "📦 Syncing files..."
-rsync -avz --delete \
-  --exclude-from=".rsync-exclude" \
-  -e "ssh -i $KEY" \
-  . "$SERVER:$REMOTE_DIR/"
-
-# 3. Run database migrations
+# 2. Run pending migrations
+# Postgres is only reachable from outside Railway through PgBouncer's TCP proxy,
+# which pools per transaction, so golang-migrate's session advisory lock can't be
+# used. Each pending file is applied in one transaction together with the
+# schema_migrations update, keeping golang-migrate's bookkeeping in sync.
 echo "🗃️  Running migrations..."
-ssh -i "$KEY" "$SERVER" "cd $REMOTE_DIR && for f in api/migrations/*.up.sql; do sudo docker compose -f $COMPOSE_FILE exec -T postgres psql -U spondic -d spondic < \"\$f\" 2>&1 | grep -v 'already exists' | grep -E 'CREATE|ALTER|INSERT|ERROR' || true; done"
+eval "$(railway variable list -s PgBouncer --json | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+print("export PGHOST=%s PGPORT=%s" % (d["RAILWAY_TCP_PROXY_DOMAIN"], d["RAILWAY_TCP_PROXY_PORT"]))')"
+eval "$(railway variable list -s "$API_SERVICE" --json | python3 -c '
+import json, shlex, sys
+from urllib.parse import urlparse
+u = urlparse(json.load(sys.stdin)["DATABASE_URL"])
+print("export PGUSER=%s PGPASSWORD=%s PGDATABASE=%s" % (shlex.quote(u.username), shlex.quote(u.password), shlex.quote(u.path.lstrip("/"))))')"
+export PGCONNECT_TIMEOUT=10
 
-# 4. Build and restart Docker services (API, Postgres, Weaviate)
-echo "🔨 Building and restarting Docker services..."
-ssh -i "$KEY" "$SERVER" "cd $REMOTE_DIR && sudo docker compose -f $COMPOSE_FILE build && sudo docker compose -f $COMPOSE_FILE up -d"
+CURRENT=$(psql -Atc "SELECT COALESCE(MAX(version), 0) FROM schema_migrations WHERE NOT dirty")
+APPLIED=0
+for f in api/migrations/*.up.sql; do
+  VERSION=$((10#$(basename "$f" | cut -d_ -f1)))
+  if [ "$VERSION" -gt "$CURRENT" ]; then
+    echo "   applying $(basename "$f")"
+    { cat "$f"; echo; echo "DELETE FROM schema_migrations; INSERT INTO schema_migrations (version, dirty) VALUES ($VERSION, false);"; } \
+      | psql -v ON_ERROR_STOP=1 -q --single-transaction >/dev/null
+    APPLIED=$((APPLIED + 1))
+  fi
+done
+echo "   $APPLIED applied (schema version $(psql -Atc 'SELECT version FROM schema_migrations'))"
+unset PGPASSWORD
 
-# 5. Restart AI service (runs natively via systemd)
-echo "🤖 Restarting AI service..."
-ssh -i "$KEY" "$SERVER" "cd $REMOTE_DIR/ai && .venv/bin/pip install -q -r requirements.txt 2>&1 | tail -1; sudo systemctl restart spondic-ai.service"
+# 3. Build and deploy services (waits for each build)
+echo "🤖 Deploying $AI_SERVICE..."
+railway up ai --path-as-root -s "$AI_SERVICE" --ci
+echo "🔨 Deploying $API_SERVICE..."
+railway up api --path-as-root -s "$API_SERVICE" --ci
 
-# 6. Health checks
+# 4. Health checks
 echo "🏥 Checking health..."
 sleep 15
-ssh -i "$KEY" "$SERVER" "curl -sf http://localhost:8080/health && echo ' ✅ API OK' || echo ' ❌ API FAILED'"
-ssh -i "$KEY" "$SERVER" "curl -sf http://localhost:8000/health && echo ' ✅ AI OK' || echo ' ❌ AI FAILED'"
+for URL in "$PUBLIC_URL" "$FALLBACK_URL"; do
+  if curl -sf -m 10 "$URL/health" >/dev/null; then
+    echo " ✅ API OK ($URL)"
+    break
+  fi
+  echo " ❌ API not healthy at $URL"
+done
+railway ssh -s "$API_SERVICE" -- wget -qO- -T 10 "http://$AI_SERVICE.railway.internal:8000/health" 2>/dev/null \
+  | grep -q ok && echo " ✅ AI OK (via private network)" || echo " ❌ AI FAILED"
 
-# 7. Show status
+# 5. Show status
 echo ""
 echo "📊 Service status:"
-ssh -i "$KEY" "$SERVER" "sudo docker compose -f $REMOTE_DIR/$COMPOSE_FILE ps && echo '---' && sudo systemctl status spondic-ai.service --no-pager | head -3"
+railway service list
 
 echo ""
-echo "✅ Deploy complete! API: https://api.spondic.com"
+echo "✅ Deploy complete! API: $PUBLIC_URL"

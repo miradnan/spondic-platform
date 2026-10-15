@@ -9,14 +9,18 @@ class Settings(BaseSettings):
     port: int = 8000
     cors_origins: str = "http://localhost:5173,http://localhost:8080"
 
-    # Groq (LLM generation)
-    groq_api_key: str = ""
-    chat_model: str = "llama-3.3-70b-versatile"
-    rfp_draft_model: str = "llama-3.3-70b-versatile"
-    rfp_parse_model: str = "llama-3.3-70b-versatile"
+    # AWS Bedrock (LLM generation). Model IDs are US cross-region inference
+    # profiles, so inference stays in US regions. Uses the AWS credentials below.
+    bedrock_region: str = "us-east-1"
+    chat_model: str = "us.anthropic.claude-sonnet-4-6"
+    rfp_draft_model: str = "us.anthropic.claude-sonnet-4-6"
+    rfp_parse_model: str = "us.anthropic.claude-sonnet-4-6"
+    fallback_model: str = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
 
-    # Weaviate (vector store)
-    weaviate_url: str = "http://localhost:8080"
+    # Qdrant (vector store). The API key is a collection-scoped JWT in production.
+    qdrant_url: str = "http://localhost:6333"
+    qdrant_api_key: str = ""
+    qdrant_collection: str = "spondic_chunks"
 
     # AWS S3
     aws_access_key_id: str = ""

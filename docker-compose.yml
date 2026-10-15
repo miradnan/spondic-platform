@@ -69,27 +69,14 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Weaviate (vector DB for RAG) — host 8081 to avoid conflict with api:8080
-  weaviate:
-    image: cr.weaviate.io/semitechnologies/weaviate:1.27.2
+  # Qdrant (vector DB for RAG) — http://localhost:6333/dashboard
+  qdrant:
+    image: qdrant/qdrant:v1.19.2
     ports:
-      - "8081:8080"
-      - "50051:50051"
-    environment:
-      QUERY_DEFAULTS_LIMIT: "25"
-      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
-      PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
-      DEFAULT_VECTORIZER_MODULE: "none"
-      CLUSTER_HOSTNAME: "node1"
+      - "6333:6333"
     volumes:
-      - weaviate_data:/var/lib/weaviate
+      - qdrant_data:/qdrant/storage
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/v1/.well-known/ready"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
 
   # Python AI (FastAPI, RAG, Groq) — http://localhost:8000
   ai:
@@ -100,16 +87,16 @@ services:
       - "8000:8000"
     environment:
       - PORT=8000
-      - WEAVIATE_URL=http://weaviate:8080
+      - QDRANT_URL=http://qdrant:6333
       - CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:8080
     env_file:
       - path: ./ai/.env
         required: false
     depends_on:
-      weaviate:
-        condition: service_healthy
+      qdrant:
+        condition: service_started
     restart: unless-stopped
 
 volumes:
   postgres_data:
-  weaviate_data:
+  qdrant_data:

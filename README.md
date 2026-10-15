@@ -7,7 +7,7 @@ AI-powered RFP response assistant for enterprise sales teams. Win more RFPs in h
 - **`website/`** — Marketing site (Next.js 14, Tailwind). Deploy to Netlify at `domain.com`.
 - **`app/`** — Product app (React 18, Vite, Clerk, TanStack Query). Deploy to Netlify at `app.domain.com`.
 - **`api/`** — Go API (Echo): auth, projects, RFPs, S3, calls AI service. Deploy to AWS ECS Fargate.
-- **`ai/`** — Python AI (FastAPI): parsing, Weaviate, Groq, RAG. Deploy to AWS ECS Fargate.
+- **`ai/`** — Python AI (FastAPI): parsing, Qdrant, AWS Bedrock, RAG. Deployed on Railway.
 
 ## Prerequisites
 
@@ -62,7 +62,7 @@ Runs on [http://localhost:8000](http://localhost:8000). `GET /health` returns `{
 
 ## Run with Docker Compose
 
-Run all services (website, app, api, Postgres, Weaviate, ai) in one go:
+Run all services (website, app, api, Postgres, Qdrant, ai) in one go:
 
 ```bash
 docker compose up --build
@@ -74,17 +74,17 @@ docker compose up --build
 | App      | http://localhost:5173     |
 | API      | http://localhost:8080     |
 | Postgres | localhost:5432 (user `spondic`, db `spondic`) |
-| Weaviate | http://localhost:8081     |
+| Qdrant   | http://localhost:6333     |
 | AI       | http://localhost:8000     |
 
-Optional: create a `.env` in the repo root with `GROQ_API_KEY`, `OPENAI_API_KEY`, and `VITE_CLERK_PUBLISHABLE_KEY` so the app and AI service have keys. `api/.env` and `ai/.env` are loaded when present (e.g. copy from `.env.example`).
+Optional: create a `.env` in the repo root with AWS credentials (for Bedrock and S3) and `VITE_CLERK_PUBLISHABLE_KEY` so the app and AI service have keys. `api/.env` and `ai/.env` are loaded when present (e.g. copy from `.env.example`).
 
 ## Environment
 
 - **website** — None required for static/marketing.
 - **app** — See `app/.env.example`: `VITE_CLERK_PUBLISHABLE_KEY`, `VITE_API_URL`.
 - **api** — See `api/.env.example`: `PORT`, `CORS_ORIGINS`, `CLERK_JWKS_URL` (for JWT verification).
-- **ai** — See `ai/.env.example`: `PORT`, `GROQ_API_KEY`, `OPENAI_API_KEY`, `WEAVIATE_URL`, `CORS_ORIGINS`.
+- **ai** — See `ai/.env.example`: `PORT`, `QDRANT_URL`, `QDRANT_API_KEY`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `CORS_ORIGINS`.
 
 ## Docs
 

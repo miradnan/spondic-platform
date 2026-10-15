@@ -18,7 +18,7 @@ router = APIRouter()
 async def index_document(req: IndexRequest):
     """
     Accept a document reference, download from S3, parse, chunk, embed,
-    and store in Weaviate.
+    and store in the vector store.
     """
     try:
         result = await rag.index_document(

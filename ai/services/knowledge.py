@@ -11,7 +11,6 @@ import os
 from datetime import datetime, timezone
 
 from services import llm, parser, s3, vectorstore
-from weaviate.classes.query import Filter, MetadataQuery
 
 logger = logging.getLogger(__name__)
 
@@ -67,23 +66,17 @@ async def detect_stale_documents(
     threshold_days: int = 90,
 ) -> list[dict]:
     """
-    Query Weaviate for all documents in the organisation and identify those
+    Query the vector store for all documents in the organisation and identify those
     older than *threshold_days*.
 
     Returns a list of dicts with: document_id, document_title, chunk_count, days_old.
     """
     logger.info("Detecting stale documents (org=%s, threshold=%d days)", organization_id, threshold_days)
 
-    collection = vectorstore._get_collection()
-
     # Fetch all chunks for this org with creation timestamps
-    all_objects = collection.query.fetch_objects(
-        filters=Filter.by_property("organization_id").equal(organization_id),
-        limit=10000,
-        return_metadata=MetadataQuery(creation_time=True),
-    )
+    chunks = vectorstore.list_chunks(organization_id)
 
-    if not all_objects.objects:
+    if not chunks:
         logger.info("No documents found for org=%s", organization_id)
         return []
 
@@ -91,11 +84,10 @@ async def detect_stale_documents(
     doc_map: dict[str, dict] = {}
     now = datetime.now(timezone.utc)
 
-    for obj in all_objects.objects:
-        props = obj.properties
-        doc_id = props.get("document_id", "")
-        doc_title = props.get("document_title", "")
-        creation_time = getattr(obj.metadata, "creation_time", None)
+    for chunk in chunks:
+        doc_id = chunk["document_id"]
+        doc_title = chunk["document_title"]
+        creation_time = chunk["created_at"]
 
         if doc_id not in doc_map:
             doc_map[doc_id] = {
@@ -153,44 +145,29 @@ async def detect_duplicates(
     """
     logger.info("Detecting duplicates (org=%s, threshold=%.2f)", organization_id, similarity_threshold)
 
-    collection = vectorstore._get_collection()
-
     # Fetch all chunks for this org that are chunk_index=0 (first chunk of each doc)
-    all_objects = collection.query.fetch_objects(
-        filters=(
-            Filter.by_property("organization_id").equal(organization_id)
-            & Filter.by_property("chunk_index").equal(0)
-        ),
-        limit=10000,
-        include_vector=True,
-    )
+    first_chunks = vectorstore.list_chunks(organization_id, chunk_index=0, with_vectors=True)
 
-    if not all_objects.objects:
+    if not first_chunks:
         logger.info("No documents found for org=%s", organization_id)
         return []
 
     # Build list of (doc_id, doc_title, vector)
     docs: list[dict] = []
     seen_doc_ids: set[str] = set()
-    for obj in all_objects.objects:
-        props = obj.properties
-        doc_id = props.get("document_id", "")
+    for chunk in first_chunks:
+        doc_id = chunk["document_id"]
         if doc_id in seen_doc_ids:
             continue
         seen_doc_ids.add(doc_id)
 
-        vector = obj.vector
-        # Weaviate v4 may return vector as dict with 'default' key
-        if isinstance(vector, dict):
-            vector = vector.get("default", [])
-
-        if not vector:
+        if not chunk["vector"]:
             continue
 
         docs.append({
             "document_id": doc_id,
-            "document_title": props.get("document_title", ""),
-            "vector": vector,
+            "document_title": chunk["document_title"],
+            "vector": chunk["vector"],
         })
 
     if len(docs) < 2:
@@ -205,33 +182,24 @@ async def detect_duplicates(
             continue
 
         # Search for similar documents using doc_a's vector
-        results = collection.query.near_vector(
-            near_vector=doc_a["vector"],
-            limit=10,
-            filters=(
-                Filter.by_property("organization_id").equal(organization_id)
-                & Filter.by_property("chunk_index").equal(0)
-            ),
-            return_metadata=MetadataQuery(distance=True),
-        )
+        results = vectorstore.search_first_chunks(organization_id, doc_a["vector"], limit=10)
 
         group_ids: list[str] = [doc_a["document_id"]]
         group_titles: list[str] = [doc_a["document_title"]]
         best_similarity = 0.0
 
-        for obj in results.objects:
-            other_doc_id = obj.properties.get("document_id", "")
+        for match in results:
+            other_doc_id = match["document_id"]
             if other_doc_id == doc_a["document_id"]:
                 continue
             if other_doc_id in already_grouped:
                 continue
 
-            distance = getattr(obj.metadata, "distance", None) or 0.0
-            similarity = max(0.0, 1.0 - distance)
+            similarity = match["score"]
 
             if similarity >= similarity_threshold:
                 group_ids.append(other_doc_id)
-                group_titles.append(obj.properties.get("document_title", ""))
+                group_titles.append(match["document_title"])
                 best_similarity = max(best_similarity, similarity)
 
         if len(group_ids) > 1:
@@ -265,15 +233,9 @@ async def freshness_report(
     """
     logger.info("Generating freshness report (org=%s, max_fresh_days=%d)", organization_id, max_fresh_days)
 
-    collection = vectorstore._get_collection()
+    chunks = vectorstore.list_chunks(organization_id)
 
-    all_objects = collection.query.fetch_objects(
-        filters=Filter.by_property("organization_id").equal(organization_id),
-        limit=10000,
-        return_metadata=MetadataQuery(creation_time=True),
-    )
-
-    if not all_objects.objects:
+    if not chunks:
         logger.info("No documents found for org=%s", organization_id)
         return []
 
@@ -281,11 +243,10 @@ async def freshness_report(
     doc_map: dict[str, dict] = {}
     now = datetime.now(timezone.utc)
 
-    for obj in all_objects.objects:
-        props = obj.properties
-        doc_id = props.get("document_id", "")
-        doc_title = props.get("document_title", "")
-        creation_time = getattr(obj.metadata, "creation_time", None)
+    for chunk in chunks:
+        doc_id = chunk["document_id"]
+        doc_title = chunk["document_title"]
+        creation_time = chunk["created_at"]
 
         if doc_id not in doc_map:
             doc_map[doc_id] = {

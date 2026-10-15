@@ -1,30 +1,38 @@
 """
-Weaviate vector store service.
+Qdrant vector store service.
 
-Manages the DocumentChunk collection: schema creation, chunk storage,
+Manages the document chunk collection: schema creation, chunk storage,
 vector/hybrid search, and deletion. All searches enforce multi-tenant
 isolation via organization_id filtering.
 
-Uses weaviate-client v4 API.
+Each point carries a dense vector (sentence-transformers embedding) and a
+BM25 sparse vector that Qdrant computes server-side from the chunk text.
+Hybrid search fuses the two with relative score fusion so scores stay in
+0..1 and keep the same meaning for callers' thresholds.
 """
 
 import logging
+import time
+from datetime import datetime, timezone
 from typing import Any
-from uuid import UUID, uuid5, NAMESPACE_URL
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
-import weaviate
-from weaviate.classes.config import Configure, DataType, Property
-from weaviate.classes.query import Filter, MetadataQuery
-from weaviate.collections import Collection
+from qdrant_client import QdrantClient, models
 
 from config import settings
 
 logger = logging.getLogger(__name__)
 
-COLLECTION_NAME = "DocumentChunk"
+DENSE_VECTOR = "dense"
+SPARSE_VECTOR = "bm25"
+BM25_MODEL = "qdrant/bm25"
+EMBEDDING_DIM = 384  # all-MiniLM-L6-v2
+HYBRID_ALPHA = 0.7  # 0.7 = lean toward vector, 0.3 toward keyword
+UPSERT_BATCH_SIZE = 64
+SCROLL_PAGE_SIZE = 256
 
 # Module-level client reference, initialised in init_client()
-_client: weaviate.WeaviateClient | None = None
+_client: QdrantClient | None = None
 
 
 # --------------------------------------------------------------------------- #
@@ -32,28 +40,23 @@ _client: weaviate.WeaviateClient | None = None
 # --------------------------------------------------------------------------- #
 
 def init_client() -> None:
-    """Connect to Weaviate and create the collection schema if needed."""
+    """Connect to Qdrant and create the collection schema if needed."""
     global _client
-    url = settings.weaviate_url
-    logger.info("Connecting to Weaviate at %s", url)
+    logger.info("Connecting to Qdrant at %s", settings.qdrant_url)
 
-    # Parse host and port from URL like "http://localhost:8081" or "http://weaviate:8080"
-    stripped = url.replace("http://", "").replace("https://", "").rstrip("/")
-    parts = stripped.split(":")
-    host = parts[0]
-    port = int(parts[1]) if len(parts) > 1 else 8080
-
-    _client = weaviate.connect_to_custom(
-        http_host=host,
-        http_port=port,
-        http_secure=False,
-        grpc_host=host,
-        grpc_port=50051,
-        grpc_secure=False,
+    _client = QdrantClient(
+        url=settings.qdrant_url,
+        # port=None keeps the URL's own port; otherwise the client forces 6333,
+        # which breaks HTTPS endpoints served on 443.
+        port=None,
+        api_key=settings.qdrant_api_key or None,
+        # Lets Qdrant compute BM25 sparse vectors from models.Document server-side.
+        cloud_inference=True,
+        timeout=30,
     )
 
     _ensure_schema()
-    logger.info("Weaviate client ready")
+    logger.info("Qdrant client ready")
 
 
 def close_client() -> None:
@@ -61,38 +64,66 @@ def close_client() -> None:
     if _client is not None:
         _client.close()
         _client = None
-        logger.info("Weaviate client closed")
+        logger.info("Qdrant client closed")
 
 
-def _get_collection() -> Collection:
+def _get_client() -> QdrantClient:
+    # Connect lazily so a Qdrant outage at startup recovers on the next request.
     if _client is None:
-        raise RuntimeError("Weaviate client not initialised — call init_client() first")
-    return _client.collections.get(COLLECTION_NAME)
+        init_client()
+    return _client
 
 
 def _ensure_schema() -> None:
-    """Create the DocumentChunk collection if it does not already exist."""
-    if _client is None:
-        raise RuntimeError("Weaviate client not initialised")
+    """
+    Create the collection and payload indexes if they do not already exist.
 
-    if _client.collections.exists(COLLECTION_NAME):
-        logger.info("Collection '%s' already exists", COLLECTION_NAME)
+    In production the service holds a collection-scoped JWT that cannot create
+    collections, so the collection must be provisioned once with the admin key.
+    """
+    client = _get_client()
+    collection = settings.qdrant_collection
+
+    if client.collection_exists(collection):
+        logger.info("Collection '%s' already exists", collection)
         return
 
-    logger.info("Creating collection '%s'", COLLECTION_NAME)
-    _client.collections.create(
-        name=COLLECTION_NAME,
-        vectorizer_config=Configure.Vectorizer.none(),  # we supply external embeddings
-        properties=[
-            Property(name="content", data_type=DataType.TEXT),
-            Property(name="organization_id", data_type=DataType.TEXT),
-            Property(name="document_id", data_type=DataType.TEXT),
-            Property(name="chunk_index", data_type=DataType.INT),
-            Property(name="section", data_type=DataType.TEXT),
-            Property(name="document_title", data_type=DataType.TEXT),
-        ],
+    logger.info("Creating collection '%s'", collection)
+    client.create_collection(
+        collection_name=collection,
+        vectors_config={
+            DENSE_VECTOR: models.VectorParams(size=EMBEDDING_DIM, distance=models.Distance.COSINE),
+        },
+        sparse_vectors_config={
+            SPARSE_VECTOR: models.SparseVectorParams(modifier=models.Modifier.IDF),
+        },
     )
-    logger.info("Collection '%s' created", COLLECTION_NAME)
+    # is_tenant co-locates each organisation's points for faster filtered search.
+    client.create_payload_index(
+        collection, "organization_id",
+        models.KeywordIndexParams(type=models.KeywordIndexType.KEYWORD, is_tenant=True),
+    )
+    client.create_payload_index(collection, "document_id", models.PayloadSchemaType.KEYWORD)
+    client.create_payload_index(collection, "chunk_index", models.PayloadSchemaType.INTEGER)
+    logger.info("Collection '%s' created", collection)
+
+
+def _org_filter(organization_id: str, **extra: Any) -> models.Filter:
+    conditions = [models.FieldCondition(key="organization_id", match=models.MatchValue(value=organization_id))]
+    for key, value in extra.items():
+        conditions.append(models.FieldCondition(key=key, match=models.MatchValue(value=value)))
+    return models.Filter(must=conditions)
+
+
+def _point(point_id: str, content: str, embedding: list[float], payload: dict) -> models.PointStruct:
+    return models.PointStruct(
+        id=point_id,
+        vector={
+            DENSE_VECTOR: embedding,
+            SPARSE_VECTOR: models.Document(text=content, model=BM25_MODEL),
+        },
+        payload={**payload, "content": content, "created_at": time.time()},
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -107,33 +138,35 @@ def store_chunks(
     embeddings: list[list[float]],
 ) -> list[str]:
     """
-    Store document chunks with their embedding vectors in Weaviate.
+    Store document chunks with their embedding vectors in Qdrant.
 
-    Returns a list of Weaviate object UUIDs (as strings).
+    Returns a list of point UUIDs (as strings).
     """
-    collection = _get_collection()
-    object_ids: list[str] = []
+    client = _get_client()
+    points = [
+        _point(
+            str(uuid4()),
+            chunk["content"],
+            embedding,
+            {
+                "organization_id": organization_id,
+                "document_id": document_id,
+                "chunk_index": chunk["chunk_index"],
+                "section": chunk.get("section", ""),
+                "document_title": document_title,
+            },
+        )
+        for chunk, embedding in zip(chunks, embeddings)
+    ]
 
-    with collection.batch.dynamic() as batch:
-        for chunk, embedding in zip(chunks, embeddings):
-            obj_uuid = batch.add_object(
-                properties={
-                    "content": chunk["content"],
-                    "organization_id": organization_id,
-                    "document_id": document_id,
-                    "chunk_index": chunk["chunk_index"],
-                    "section": chunk.get("section", ""),
-                    "document_title": document_title,
-                },
-                vector=embedding,
-            )
-            object_ids.append(str(obj_uuid))
+    for start in range(0, len(points), UPSERT_BATCH_SIZE):
+        client.upsert(settings.qdrant_collection, points=points[start:start + UPSERT_BATCH_SIZE], wait=True)
 
     logger.info(
         "Stored %d chunks for document %s (org=%s)",
-        len(object_ids), document_id, organization_id,
+        len(points), document_id, organization_id,
     )
-    return object_ids
+    return [str(p.id) for p in points]
 
 
 def upsert_approved_answer(
@@ -148,28 +181,27 @@ def upsert_approved_answer(
     Store an approved answer with a deterministic UUID (derived from answer_id)
     so re-approving the same answer overwrites rather than duplicates.
 
-    Returns the Weaviate object UUID as a string.
+    Returns the point UUID as a string.
     """
-    collection = _get_collection()
+    client = _get_client()
 
-    # Deterministic UUID: same answer_id always maps to the same Weaviate object
-    obj_uuid = uuid5(NAMESPACE_URL, f"approved-answer:{answer_id}")
+    # Deterministic UUID: same answer_id always maps to the same point
+    point_id = str(uuid5(NAMESPACE_URL, f"approved-answer:{answer_id}"))
 
-    collection.data.insert(
-        uuid=obj_uuid,
-        properties={
-            "content": content,
+    client.upsert(
+        settings.qdrant_collection,
+        points=[_point(point_id, content, embedding, {
             "organization_id": organization_id,
             "document_id": answer_id,
             "chunk_index": 0,
             "section": section,
             "document_title": document_title,
-        },
-        vector=embedding,
+        })],
+        wait=True,
     )
 
-    logger.info("Upserted approved answer %s → %s (org=%s)", answer_id, obj_uuid, organization_id)
-    return str(obj_uuid)
+    logger.info("Upserted approved answer %s → %s (org=%s)", answer_id, point_id, organization_id)
+    return point_id
 
 
 def find_near_duplicate(
@@ -178,31 +210,31 @@ def find_near_duplicate(
     similarity_threshold: float = 0.95,
 ) -> dict | None:
     """
-    Search for an existing object with very high similarity (≥ threshold).
+    Search for an existing point with very high similarity (≥ threshold).
     Returns the best match dict if above threshold, else None.
     """
-    collection = _get_collection()
-
-    results = collection.query.near_vector(
-        near_vector=embedding,
+    results = _get_client().query_points(
+        settings.qdrant_collection,
+        query=embedding,
+        using=DENSE_VECTOR,
+        query_filter=_org_filter(organization_id),
         limit=1,
-        filters=Filter.by_property("organization_id").equal(organization_id),
-        return_metadata=MetadataQuery(distance=True),
-    )
+        with_payload=True,
+    ).points
 
-    if not results.objects:
+    if not results:
         return None
 
-    obj = results.objects[0]
-    distance = getattr(obj.metadata, "distance", None) or 0.0
-    score = max(0.0, 1.0 - distance)
+    point = results[0]
+    score = max(0.0, point.score)
 
     if score >= similarity_threshold:
+        payload = point.payload or {}
         return {
-            "uuid": str(obj.uuid),
-            "content": obj.properties.get("content", ""),
-            "document_id": obj.properties.get("document_id", ""),
-            "document_title": obj.properties.get("document_title", ""),
+            "uuid": str(point.id),
+            "content": payload.get("content", ""),
+            "document_id": payload.get("document_id", ""),
+            "document_title": payload.get("document_title", ""),
             "score": round(score, 4),
         }
 
@@ -210,15 +242,18 @@ def find_near_duplicate(
 
 
 def delete_by_uuid(uuid_str: str) -> None:
-    """Delete a single object by its UUID."""
-    collection = _get_collection()
-    collection.data.delete_by_id(UUID(uuid_str))
-    logger.info("Deleted Weaviate object %s", uuid_str)
+    """Delete a single point by its UUID."""
+    _get_client().delete(
+        settings.qdrant_collection,
+        points_selector=models.PointIdsList(points=[uuid_str]),
+        wait=True,
+    )
+    logger.info("Deleted Qdrant point %s", uuid_str)
 
 
 def delete_by_document_id(organization_id: str, document_id: str) -> int:
-    """Delete all objects with a specific document_id within an org.
-    Used to remove approved answers from Weaviate when un-approved."""
+    """Delete all points with a specific document_id within an org.
+    Used to remove approved answers from Qdrant when un-approved."""
     return delete_document(organization_id, document_id)
 
 
@@ -237,16 +272,16 @@ def search(
     Returns list of dicts with keys:
       content, document_id, chunk_id, section, document_title, score
     """
-    collection = _get_collection()
-
-    results = collection.query.near_vector(
-        near_vector=query_embedding,
+    points = _get_client().query_points(
+        settings.qdrant_collection,
+        query=query_embedding,
+        using=DENSE_VECTOR,
+        query_filter=_org_filter(organization_id),
         limit=limit,
-        filters=Filter.by_property("organization_id").equal(organization_id),
-        return_metadata=MetadataQuery(distance=True),
-    )
+        with_payload=True,
+    ).points
 
-    return _format_results(results.objects)
+    return _format_results([(p, max(0.0, p.score)) for p in points])
 
 
 def hybrid_search(
@@ -257,30 +292,56 @@ def hybrid_search(
 ) -> list[dict]:
     """
     Combined vector + keyword (BM25) search filtered by organization_id.
-    """
-    collection = _get_collection()
 
+    Runs both searches in one round trip, min-max normalises each result set
+    to 0..1 and blends them with HYBRID_ALPHA (relative score fusion).
+    """
+    org_filter = _org_filter(organization_id)
     # Fetch extra results to account for duplicates that will be filtered out
-    results = collection.query.hybrid(
-        query=query_text,
-        vector=query_embedding,
-        limit=limit * 2,
-        alpha=0.7,  # 0.7 = lean toward vector, 0.3 toward keyword
-        filters=Filter.by_property("organization_id").equal(organization_id),
-        return_metadata=MetadataQuery(distance=True, score=True),
+    fetch = limit * 2
+
+    dense, sparse = _get_client().query_batch_points(
+        settings.qdrant_collection,
+        requests=[
+            models.QueryRequest(
+                query=query_embedding, using=DENSE_VECTOR,
+                filter=org_filter, limit=fetch, with_payload=True,
+            ),
+            models.QueryRequest(
+                query=models.Document(text=query_text, model=BM25_MODEL), using=SPARSE_VECTOR,
+                filter=org_filter, limit=fetch, with_payload=True,
+            ),
+        ],
     )
 
-    deduplicated = _format_results(results.objects)
+    fused: dict[str, list] = {}  # point id -> [point, fused score]
+    for points, weight in ((dense.points, HYBRID_ALPHA), (sparse.points, 1.0 - HYBRID_ALPHA)):
+        for point, normalised in zip(points, _normalise([p.score for p in points])):
+            entry = fused.setdefault(str(point.id), [point, 0.0])
+            entry[1] += weight * normalised
+
+    ranked = sorted(fused.values(), key=lambda e: e[1], reverse=True)
+    deduplicated = _format_results([(point, score) for point, score in ranked])
     return deduplicated[:limit]
 
 
-def _format_results(objects: list[Any]) -> list[dict]:
-    """Convert Weaviate result objects to plain dicts, deduplicating by content."""
+def _normalise(scores: list[float]) -> list[float]:
+    """Min-max normalise scores to 0..1; a single or uniform set maps to 1.0."""
+    if not scores:
+        return []
+    low, high = min(scores), max(scores)
+    if high == low:
+        return [1.0] * len(scores)
+    return [(s - low) / (high - low) for s in scores]
+
+
+def _format_results(scored: list[tuple[Any, float]]) -> list[dict]:
+    """Convert (point, score) pairs to plain dicts, deduplicating by content."""
     formatted: list[dict] = []
     seen_content: set[str] = set()
-    for obj in objects:
-        props = obj.properties
-        content = props.get("content", "")
+    for point, score in scored:
+        payload = point.payload or {}
+        content = payload.get("content", "")
 
         # Skip duplicate chunks (same content from the same or different chunks)
         content_key = content.strip().lower()
@@ -288,27 +349,93 @@ def _format_results(objects: list[Any]) -> list[dict]:
             continue
         seen_content.add(content_key)
 
-        # Hybrid search returns a fused score (higher = more relevant).
-        # Vector-only search returns distance (lower = more similar).
-        # Use the hybrid score when available, fall back to distance conversion.
-        hybrid_score = getattr(obj.metadata, "score", None)
-        distance = getattr(obj.metadata, "distance", None)
-        if hybrid_score is not None:
-            score = min(1.0, max(0.0, hybrid_score))
-        elif distance is not None:
-            score = max(0.0, 1.0 - distance)
-        else:
-            score = 0.0
-
         formatted.append({
             "content": content,
-            "document_id": props.get("document_id", ""),
-            "chunk_id": str(obj.uuid),
-            "section": props.get("section", ""),
-            "document_title": props.get("document_title", ""),
-            "score": round(score, 4),
+            "document_id": payload.get("document_id", ""),
+            "chunk_id": str(point.id),
+            "section": payload.get("section", ""),
+            "document_title": payload.get("document_title", ""),
+            "score": round(min(1.0, max(0.0, score)), 4),
         })
     return formatted
+
+
+# --------------------------------------------------------------------------- #
+# Knowledge base inspection
+# --------------------------------------------------------------------------- #
+
+def list_chunks(
+    organization_id: str,
+    chunk_index: int | None = None,
+    with_vectors: bool = False,
+) -> list[dict]:
+    """
+    Return every chunk for an organisation (optionally only one chunk_index).
+
+    Each dict has: chunk_id, document_id, document_title, chunk_index,
+    created_at (aware datetime or None) and, if requested, vector.
+    """
+    extra = {} if chunk_index is None else {"chunk_index": chunk_index}
+    org_filter = _org_filter(organization_id, **extra)
+    client = _get_client()
+
+    chunks: list[dict] = []
+    offset = None
+    while True:
+        points, offset = client.scroll(
+            settings.qdrant_collection,
+            scroll_filter=org_filter,
+            limit=SCROLL_PAGE_SIZE,
+            offset=offset,
+            with_payload=True,
+            with_vectors=[DENSE_VECTOR] if with_vectors else False,
+        )
+        for point in points:
+            payload = point.payload or {}
+            created_at = payload.get("created_at")
+            chunk = {
+                "chunk_id": str(point.id),
+                "document_id": payload.get("document_id", ""),
+                "document_title": payload.get("document_title", ""),
+                "chunk_index": payload.get("chunk_index"),
+                "created_at": datetime.fromtimestamp(created_at, tz=timezone.utc) if created_at else None,
+            }
+            if with_vectors:
+                chunk["vector"] = (point.vector or {}).get(DENSE_VECTOR, [])
+            chunks.append(chunk)
+        if offset is None:
+            return chunks
+
+
+def search_first_chunks(
+    organization_id: str,
+    query_embedding: list[float],
+    limit: int = 10,
+) -> list[dict]:
+    """
+    Vector search over the first chunk (chunk_index=0) of each document.
+    Unlike search(), results are not deduplicated by content, so identical
+    documents still match each other.
+
+    Returns list of dicts with: document_id, document_title, score.
+    """
+    points = _get_client().query_points(
+        settings.qdrant_collection,
+        query=query_embedding,
+        using=DENSE_VECTOR,
+        query_filter=_org_filter(organization_id, chunk_index=0),
+        limit=limit,
+        with_payload=True,
+    ).points
+
+    return [
+        {
+            "document_id": (p.payload or {}).get("document_id", ""),
+            "document_title": (p.payload or {}).get("document_title", ""),
+            "score": max(0.0, p.score),
+        }
+        for p in points
+    ]
 
 
 # --------------------------------------------------------------------------- #
@@ -319,16 +446,17 @@ def delete_document(organization_id: str, document_id: str) -> int:
     """
     Delete all chunks belonging to a specific document within an organisation.
 
-    Returns the number of objects deleted.
+    Returns the number of points deleted.
     """
-    collection = _get_collection()
+    client = _get_client()
+    doc_filter = _org_filter(organization_id, document_id=document_id)
 
-    result = collection.data.delete_many(
-        where=Filter.by_property("document_id").equal(document_id)
-        & Filter.by_property("organization_id").equal(organization_id),
+    deleted = client.count(settings.qdrant_collection, count_filter=doc_filter, exact=True).count
+    client.delete(
+        settings.qdrant_collection,
+        points_selector=models.FilterSelector(filter=doc_filter),
+        wait=True,
     )
-
-    deleted = result.successful if result else 0
     logger.info(
         "Deleted %d chunks for document %s (org=%s)",
         deleted, document_id, organization_id,

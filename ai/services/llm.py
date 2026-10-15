@@ -1,5 +1,5 @@
 """
-Groq LLM client for answer generation and question extraction.
+AWS Bedrock LLM client (Converse API) for answer generation and question extraction.
 """
 
 import json
@@ -8,7 +8,9 @@ import re
 import time
 from dataclasses import dataclass, field
 
-from groq import Groq, RateLimitError
+import boto3
+from botocore.config import Config
+from botocore.exceptions import ClientError
 
 from config import settings
 
@@ -37,8 +39,9 @@ logger = logging.getLogger(__name__)
 _CHAT_MODEL = settings.chat_model
 _RFP_DRAFT_MODEL = settings.rfp_draft_model
 _RFP_PARSE_MODEL = settings.rfp_parse_model
-_FALLBACK_MODEL = "llama-3.1-8b-instant"
+_FALLBACK_MODEL = settings.fallback_model
 _MAX_RETRIES = 3
+_THROTTLE_ERRORS = {"ThrottlingException", "ServiceUnavailableException", "ModelNotReadyException"}
 
 # Identity guard — injected as a separate system message before all LLM calls
 _IDENTITY_GUARD = {"role": "system", "content": (
@@ -54,11 +57,56 @@ _IDENTITY_GUARD = {"role": "system", "content": (
 )}
 
 
-def _get_client() -> Groq:
-    return Groq(api_key=settings.groq_api_key)
+_client = None
 
 
-def _call_groq(
+def _get_client():
+    """Return a cached Bedrock runtime client using the service's AWS credentials."""
+    global _client
+    if _client is None:
+        kwargs = {
+            "region_name": settings.bedrock_region,
+            # Long drafts can take minutes; botocore retries are handled below instead.
+            "config": Config(read_timeout=300, connect_timeout=10, retries={"max_attempts": 1}),
+        }
+        if settings.aws_access_key_id:
+            kwargs["aws_access_key_id"] = settings.aws_access_key_id
+        if settings.aws_secret_access_key:
+            kwargs["aws_secret_access_key"] = settings.aws_secret_access_key
+        _client = boto3.client("bedrock-runtime", **kwargs)
+    return _client
+
+
+def _to_converse(messages: list[dict]) -> tuple[list[dict], list[dict]]:
+    """
+    Convert OpenAI-style messages to Bedrock Converse (system blocks, messages).
+
+    System messages become system blocks. Converse requires the conversation to
+    start with a user turn and alternate roles, so leading assistant turns are
+    dropped, consecutive same-role turns are merged and empty turns skipped.
+    """
+    system: list[dict] = []
+    converse: list[dict] = []
+    for msg in messages:
+        content = (msg.get("content") or "").strip()
+        if not content:
+            continue
+        if msg["role"] == "system":
+            system.append({"text": content})
+        elif not converse and msg["role"] != "user":
+            continue
+        elif converse and converse[-1]["role"] == msg["role"]:
+            converse[-1]["content"][0]["text"] += "\n\n" + content
+        else:
+            converse.append({"role": msg["role"], "content": [{"text": content}]})
+    return system, converse
+
+
+def _is_throttle(exc: Exception) -> bool:
+    return isinstance(exc, ClientError) and exc.response.get("Error", {}).get("Code") in _THROTTLE_ERRORS
+
+
+def _call_llm(
     messages: list[dict],
     temperature: float = 0.3,
     max_tokens: int = 4096,
@@ -66,44 +114,46 @@ def _call_groq(
     usage: TokenUsage | None = None,
 ) -> str:
     """
-    Send a chat completion request to Groq with retry and model fallback.
+    Send a Converse request to Bedrock with retry and model fallback.
     Identity guard is automatically prepended to every call.
     If *usage* is provided, token counts are accumulated into it.
     """
     client = _get_client()
-    guarded_messages = [_IDENTITY_GUARD] + messages
+    system, converse = _to_converse([_IDENTITY_GUARD] + messages)
 
     for attempt in range(_MAX_RETRIES):
         current_model = model if attempt < 2 else _FALLBACK_MODEL
         try:
-            response = client.chat.completions.create(
-                model=current_model,
-                messages=guarded_messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
+            response = client.converse(
+                modelId=current_model,
+                system=system,
+                messages=converse,
+                inferenceConfig={"temperature": temperature, "maxTokens": max_tokens},
             )
             # Capture token usage
-            if usage is not None and response.usage:
-                usage.add(response.usage.prompt_tokens, response.usage.completion_tokens)
+            if usage is not None and response.get("usage"):
+                usage.add(response["usage"]["inputTokens"], response["usage"]["outputTokens"])
 
-            text = response.choices[0].message.content or ""
+            blocks = response["output"]["message"]["content"]
+            text = "".join(block.get("text", "") for block in blocks)
 
-            # Strip <think>...</think> tags from thinking models (e.g., qwen3)
+            # Strip <think>...</think> tags in case a reasoning model emits them
             text = re.sub(r"<think>[\s\S]*?</think>\s*", "", text)
 
             return text
-        except RateLimitError as exc:
-            wait = 2 ** attempt
-            logger.warning("Groq rate limited (attempt %d/%d, model=%s), waiting %ds: %s",
-                           attempt + 1, _MAX_RETRIES, current_model, wait, exc)
-            time.sleep(wait)
         except Exception as exc:
-            logger.error("Groq API error (model=%s): %s", current_model, exc)
+            if _is_throttle(exc):
+                wait = 2 ** attempt
+                logger.warning("Bedrock throttled (attempt %d/%d, model=%s), waiting %ds: %s",
+                               attempt + 1, _MAX_RETRIES, current_model, wait, exc)
+                time.sleep(wait)
+                continue
+            logger.error("Bedrock API error (model=%s): %s", current_model, exc)
             if attempt == _MAX_RETRIES - 1:
                 raise
             time.sleep(1)
 
-    raise RuntimeError("Exceeded maximum retries for Groq LLM call")
+    raise RuntimeError("Exceeded maximum retries for Bedrock LLM call")
 
 
 # --------------------------------------------------------------------------- #
@@ -186,7 +236,7 @@ def generate_answer(
         )},
     ]
 
-    result = _call_groq(messages, usage=usage)
+    result = _call_llm(messages, usage=usage)
     return _strip_invalid_citations(result, num_sources)
 
 
@@ -237,7 +287,7 @@ def extract_questions(document_text: str, usage: TokenUsage | None = None) -> li
         {"role": "user", "content": truncated},
     ]
 
-    raw = _call_groq(messages, temperature=0.1, max_tokens=8192, model=_RFP_PARSE_MODEL, usage=usage)
+    raw = _call_llm(messages, temperature=0.1, max_tokens=8192, model=_RFP_PARSE_MODEL, usage=usage)
 
     # Parse the JSON response, handling markdown fences if present
     cleaned = raw.strip()
@@ -314,7 +364,7 @@ def generate_thinking(
     ]
 
     try:
-        return _call_groq(messages, temperature=0.1, max_tokens=200, usage=usage)
+        return _call_llm(messages, temperature=0.1, max_tokens=200, usage=usage)
     except Exception as exc:
         logger.warning("Thinking generation failed: %s", exc)
         return ""
@@ -327,7 +377,7 @@ def chat_response_stream(
     usage: TokenUsage | None = None,
 ):
     """
-    Generator that yields text chunks from Groq streaming response.
+    Generator that yields text chunks from a Bedrock streaming response.
     """
     client = _get_client()
     context_block = _build_context_block(context_passages)
@@ -352,35 +402,44 @@ def chat_response_stream(
         ),
     })
 
+    system, converse = _to_converse(messages)
+
     for attempt in range(_MAX_RETRIES):
         current_model = _CHAT_MODEL if attempt < 2 else _FALLBACK_MODEL
+        yielded = False
         try:
-            stream = client.chat.completions.create(
-                model=current_model,
-                messages=messages,
-                temperature=0.3,
-                max_tokens=4096,
-                stream=True,
+            response = client.converse_stream(
+                modelId=current_model,
+                system=system,
+                messages=converse,
+                inferenceConfig={"temperature": 0.3, "maxTokens": 4096},
             )
-            for chunk in stream:
-                if chunk.choices and chunk.choices[0].delta.content:
-                    yield chunk.choices[0].delta.content
-                # Capture usage from final chunk
-                if usage is not None and hasattr(chunk, "usage") and chunk.usage:
-                    usage.add(chunk.usage.prompt_tokens, chunk.usage.completion_tokens)
+            for event in response["stream"]:
+                text = event.get("contentBlockDelta", {}).get("delta", {}).get("text")
+                if text:
+                    yielded = True
+                    yield text
+                # Usage arrives in the final metadata event
+                if usage is not None and "metadata" in event and event["metadata"].get("usage"):
+                    meta = event["metadata"]["usage"]
+                    usage.add(meta["inputTokens"], meta["outputTokens"])
             return  # Successfully streamed
-        except RateLimitError as exc:
-            wait = 2 ** attempt
-            logger.warning("Groq rate limited (stream, attempt %d/%d, model=%s), waiting %ds: %s",
-                           attempt + 1, _MAX_RETRIES, current_model, wait, exc)
-            time.sleep(wait)
         except Exception as exc:
-            logger.error("Groq streaming API error (model=%s): %s", current_model, exc)
+            # A retry after partial output would duplicate text for the client.
+            if yielded:
+                raise
+            if _is_throttle(exc):
+                wait = 2 ** attempt
+                logger.warning("Bedrock throttled (stream, attempt %d/%d, model=%s), waiting %ds: %s",
+                               attempt + 1, _MAX_RETRIES, current_model, wait, exc)
+                time.sleep(wait)
+                continue
+            logger.error("Bedrock streaming API error (model=%s): %s", current_model, exc)
             if attempt == _MAX_RETRIES - 1:
                 raise
             time.sleep(1)
 
-    raise RuntimeError("Exceeded maximum retries for Groq streaming LLM call")
+    raise RuntimeError("Exceeded maximum retries for Bedrock streaming LLM call")
 
 
 def chat_response(
@@ -414,7 +473,7 @@ def chat_response(
         ),
     })
 
-    result = _call_groq(messages, model=_CHAT_MODEL, usage=usage)
+    result = _call_llm(messages, model=_CHAT_MODEL, usage=usage)
     return _strip_invalid_citations(result, num_sources)
 
 
@@ -460,7 +519,7 @@ def review_answers(qa_pairs: list[dict], usage: TokenUsage | None = None) -> lis
         )},
     ]
 
-    raw = _call_groq(messages, temperature=0.3, max_tokens=8192, usage=usage)
+    raw = _call_llm(messages, temperature=0.3, max_tokens=8192, usage=usage)
     return _parse_json_array(raw, "review")
 
 
@@ -509,7 +568,7 @@ def check_compliance(qa_pairs: list[dict], usage: TokenUsage | None = None) -> l
         )},
     ]
 
-    raw = _call_groq(messages, temperature=0.1, max_tokens=8192, usage=usage)
+    raw = _call_llm(messages, temperature=0.1, max_tokens=8192, usage=usage)
     return _parse_json_array(raw, "compliance")
 
 
@@ -583,7 +642,7 @@ async def assess_compliance_coverage(requirement: str, evidence: str, usage: Tok
         )},
     ]
 
-    raw = _call_groq(messages, temperature=0.1, max_tokens=1024, usage=usage)
+    raw = _call_llm(messages, temperature=0.1, max_tokens=1024, usage=usage)
 
     # Parse the JSON response
     cleaned = raw.strip()
@@ -628,7 +687,7 @@ def extract_document_tags(text_sample: str, usage: TokenUsage | None = None) -> 
         {"role": "user", "content": text_sample},
     ]
 
-    raw = _call_groq(messages, temperature=0.1, max_tokens=1024, usage=usage)
+    raw = _call_llm(messages, temperature=0.1, max_tokens=1024, usage=usage)
 
     # Parse the JSON response, handling markdown fences if present
     cleaned = raw.strip()
@@ -694,7 +753,7 @@ def assess_requirement_risks(gaps: list[dict], usage: TokenUsage | None = None) 
         {"role": "user", "content": f"UNCOVERED REQUIREMENTS:\n{gap_block}"},
     ]
 
-    raw = _call_groq(messages, temperature=0.2, max_tokens=4096, usage=usage)
+    raw = _call_llm(messages, temperature=0.2, max_tokens=4096, usage=usage)
 
     # Parse the JSON response
     cleaned = raw.strip()

@@ -13,9 +13,9 @@ Four services (monorepo):
 | **Website** | Next.js 14, Tailwind | 3000 | `website/` |
 | **App** | React 18, Vite, TanStack Query, Tailwind | 5173 | `app/` |
 | **API** | Go 1.23, Echo, Postgres, S3 | 8080 | `api/` |
-| **AI** | Python 3.12, FastAPI, Weaviate, Groq | 8000 | `ai/` |
+| **AI** | Python 3.12, FastAPI, Qdrant, AWS Bedrock | 8000 | `ai/` |
 
-Auth: Clerk (JWT). Database: PostgreSQL 16. Vector DB: Weaviate. LLM: Groq. Embeddings: OpenAI/Cohere.
+Auth: Clerk (JWT). Database: PostgreSQL 16. Vector DB: Qdrant. LLM: AWS Bedrock (Claude, US inference profiles). Embeddings: sentence-transformers (all-MiniLM-L6-v2, local).
 
 All data is multi-tenant via `organization_id` (Clerk org ID).
 
@@ -80,7 +80,7 @@ Each service has `.env.example`. Key vars:
 
 - **App**: `VITE_CLERK_PUBLISHABLE_KEY`, `VITE_API_URL`
 - **API**: `DATABASE_URL`, `CLERK_JWKS_URL`, `AWS_S3_BUCKET`, `AI_SERVICE_URL`
-- **AI**: `GROQ_API_KEY`, `OPENAI_API_KEY`, `WEAVIATE_URL`
+- **AI**: `QDRANT_URL`, `QDRANT_API_KEY` (collection-scoped JWT), `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` (S3 + Bedrock), `CHAT_MODEL`/`RFP_DRAFT_MODEL`/`RFP_PARSE_MODEL`
 
 ## Multi-Tenancy
 
@@ -91,13 +91,13 @@ All data isolation is enforced via `organization_id`. This is the **single most 
 1. **Clerk JWT** includes an `org_id` claim when the user has an active organization selected. The Go auth middleware (`api/internal/middleware/auth.go`) extracts this and sets it in the Echo context.
 2. **Fallback for dev**: If no `org_id` is present in the JWT (personal account, no org selected), the middleware falls back to the user's `sub` (user ID) as the organization_id. This lets the app work in dev without requiring org setup.
 3. **Every database query** MUST include `WHERE organization_id = $orgID` — no exceptions. This prevents data leaking across tenants.
-4. **Every Weaviate vector search** MUST filter by `organization_id`.
+4. **Every Qdrant vector search** MUST filter by `organization_id`.
 5. **Every S3 file path** MUST be prefixed with `{organization_id}/`.
 
 ### Rules for new code
 
 - Go handlers: use `getOrgID(c)` from the auth middleware. If it returns empty, return `400 organization_id is required`.
-- Python AI service: every request from the Go API includes `organization_id` in the body. Always pass it to Weaviate filters.
+- Python AI service: every request from the Go API includes `organization_id` in the body. Always pass it to Qdrant filters.
 - React app: the Clerk JWT automatically includes `org_id` when an org is active. Use `useOrganization()` to check org state.
 - **Never** write a query without `organization_id` scoping. Never expose one tenant's data to another.
 

@@ -4,7 +4,7 @@ import {
 } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 // ── Custom TipTap marks for citations & placeholders ────────────────────────
@@ -105,6 +105,16 @@ interface RichTextEditorProps {
   placeholder?: string;
   editable?: boolean;
   className?: string;
+  /** Called once with the editor's normalized HTML, for dirty-checking against later onChange values */
+  onReady?: (html: string) => void;
+  /**
+   * Focus on mount. "end" places the cursor at the end; {dx, dy} places it at
+   * that offset from the content area's top-left (e.g. where the user clicked
+   * on a read-only rendering with the same padding).
+   */
+  autoFocus?: "end" | { dx: number; dy: number };
+  /** Swallow Mod-Enter (default: hard break) so a parent shortcut can use it */
+  blockModEnter?: boolean;
 }
 
 function ToolbarButton({
@@ -145,7 +155,13 @@ export function RichTextEditor({
   placeholder = "Start writing...",
   editable = true,
   className,
+  onReady,
+  autoFocus,
+  blockModEnter = false,
 }: RichTextEditorProps) {
+  // Mount-time options; read once so parent re-renders don't re-trigger them
+  const mountOpts = useRef({ onReady, autoFocus });
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -162,11 +178,33 @@ export function RichTextEditor({
       attributes: {
         spellcheck: "true",
       },
+      handleKeyDown: (_view, event) =>
+        blockModEnter && event.key === "Enter" && (event.metaKey || event.ctrlKey),
     },
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
   });
+
+  // Report normalized initial HTML and apply initial focus once the view is laid out
+  useEffect(() => {
+    if (!editor) return;
+    const { onReady: ready, autoFocus: focusAt } = mountOpts.current;
+    ready?.(editor.getHTML());
+    if (!focusAt) return;
+    const raf = requestAnimationFrame(() => {
+      if (editor.isDestroyed) return;
+      if (focusAt === "end") {
+        editor.commands.focus("end");
+        return;
+      }
+      const container = editor.view.dom.parentElement ?? editor.view.dom;
+      const rect = container.getBoundingClientRect();
+      const hit = editor.view.posAtCoords({ left: rect.left + focusAt.dx, top: rect.top + focusAt.dy });
+      editor.commands.focus(hit ? hit.pos : "end");
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [editor]);
 
   // Sync editable prop
   useEffect(() => {
@@ -178,7 +216,7 @@ export function RichTextEditor({
   // Sync content from outside (e.g. when switching questions)
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
-      editor.commands.setContent(content);
+      editor.commands.setContent(content, { emitUpdate: false });
     }
   }, [editor, content]);
 
