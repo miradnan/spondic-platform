@@ -15,8 +15,10 @@ class Settings(BaseSettings):
     rfp_draft_model: str = "llama-3.3-70b-versatile"
     rfp_parse_model: str = "llama-3.3-70b-versatile"
 
-    # Weaviate (vector store)
-    weaviate_url: str = "http://localhost:8080"
+    # Qdrant (vector store). The API key is a collection-scoped JWT in production.
+    qdrant_url: str = "http://localhost:6333"
+    qdrant_api_key: str = ""
+    qdrant_collection: str = "spondic_chunks"
 
     # AWS S3
     aws_access_key_id: str = ""

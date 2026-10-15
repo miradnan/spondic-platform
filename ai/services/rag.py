@@ -54,7 +54,7 @@ async def index_document(
       2. Parse document text
       3. Chunk text
       4. Generate embeddings
-      5. Store in Weaviate
+      5. Store in the vector store
 
     Returns dict with chunks_created and weaviate_object_ids.
     """
@@ -233,7 +233,7 @@ async def index_approved_answer(
     section: str = "",
 ) -> str:
     """
-    Embed an approved Q&A pair and store it in Weaviate so future RAG
+    Embed an approved Q&A pair and store it in the vector store so future RAG
     searches can retrieve proven answers for similar questions.
 
     Deduplication:
@@ -241,7 +241,7 @@ async def index_approved_answer(
       2. Semantic check — if an existing object is ≥95% similar, skip the insert
          to avoid near-duplicate clutter from similar questions across RFPs.
 
-    Returns the Weaviate object UUID, or empty string if skipped as duplicate.
+    Returns the vector store point UUID, or empty string if skipped as duplicate.
     """
     logger.info("Indexing approved answer %s (org=%s)", answer_id, organization_id)
 
@@ -274,7 +274,7 @@ async def index_approved_answer(
     q_snippet = question_text[:60].rstrip() + ("..." if len(question_text) > 60 else "")
     title = f"Approved: {project_name} — {q_snippet}" if project_name else f"Approved Answer — {q_snippet}"
 
-    # Upsert with deterministic UUID (same answer_id → same Weaviate object)
+    # Upsert with deterministic UUID (same answer_id → same point)
     object_id = vectorstore.upsert_approved_answer(
         organization_id=organization_id,
         answer_id=answer_id,
@@ -284,14 +284,14 @@ async def index_approved_answer(
         embedding=embedding,
     )
 
-    logger.info("Indexed approved answer %s → Weaviate %s", answer_id, object_id)
+    logger.info("Indexed approved answer %s → point %s", answer_id, object_id)
     return object_id
 
 
 async def remove_approved_answer(organization_id: str, answer_id: str) -> None:
-    """Remove an approved answer from Weaviate when it's un-approved."""
+    """Remove an approved answer from the vector store when it's un-approved."""
     deleted = vectorstore.delete_by_document_id(organization_id, answer_id)
-    logger.info("Removed approved answer %s from Weaviate (%d objects deleted)", answer_id, deleted)
+    logger.info("Removed approved answer %s from the vector store (%d points deleted)", answer_id, deleted)
 
 
 # --------------------------------------------------------------------------- #

@@ -18,7 +18,7 @@ router = APIRouter()
 @router.post("/index-answer", response_model=IndexAnswerResponse)
 async def index_answer(req: IndexAnswerRequest):
     """
-    Embed an approved Q&A pair and store it in Weaviate so similar future
+    Embed an approved Q&A pair and store it in the vector store so similar future
     questions can retrieve this proven answer as context.
 
     Deduplication: skips insert if a ≥95% similar entry already exists.
@@ -44,7 +44,7 @@ async def index_answer(req: IndexAnswerRequest):
 
 @router.delete("/index-answer")
 async def remove_answer(req: RemoveAnswerRequest):
-    """Remove an approved answer from Weaviate when it is un-approved."""
+    """Remove an approved answer from the vector store when it is un-approved."""
     try:
         await rag.remove_approved_answer(
             organization_id=req.organization_id,
@@ -52,5 +52,5 @@ async def remove_answer(req: RemoveAnswerRequest):
         )
         return {"status": "ok"}
     except Exception as exc:
-        logger.error("Failed to remove answer %s from Weaviate: %s", req.answer_id, exc)
+        logger.error("Failed to remove answer %s from the vector store: %s", req.answer_id, exc)
         raise HTTPException(status_code=500, detail=f"Remove answer failed: {exc}")

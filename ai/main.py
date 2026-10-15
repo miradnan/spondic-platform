@@ -25,12 +25,12 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup: connect to Weaviate and ensure schema.  Shutdown: close client."""
+    """Startup: connect to Qdrant and ensure schema.  Shutdown: close client."""
     logger.info("Starting Spondic AI service")
     try:
         vectorstore.init_client()
     except Exception as exc:
-        logger.warning("Weaviate connection failed on startup (service will retry on first request): %s", exc)
+        logger.warning("Qdrant connection failed on startup (service will retry on first request): %s", exc)
     yield
     vectorstore.close_client()
     logger.info("Spondic AI service shut down")
