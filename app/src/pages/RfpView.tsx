@@ -91,7 +91,7 @@ function highlightPlaceholders(html: string): string {
   return html.replace(
     /\[ENTER:\s*([^\]]+)\]/gi,
     (_match, desc: string) =>
-      `<mark class="enter-placeholder" title="Click Edit to fill in this field">${desc.trim()}</mark>`,
+      `<mark class="enter-placeholder" title="Click to fill in this field">${desc.trim()}</mark>`,
   );
 }
 
@@ -139,6 +139,45 @@ const STATUS_DOTS: Record<string, string> = {
   approved: "bg-green-500",
   rejected: "bg-red-500",
 };
+
+const MOD_KEY = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl+";
+
+// ── Unsaved answer drafts ──
+// sessionStorage (not localStorage) so answer content doesn't outlive the browser tab.
+
+interface AnswerDraft {
+  html: string;
+  baseline: string;
+  /** answer.updated_at when the draft was taken; a mismatch means the server copy changed */
+  updatedAt: string;
+}
+
+const draftKey = (answerId: string) => `spondic:answer-draft:${answerId}`;
+
+function loadAnswerDraft(answerId: string): AnswerDraft | null {
+  try {
+    const raw = sessionStorage.getItem(draftKey(answerId));
+    return raw ? (JSON.parse(raw) as AnswerDraft) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveAnswerDraft(answerId: string, draft: AnswerDraft) {
+  try {
+    sessionStorage.setItem(draftKey(answerId), JSON.stringify(draft));
+  } catch {
+    // Storage full or unavailable; draft recovery is best-effort
+  }
+}
+
+function clearAnswerDraft(answerId: string) {
+  try {
+    sessionStorage.removeItem(draftKey(answerId));
+  } catch {
+    // ignore
+  }
+}
 
 function SkeletonBlock({ className }: { className?: string }) {
   return <div className={`animate-pulse rounded bg-surface-inset ${className ?? ""}`} />;
@@ -710,10 +749,14 @@ function ReviewTab({
   const redraft = useRedraftAnswer();
 
   const [editText, setEditText] = useState("");
+  // Editor-normalized HTML at the start of the edit session; null until the editor reports it
+  const [editBaseline, setEditBaseline] = useState<string | null>(null);
+  const [editFocus, setEditFocus] = useState<"end" | { dx: number; dy: number }>("end");
   const [commentText, setCommentText] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [showQuestionList, setShowQuestionList] = useState(false);
   const [showRedraftConfirm, setShowRedraftConfirm] = useState(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [pendingNavIndex, setPendingNavIndex] = useState<number | null>(null);
   const [sidebarSearch, setSidebarSearch] = useState("");
   const [sidebarStatusFilter, setSidebarStatusFilter] = useState<string>("all");
@@ -725,8 +768,43 @@ function ReviewTab({
   const answer = question ? answerMap.get(question.id) : null;
   const currentIndex = selectedIndex >= 0 ? selectedIndex : effectiveIndex;
 
-  // Derive unsaved changes from state (no effect needed)
-  const hasUnsavedChanges = isEditing && editText !== (answer?.edited_text || answer?.draft_text || "");
+  const isApproved = answer?.status === "approved";
+  const rawAnswerText = answer?.edited_text || answer?.draft_text || "";
+  // Convert markdown to HTML if needed, then linkify [Source N] markers
+  const answerText = useMemo(() => highlightPlaceholders(linkifyCitations(toHtml(rawAnswerText))), [rawAnswerText]);
+
+  // Compare against the editor-normalized baseline, not the stored text (which may be markdown)
+  const hasUnsavedChanges = isEditing && editBaseline !== null && editText !== editBaseline;
+
+  const exitEditing = useCallback(() => {
+    if (answer) clearAnswerDraft(answer.id);
+    setIsEditing(false);
+    setEditBaseline(null);
+  }, [answer]);
+
+  // Persist in-progress edits for this tab session so a reload, tab switch, or crash doesn't lose them
+  useEffect(() => {
+    if (!answer || !isEditing || editBaseline === null) return;
+    const timer = setTimeout(() => {
+      if (editText !== editBaseline) {
+        saveAnswerDraft(answer.id, { html: editText, baseline: editBaseline, updatedAt: answer.updated_at });
+      } else {
+        clearAnswerDraft(answer.id);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [answer, isEditing, editText, editBaseline]);
+
+  // Warn before closing or reloading the page with unsaved edits
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [hasUnsavedChanges]);
 
   const goToQuestion = useCallback(
     (idx: number) => {
@@ -736,41 +814,74 @@ function ReviewTab({
         return;
       }
       onSelectQuestion(questions[idx].id);
-      setIsEditing(false);
+      exitEditing();
       setCommentText("");
     },
-    [questions, onSelectQuestion, hasUnsavedChanges],
+    [questions, onSelectQuestion, hasUnsavedChanges, exitEditing],
   );
 
   const confirmNavigation = () => {
     if (pendingNavIndex !== null) {
-      setIsEditing(false);
+      exitEditing();
       setCommentText("");
       onSelectQuestion(questions[pendingNavIndex].id);
       setPendingNavIndex(null);
     }
   };
 
-  const handleStartEdit = useCallback(() => {
+  const handleStartEdit = useCallback((focus: "end" | { dx: number; dy: number } = "end") => {
     if (!answer) return;
-    const html = highlightPlaceholders(spanifyCitations(toHtml(answer.edited_text || answer.draft_text || "")));
-    setEditText(html);
+    const draft = loadAnswerDraft(answer.id);
+    if (draft && draft.updatedAt === answer.updated_at) {
+      // Resume the unsaved draft; keep the original baseline so it still counts as unsaved
+      setEditText(draft.html);
+      setEditBaseline(draft.baseline);
+      toast("success", "Restored your unsaved edits.");
+    } else {
+      if (draft) clearAnswerDraft(answer.id); // answer changed on the server since; draft is stale
+      setEditText(highlightPlaceholders(spanifyCitations(toHtml(answer.edited_text || answer.draft_text || ""))));
+      setEditBaseline(null);
+    }
+    setEditFocus(focus);
     setIsEditing(true);
-  }, [answer]);
+  }, [answer, toast]);
+
+  const handleEditorReady = useCallback((html: string) => {
+    // Restored drafts already carry their baseline
+    setEditBaseline((prev) => prev ?? html);
+  }, []);
+
+  const handleAnswerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!answer || isApproved) return;
+    // Let citation badges and links work; don't hijack text selection for copying
+    if ((e.target as HTMLElement).closest("button, a")) return;
+    if (window.getSelection()?.toString()) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    handleStartEdit({ dx: e.clientX - rect.left, dy: e.clientY - rect.top });
+  };
+
+  const requestCancelEdit = useCallback(() => {
+    if (hasUnsavedChanges) setShowDiscardConfirm(true);
+    else exitEditing();
+  }, [hasUnsavedChanges, exitEditing]);
 
   const handleSaveEdit = useCallback(() => {
     if (!answer) return;
+    if (!hasUnsavedChanges) {
+      exitEditing();
+      return;
+    }
     updateAnswer.mutate(
       { projectId, answerId: answer.id, body: { edited_text: editText } },
       {
         onSuccess: () => {
           toast("success", "Answer saved.");
-          setIsEditing(false);
+          exitEditing();
         },
         onError: (err) => toast("error", err.message),
       },
     );
-  }, [answer, updateAnswer, projectId, editText, toast]);
+  }, [answer, hasUnsavedChanges, updateAnswer, projectId, editText, toast, exitEditing]);
 
   const handleApprove = useCallback((status: "approved" | "in_review" | "rejected" | "draft") => {
     if (!answer) return;
@@ -805,6 +916,25 @@ function ReviewTab({
       },
     );
   }, [answer, approveAnswer, projectId, toast, questions, currentIndex, answerMap, onSelectQuestion]);
+
+  const handleSaveAndApprove = useCallback(() => {
+    if (!answer) return;
+    if (!hasUnsavedChanges) {
+      exitEditing();
+      handleApprove("approved");
+      return;
+    }
+    updateAnswer.mutate(
+      { projectId, answerId: answer.id, body: { edited_text: editText } },
+      {
+        onSuccess: () => {
+          exitEditing();
+          handleApprove("approved");
+        },
+        onError: (err) => toast("error", err.message),
+      },
+    );
+  }, [answer, hasUnsavedChanges, updateAnswer, projectId, editText, toast, exitEditing, handleApprove]);
 
   const handleRedraft = () => {
     if (!question) return;
@@ -843,13 +973,25 @@ function ReviewTab({
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd+S / Ctrl+S to save when editing (works from any context including contenteditable)
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
-        if (isEditing) {
+      // Editing shortcuts work from any context, including the contenteditable
+      if (isEditing) {
+        const isSaving = updateAnswer.isPending || approveAnswer.isPending;
+        if ((e.metaKey || e.ctrlKey) && e.key === "s") {
           e.preventDefault();
-          handleSaveEdit();
+          if (!isSaving) handleSaveEdit();
+          return;
         }
-        return;
+        if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+          e.preventDefault();
+          if (!isSaving) handleSaveAndApprove();
+          return;
+        }
+        // Leave Escape to any open dialog
+        if (e.key === "Escape" && pendingNavIndex === null && !showDiscardConfirm && !showRedraftConfirm) {
+          e.preventDefault();
+          requestCancelEdit();
+          return;
+        }
       }
 
       const target = e.target as HTMLElement;
@@ -888,7 +1030,11 @@ function ReviewTab({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentIndex, answer, isEditing, goToQuestion, handleApprove, handleStartEdit, handleSaveEdit]);
+  }, [
+    currentIndex, answer, isEditing, isApproved, goToQuestion, handleApprove, handleStartEdit, handleSaveEdit,
+    handleSaveAndApprove, requestCancelEdit, pendingNavIndex, showDiscardConfirm, showRedraftConfirm,
+    updateAnswer.isPending, approveAnswer.isPending,
+  ]);
 
   if (isLoading) {
     return (
@@ -910,10 +1056,6 @@ function ReviewTab({
     );
   }
 
-  const isApproved = answer?.status === "approved";
-  const rawAnswerText = answer?.edited_text || answer?.draft_text || "";
-  // Convert markdown to HTML if needed, then linkify [Source N] markers
-  const answerText = useMemo(() => highlightPlaceholders(linkifyCitations(toHtml(rawAnswerText))), [rawAnswerText]);
   const wordCount = isEditing ? stripHtmlWordCount(editText) : stripHtmlWordCount(answerText);
   const confidenceScore = answer?.confidence_score ?? null;
   const confidenceColor =
@@ -935,6 +1077,21 @@ function ReviewTab({
         title={t("rfp.view.unsavedChanges")}
         description={t("rfp.view.unsavedChangesDesc")}
         confirmLabel={t("rfp.view.discardNavigate")}
+        cancelLabel={t("rfp.view.keepEditing")}
+        variant="warning"
+      />
+
+      {/* Discard Edits Dialog */}
+      <ConfirmDialog
+        open={showDiscardConfirm}
+        onConfirm={() => {
+          setShowDiscardConfirm(false);
+          exitEditing();
+        }}
+        onCancel={() => setShowDiscardConfirm(false)}
+        title="Discard changes?"
+        description="Your edits to this answer haven't been saved and will be lost."
+        confirmLabel="Discard"
         cancelLabel={t("rfp.view.keepEditing")}
         variant="warning"
       />
@@ -1104,6 +1261,12 @@ function ReviewTab({
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-medium text-muted uppercase tracking-wide">{t("rfp.view.aiDraftAnswer")}</h3>
               <div className="flex items-center gap-2 text-xs text-muted">
+                {hasUnsavedChanges && (
+                  <span className="flex items-center gap-1 text-amber-600">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                    Unsaved
+                  </span>
+                )}
                 <span className={question?.word_limit && wordCount > question.word_limit ? "text-red-600 font-medium" : ""}>
                   {question?.word_limit ? `${wordCount} / ${question.word_limit} words` : t("rfp.view.words", { count: wordCount })}
                 </span>
@@ -1147,30 +1310,48 @@ function ReviewTab({
                   <RichTextEditor
                     content={editText}
                     onChange={setEditText}
+                    onReady={handleEditorReady}
+                    autoFocus={editFocus}
+                    blockModEnter
                     placeholder="Write your answer..."
                     editable
                   />
                 ) : (
                   <div
-                    className="prose prose-sm max-w-none p-4 min-h-[200px] text-heading leading-relaxed border border-border rounded-lg bg-surface"
+                    onClick={handleAnswerClick}
+                    title={isApproved ? undefined : "Click to edit"}
+                    className={`prose prose-sm max-w-none p-4 min-h-[200px] text-heading leading-relaxed border border-border rounded-lg bg-surface transition-colors ${
+                      isApproved ? "" : "cursor-text hover:border-brand-blue/40 hover:bg-cream-light/30"
+                    }`}
                     dangerouslySetInnerHTML={{ __html: answerText }}
                   />
                 )}
                 {isEditing ? (
-                  <div className="mt-3 flex gap-2">
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
                     <button
                       onClick={handleSaveEdit}
-                      disabled={updateAnswer.isPending}
+                      disabled={updateAnswer.isPending || approveAnswer.isPending}
                       className="rounded-lg bg-brand-blue px-3 py-2 text-sm font-medium text-white hover:bg-brand-blue-hover transition-colors disabled:opacity-50"
                     >
                       {updateAnswer.isPending ? t("rfp.view.saving") : t("common.save")}
                     </button>
                     <button
-                      onClick={() => setIsEditing(false)}
+                      onClick={handleSaveAndApprove}
+                      disabled={updateAnswer.isPending || approveAnswer.isPending}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors disabled:opacity-50"
+                    >
+                      <CheckCircleIcon className="h-4 w-4" />
+                      {hasUnsavedChanges ? "Save & Approve" : t("rfp.view.approve")}
+                    </button>
+                    <button
+                      onClick={requestCancelEdit}
                       className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-body hover:bg-cream-light transition-colors"
                     >
                       {t("common.cancel")}
                     </button>
+                    <span className="ml-auto text-[11px] text-muted">
+                      <kbd className="font-sans">{MOD_KEY}S</kbd> save · <kbd className="font-sans">{MOD_KEY}↵</kbd> save & approve · <kbd className="font-sans">Esc</kbd> cancel
+                    </span>
                   </div>
                 ) : (
                   <div className="mt-4 space-y-3">
@@ -1228,7 +1409,7 @@ function ReviewTab({
                     <div className="flex flex-wrap gap-2 border-t border-border pt-3">
                       <Tooltip content="Edit answer (e)">
                         <button
-                          onClick={handleStartEdit}
+                          onClick={() => handleStartEdit()}
                           className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-body hover:bg-cream-light transition-colors"
                         >
                           {t("rfp.view.edit")}
